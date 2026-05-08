@@ -1,0 +1,13 @@
+{
+  "name": "ghana-lesson-planner-parser-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node src/server.mjs",
+    "check": "node --check src/server.mjs"
+  },
+  "dependencies": {
+    "node-stream-zip": "^1.15.0"
+  }
+}

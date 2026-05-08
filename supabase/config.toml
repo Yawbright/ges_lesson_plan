@@ -1,0 +1,28 @@
+project_id = "ghana-lesson-planner"
+
+[functions.generate-lesson-plan]
+verify_jwt = true
+
+[functions.generate-scheme]
+verify_jwt = true
+
+[functions.initialize-credit-purchase]
+verify_jwt = true
+
+[functions.verify-credit-purchase]
+verify_jwt = true
+
+[functions.paystack-webhook]
+verify_jwt = false
+
+[functions.parse-uploaded-scheme]
+verify_jwt = true
+
+[functions.dev-grant-credits]
+verify_jwt = false
+
+[functions.referral-dashboard]
+verify_jwt = true
+
+[functions.apply-referral]
+verify_jwt = true
