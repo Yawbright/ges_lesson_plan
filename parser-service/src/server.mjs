@@ -48,14 +48,36 @@ const server = createServer(async (req, res) => {
 
     try {
       const extractedText = await extractSchemeTextFromUpload(body.fileName, body.fileBase64);
+      const availableClassLevels = detectAvailableClassLevels(extractedText);
+      if (
+        availableClassLevels.length &&
+        !availableClassLevels.includes(String(body.classLevel).toUpperCase())
+      ) {
+        const described = availableClassLevels.join(', ');
+        writeJson(res, 400, {
+          error:
+            availableClassLevels.length === 1
+              ? `This file appears to contain a scheme for ${described} only, not ${body.classLevel}.`
+              : `This file appears to contain schemes for ${described}, not ${body.classLevel}.`,
+        });
+        return;
+      }
+
       const detectedMetadata = detectUploadedSchemeMetadata(extractedText);
       const annualPlanText = extractAnnualPlanText(extractedText, body.classLevel);
-      const relevantText = isolateRequestedSectionText(
+      const selectedSection = selectPreferredSchemeSection(
         extractedText,
         body.classLevel,
         body.term
       );
+      const relevantText = selectedSection.text;
       const likelyWeekRows = extractLikelyWeekRows(relevantText);
+      const detectedWeekCount =
+        selectedSection.weekCount ||
+        detectWeekCountFromText(relevantText) ||
+        (selectedSection.source === 'annual' ? detectWeekCountFromText(annualPlanText) : 0) ||
+        body.numberOfWeeks ||
+        12;
 
       if (!relevantText.trim()) {
         writeJson(res, 400, {
@@ -72,12 +94,15 @@ const server = createServer(async (req, res) => {
           `- Class Level: ${body.classLevel}\n` +
           `- Term: ${body.term}\n` +
           `- File name: ${body.fileName}\n` +
-          `- Expected weeks: ${body.numberOfWeeks ?? 12}\n` +
+          `- Expected weeks: ${detectedWeekCount}\n` +
           `- Best-effort detected metadata from the file:\n` +
           `  * Subject: ${detectedMetadata.subject || 'Unknown'}\n` +
           `  * Class Level: ${detectedMetadata.classLevel || 'Unknown'}\n` +
           `  * Term: ${detectedMetadata.term || 'Unknown'}\n` +
           `- The uploaded file may contain the full academic year. Extract only the requested term.\n` +
+          `- Parsing precedence: use a detailed weekly/termly scheme section first. Only use the annual scheme/annual scheme of learning if no detailed term section exists.\n` +
+          `- Respect the actual number of weeks visible in the uploaded scheme. Do not invent extra weeks beyond ${detectedWeekCount}.\n` +
+          `- Selected parser section type: ${selectedSection.source}\n` +
           `\nAnnual plan summary text (if present):\n${annualPlanText || 'No separate annual summary detected.'}\n` +
           `\nRelevant uploaded scheme text:\n${relevantText}\n` +
           `\nLikely week rows and table cues:\n${likelyWeekRows || 'No obvious week rows detected.'}\n` +
@@ -88,7 +113,7 @@ const server = createServer(async (req, res) => {
         subject: body.subject,
         classLevel: body.classLevel,
         term: body.term,
-        numberOfWeeks: body.numberOfWeeks ?? 12,
+        numberOfWeeks: detectedWeekCount,
       });
 
       const reconciled = reconcileParsedSchemeWithCurriculumBackend({
@@ -360,6 +385,135 @@ function isolateRequestedSectionText(text, requestedClassLevel, requestedTerm) {
   return isolateRequestedTermText(classScopedText, requestedTerm);
 }
 
+function selectPreferredSchemeSection(text, requestedClassLevel, requestedTerm) {
+  const classScopedText = isolateRequestedClassText(text, requestedClassLevel);
+  const detailedText = extractDetailedTermSection(classScopedText, requestedTerm);
+  if (detailedText.trim()) {
+    return { source: 'detailed', text: detailedText, weekCount: detectWeekCountFromText(detailedText) };
+  }
+
+  const annualPlanText = extractAnnualPlanText(text, requestedClassLevel);
+  if (annualPlanText.trim()) {
+    const annualTermSection = extractAnnualPlanTermSection(annualPlanText, requestedTerm);
+    if (annualTermSection.text.trim()) {
+      return {
+        source: 'annual',
+        text: annualTermSection.text,
+        weekCount: annualTermSection.weekCount,
+      };
+    }
+    return { source: 'annual', text: annualPlanText, weekCount: detectWeekCountFromText(annualPlanText) };
+  }
+
+  return {
+    source: 'fallback',
+    text: isolateRequestedTermText(classScopedText, requestedTerm),
+    weekCount: detectWeekCountFromText(isolateRequestedTermText(classScopedText, requestedTerm)),
+  };
+}
+
+function extractAnnualPlanTermSection(annualPlanText, requestedTerm) {
+  const requestedIndex = getTermColumnIndex(requestedTerm);
+  if (requestedIndex === -1) {
+    return { text: '', weekCount: 0 };
+  }
+
+  const lines = String(annualPlanText || '')
+    .split(/\r?\n/)
+    .map((line) => cleanText(line))
+    .filter(Boolean);
+
+  const weeksHeaderIndex = lines.findIndex((line) => /^weeks?$/i.test(line));
+  if (weeksHeaderIndex === -1) {
+    return { text: '', weekCount: 0 };
+  }
+
+  const termHeaderWindow = lines.slice(weeksHeaderIndex + 1, weeksHeaderIndex + 6);
+  const hasAllTermHeaders =
+    termHeaderWindow.some((line) => normalizeTermLabel(line) === 'term 1') &&
+    termHeaderWindow.some((line) => normalizeTermLabel(line) === 'term 2') &&
+    termHeaderWindow.some((line) => normalizeTermLabel(line) === 'term 3');
+
+  if (!hasAllTermHeaders) {
+    return { text: '', weekCount: 0 };
+  }
+
+  const bodyLines = lines.slice(weeksHeaderIndex + 4);
+  const rows = [];
+  let currentRow = null;
+
+  for (const line of bodyLines) {
+    const weekMatch = line.match(/^(\d{1,2})(?:\b|\s)/);
+    if (weekMatch) {
+      if (currentRow) rows.push(currentRow);
+      currentRow = { week: Number(weekMatch[1]), values: [] };
+      continue;
+    }
+
+    if (!currentRow) continue;
+    currentRow.values.push(line);
+  }
+
+  if (currentRow) rows.push(currentRow);
+
+  const selectedRows = rows
+    .map((row) => ({
+      week: row.week,
+      topic: cleanText(row.values[requestedIndex] || ''),
+    }))
+    .filter((row) => row.topic);
+
+  return {
+    text: selectedRows.map((row) => `Week ${row.week}\n${row.topic}`).join('\n'),
+    weekCount: selectedRows.length,
+  };
+}
+
+function getTermColumnIndex(term) {
+  const normalized = normalizeTermLabel(term);
+  if (normalized === 'term 1') return 0;
+  if (normalized === 'term 2') return 1;
+  if (normalized === 'term 3') return 2;
+  return -1;
+}
+
+function extractDetailedTermSection(text, requestedTerm) {
+  const normalizedTerm = normalizeTermLabel(requestedTerm);
+  if (!normalizedTerm) return '';
+
+  const lines = text.split(/\r?\n/);
+  const detailedMarkers = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index].trim();
+    if (detectTermFromLine(line) !== normalizedTerm) continue;
+    const score = scoreTermMarker(line, normalizedTerm);
+    if (score >= 5) {
+      detailedMarkers.push({ index, line, score });
+    }
+  }
+
+  if (!detailedMarkers.length) return '';
+
+  const targetMarker = detailedMarkers.sort((left, right) => {
+    if (right.score !== left.score) return right.score - left.score;
+    return left.index - right.index;
+  })[0];
+
+  let endIndex = lines.length;
+  for (let index = targetMarker.index + 1; index < lines.length; index += 1) {
+    const line = lines[index].trim();
+    const lineTerm = detectTermFromLine(line);
+    if (!lineTerm || lineTerm === normalizedTerm) continue;
+    if (scoreTermMarker(line, lineTerm) >= 5) {
+      endIndex = index;
+      break;
+    }
+  }
+
+  return lines.slice(targetMarker.index, endIndex).join('\n').trim();
+}
+
 function isolateRequestedClassText(text, requestedClassLevel) {
   const normalizedClass = normalizeClassLabel(requestedClassLevel);
   if (!normalizedClass) return text;
@@ -398,6 +552,21 @@ function detectClassFromLine(line) {
   const value = cleanText(line).toLowerCase();
   const match = value.match(/\b(?:basic|b|jhs)\s*([1-9])\b/);
   return match ? `b${match[1]}` : '';
+}
+
+function detectAvailableClassLevels(text) {
+  const matches = String(text || '').match(/\b(?:basic|b|jhs)\s*([1-9])\b/gi) || [];
+  const seen = new Set();
+  const ordered = [];
+
+  for (const match of matches) {
+    const normalized = normalizeClassLabel(match).toUpperCase();
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    ordered.push(normalized);
+  }
+
+  return ordered;
 }
 
 function normalizeTermLabel(term) {
@@ -736,6 +905,36 @@ function normalizeParsedWeeks(weeks, expectedWeeks) {
   }
   deduped.sort((a, b) => a.week - b.week);
   return deduped.slice(0, expectedWeeks);
+}
+
+function detectWeekCountFromText(text) {
+  const lines = String(text || '').split(/\r?\n/).map((line) => cleanText(line)).filter(Boolean);
+  const weekNumbers = [];
+
+  for (const line of lines) {
+    let match = line.match(/\b(?:week|wk|w\/k)\s*[:.\-]?\s*(\d{1,2})\b/i);
+    if (!match) {
+      match = line.match(/^(\d{1,2})(?:\b|\s)/);
+    }
+    if (!match) continue;
+    const value = Number(match[1]);
+    if (!Number.isInteger(value) || value < 1 || value > 30) continue;
+    weekNumbers.push(value);
+  }
+
+  if (!weekNumbers.length) return 0;
+
+  const unique = Array.from(new Set(weekNumbers)).sort((left, right) => left - right);
+  let consecutiveFromOne = 0;
+  for (const value of unique) {
+    if (value === consecutiveFromOne + 1) {
+      consecutiveFromOne = value;
+      continue;
+    }
+    if (value > consecutiveFromOne + 1) break;
+  }
+
+  return consecutiveFromOne || unique[unique.length - 1] || 0;
 }
 
 function preferRicherWeek(existingWeek, nextWeek) {
