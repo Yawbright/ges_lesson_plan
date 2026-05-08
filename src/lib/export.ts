@@ -12,8 +12,20 @@ import type { LessonPlan } from '@/types/lessonPlan';
 import type { SchemeOfWork } from '@/types/scheme';
 
 export async function exportLessonPlanPdf(plan: LessonPlan) {
-  const html = buildLessonPlanHtml(plan);
+  const html = pageHtml(buildLessonPlanContent(plan));
   const fileName = `${slugify(plan.subject)}-${plan.classLevel}-week-${plan.week}.pdf`;
+  await exportHtmlAsPdf(html, fileName);
+}
+
+export async function exportLessonPlansPdf(plans: LessonPlan[]) {
+  if (!plans.length) return;
+  const html = pageHtml(
+    plans
+      .map((plan, index) => `<section class="lesson-page${index > 0 ? ' page-break' : ''}">${buildLessonPlanContent(plan)}</section>`)
+      .join(''),
+  );
+  const first = plans[0];
+  const fileName = `${slugify(first.subject)}-${first.classLevel}-week-${first.week}-all-lessons.pdf`;
   await exportHtmlAsPdf(html, fileName);
 }
 
@@ -53,7 +65,7 @@ async function exportHtmlAsPdf(html: string, fileName: string) {
   await Print.printAsync({ uri });
 }
 
-function buildLessonPlanHtml(plan: LessonPlan) {
+function buildLessonPlanContent(plan: LessonPlan) {
   const lessonTitle = buildLessonTitle(plan);
   const rows = plan.phases
     .map(
@@ -80,7 +92,7 @@ function buildLessonPlanHtml(plan: LessonPlan) {
     )
     .join('');
 
-  return pageHtml(`
+  return `
     <section class="lesson-title">
       <h1>${escapeHtml((plan.termTitle || '').toUpperCase())}</h1>
       <h2>${escapeHtml(lessonTitle.toUpperCase())}</h2>
@@ -130,7 +142,7 @@ function buildLessonPlanHtml(plan: LessonPlan) {
     </table>
 
     ${buildTeacherDetailsHtml(plan)}
-  `);
+  `;
 }
 
 function buildSchemeHtml(scheme: SchemeOfWork) {
@@ -179,6 +191,7 @@ function pageHtml(content: string) {
         th { background: #edf3f0; }
         .lesson-title { text-align: center; margin-bottom: 8px; }
         .lesson-title h1, .lesson-title h2 { text-align: center; }
+        .page-break { break-before: page; page-break-before: always; }
         .info-table, .phase-table { margin-top: 8px; }
         .info-table td { line-height: 1.32; }
         .alt { background: #F4F1EA; }

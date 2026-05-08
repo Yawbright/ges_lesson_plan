@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, 
 import { useFocusEffect } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { Button } from '@/components/Button';
+import { useToast } from '@/components/ToastProvider';
 import {
   formatCreditPrice,
   grantDeveloperCredits,
@@ -17,6 +18,7 @@ import {
 import { colors } from '@/theme/colors';
 
 export default function CreditsScreen() {
+  const { showToast } = useToast();
   const [balance, setBalance] = useState(0);
   const [packages, setPackages] = useState<CreditPackage[]>([]);
   const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
@@ -26,7 +28,6 @@ export default function CreditsScreen() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [checkoutStatus, setCheckoutStatus] = useState<string | null>(null);
-  const [checkoutPressCount, setCheckoutPressCount] = useState(0);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -71,7 +72,6 @@ export default function CreditsScreen() {
   }, [refresh]);
 
   async function startCheckout() {
-    setCheckoutPressCount((count) => count + 1);
     setCheckoutStatus('Paystack button pressed. Preparing checkout...');
 
     if (!selectedPackageId) {
@@ -112,7 +112,7 @@ export default function CreditsScreen() {
         setPendingReference(null);
         setBalance(result.balance);
         await refresh();
-        Alert.alert('Credits added', `${result.credits} credits are now available.`);
+        showToast({ message: `${result.credits} credits added.` });
       } else {
         Alert.alert('Payment not complete', result.message ?? 'Paystack has not confirmed this payment yet.');
       }
@@ -154,7 +154,7 @@ export default function CreditsScreen() {
       const result = await grantDeveloperCredits({ secret, amount });
       setBalance(result.balance);
       await refresh();
-      Alert.alert('Developer credits added', `${result.amount} credits granted. New balance: ${result.balance}.`);
+      showToast({ message: `${result.amount} developer credits added. New balance: ${result.balance}.` });
     } catch (err: unknown) {
       window.localStorage.removeItem('glp-dev-credit-secret');
       Alert.alert('Developer grant failed', getMessage(err));
@@ -174,15 +174,10 @@ export default function CreditsScreen() {
       <View style={styles.balancePanel}>
         <Text style={styles.label}>Available credits</Text>
         <Text style={styles.balance}>{balance}</Text>
-        <Text style={styles.balanceNote}>Lesson plan: 1 credit. Scheme parsing: 2 credits. Scheme generation: 3 credits.</Text>
+        <Text style={styles.balanceNote}>All generation and parsing actions cost 1 credit.</Text>
       </View>
 
       <Text style={styles.sectionTitle}>Buy Credits</Text>
-      <View style={styles.devMarker}>
-        <Text style={styles.devMarkerText}>
-          Paystack checkout build active. Presses: {checkoutPressCount}
-        </Text>
-      </View>
       <View style={styles.packages}>
         {packages.map((pack) => {
           const active = pack.id === selectedPackageId;
@@ -264,15 +259,6 @@ const styles = StyleSheet.create({
   balance: { color: '#fff', fontSize: 46, fontWeight: '800', marginTop: 4 },
   balanceNote: { color: '#EAF2EE', marginTop: 6, lineHeight: 19 },
   sectionTitle: { fontSize: 18, fontWeight: '800', color: colors.primaryDark, marginBottom: 12 },
-  devMarker: {
-    backgroundColor: '#F7F2DF',
-    borderWidth: 1,
-    borderColor: colors.accent,
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 12,
-  },
-  devMarkerText: { color: colors.primaryDark, fontWeight: '700' },
   packages: { gap: 10, marginBottom: 14 },
   packageCard: {
     backgroundColor: colors.surface,

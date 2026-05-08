@@ -23,7 +23,7 @@ export const TERM_OPTIONS: SelectOption[] = [
   { label: 'Term 3', value: 'Term 3' },
 ];
 
-export const LESSONS_PER_WEEK_OPTIONS: SelectOption[] = [1, 2, 3, 4, 5, 6, 7].map((value) => ({
+export const LESSONS_PER_WEEK_OPTIONS: SelectOption[] = [1, 2, 3, 4].map((value) => ({
   label: String(value),
   value: String(value),
 }));

@@ -42,7 +42,7 @@ export function buildFallbackLessonPlan(
     duration: input.duration ?? '60 mins',
     strand,
     classLevel: input.classLevel,
-    classSize: '',
+    classSize: input.classSize ?? '',
     subStrand,
     topic,
     contentStandard,

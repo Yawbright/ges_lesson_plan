@@ -4,16 +4,23 @@ import { router, useFocusEffect } from 'expo-router';
 import { Button } from '@/components/Button';
 import { EmailPasswordAuthForm } from '@/components/EmailPasswordAuthForm';
 import { Field } from '@/components/Field';
+import { SelectField } from '@/components/SelectField';
+import { useToast } from '@/components/ToastProvider';
 import { signOut, useAuthSession } from '@/lib/auth';
+import { CLASS_LEVEL_OPTIONS } from '@/lib/options';
 import { buildReferralLink, loadReferralDashboard, type ReferralDashboard } from '@/lib/referrals';
 import { loadTeacherProfile, saveTeacherProfile } from '@/lib/teacherProfile';
 import { colors } from '@/theme/colors';
 
 export default function ProfileScreen() {
+  const { showToast } = useToast();
   const { session, loading } = useAuthSession();
   const [teacherName, setTeacherName] = useState('');
   const [schoolName, setSchoolName] = useState('');
   const [schoolDistrict, setSchoolDistrict] = useState('');
+  const [classSizes, setClassSizes] = useState<Record<string, string>>({});
+  const [classToAdd, setClassToAdd] = useState<string>(CLASS_LEVEL_OPTIONS[0]?.value ?? '');
+  const [classSizeToAdd, setClassSizeToAdd] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
   const [referral, setReferral] = useState<ReferralDashboard | null>(null);
   const [referralLoading, setReferralLoading] = useState(false);
@@ -22,6 +29,14 @@ export default function ProfileScreen() {
   const referralLink = useMemo(
     () => (referral?.code ? buildReferralLink(referral.code) : ''),
     [referral?.code],
+  );
+  const classOptions = useMemo(
+    () =>
+      CLASS_LEVEL_OPTIONS.map((option) => ({
+        ...option,
+        label: classSizes[option.value] !== undefined ? `${option.label} (added)` : option.label,
+      })),
+    [classSizes],
   );
 
   useEffect(() => {
@@ -33,6 +48,7 @@ export default function ProfileScreen() {
       setTeacherName(profile.teacherName);
       setSchoolName(profile.schoolName);
       setSchoolDistrict(profile.schoolDistrict);
+      setClassSizes(profile.classSizes ?? {});
     }
 
     loadProfile();
@@ -76,8 +92,9 @@ export default function ProfileScreen() {
         teacherName: teacherName.trim(),
         schoolName: schoolName.trim(),
         schoolDistrict: schoolDistrict.trim(),
+        classSizes: cleanClassSizes(classSizes),
       });
-      Alert.alert('Profile saved', 'These details will appear below newly generated lesson plans.');
+      showToast({ message: 'Teacher details saved.' });
     } catch (err: unknown) {
       Alert.alert('Profile save failed', getMessage(err));
     } finally {
@@ -93,11 +110,12 @@ export default function ProfileScreen() {
 
     if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
       await navigator.clipboard.writeText(referralLink);
-      Alert.alert('Copied', 'Referral link copied to clipboard.');
+      showToast({ message: 'Referral link copied.' });
       return;
     }
 
     await Share.share({ message: referralLink });
+    showToast({ message: 'Referral link shared.' });
   }
 
   async function shareReferralLink() {
@@ -108,6 +126,7 @@ export default function ProfileScreen() {
     await Share.share({
       message: `Join Ghana Lesson Planner with my referral link: ${referralLink}`,
     });
+    showToast({ message: 'Referral link shared.' });
   }
 
   if (loading) {
@@ -164,6 +183,58 @@ export default function ProfileScreen() {
           onChangeText={setSchoolDistrict}
           placeholder="e.g. Adenta Municipal"
         />
+
+        <View style={styles.classEntryPanel}>
+          <Text style={styles.subsectionTitle}>Classes Teaching</Text>
+          <Text style={styles.sectionMeta}>Add each class and its size before saving.</Text>
+          <View style={styles.classEntryRow}>
+            <View style={styles.classSelectWrap}>
+              <SelectField
+                label="Class"
+                value={classToAdd}
+                options={classOptions}
+                onChange={(value) => {
+                  setClassToAdd(value);
+                  setClassSizeToAdd(classSizes[value] ?? '');
+                }}
+              />
+            </View>
+            <View style={styles.classSizeWrap}>
+              <Field
+                label="Class size"
+                value={classSizeToAdd}
+                onChangeText={(value) => setClassSizeToAdd(cleanNumeric(value))}
+                placeholder="42"
+                keyboardType="number-pad"
+              />
+            </View>
+          </View>
+          <Button
+            title={classSizes[classToAdd] !== undefined ? 'Update class size' : 'Add class'}
+            variant="secondary"
+            onPress={addClassSize}
+          />
+        </View>
+
+        {Object.keys(classSizes).length ? (
+          <View style={styles.classList}>
+            {Object.entries(classSizes).map(([classLevel, size]) => (
+              <View key={classLevel} style={styles.classRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.className}>{classLevel}</Text>
+                  <Text style={styles.classSizeText}>Class size: {size || 'Not set'}</Text>
+                </View>
+                <Pressable
+                  onPress={() => removeClassSize(classLevel)}
+                  style={styles.removeButton}
+                >
+                  <Text style={styles.removeButtonText}>Remove</Text>
+                </Pressable>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
         <Button title="Save teacher details" onPress={handleSaveProfile} loading={savingProfile} />
       </View>
 
@@ -235,6 +306,43 @@ export default function ProfileScreen() {
       <Button title="Sign out" variant="secondary" onPress={handleSignOut} />
     </ScrollView>
   );
+
+  function addClassSize() {
+    if (!classToAdd || !classSizeToAdd.trim()) {
+      Alert.alert('Class size required', 'Select a class and enter its class size.');
+      return;
+    }
+
+    const nextClassSizes = {
+      ...classSizes,
+      [classToAdd]: classSizeToAdd.trim(),
+    };
+
+    setClassSizes((current) => ({
+      ...current,
+      [classToAdd]: classSizeToAdd.trim(),
+    }));
+    setClassSizeToAdd('');
+    const nextAvailableClass = CLASS_LEVEL_OPTIONS.find(
+      (option) => nextClassSizes[option.value] === undefined,
+    );
+    if (nextAvailableClass) {
+      setClassToAdd(nextAvailableClass.value);
+    }
+  }
+
+  function removeClassSize(classLevel: string) {
+    setClassSizes((current) => {
+      const next = { ...current };
+      delete next[classLevel];
+      return next;
+    });
+  }
+
+  function cleanNumeric(value: string) {
+    return value.replace(/[^0-9]/g, '').slice(0, 3);
+  }
+
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
@@ -252,6 +360,14 @@ function getMessage(err: unknown) {
 
 function formatStatus(status: string) {
   return status.slice(0, 1).toUpperCase() + status.slice(1);
+}
+
+function cleanClassSizes(classSizes: Record<string, string>) {
+  return Object.fromEntries(
+    Object.entries(classSizes)
+      .map(([classLevel, size]) => [classLevel, size.trim()])
+      .filter(([, size]) => size),
+  );
 }
 
 const styles = StyleSheet.create({
@@ -295,6 +411,35 @@ const styles = StyleSheet.create({
   sectionHeader: { marginBottom: 14 },
   sectionTitle: { fontSize: 17, fontWeight: '800', color: colors.text },
   sectionMeta: { color: colors.textMuted, marginTop: 3, lineHeight: 18 },
+  classEntryPanel: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#F7F9F4',
+    marginBottom: 14,
+  },
+  subsectionTitle: { color: colors.text, fontWeight: '800', fontSize: 15, marginBottom: 2 },
+  classEntryRow: {
+    flexDirection: Platform.OS === 'web' ? 'row' : 'column',
+    gap: 10,
+    marginTop: 12,
+  },
+  classSelectWrap: { flex: 1 },
+  classSizeWrap: { flex: 1 },
+  classList: { marginBottom: 14, borderTopWidth: 1, borderTopColor: colors.border },
+  classRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  className: { color: colors.text, fontWeight: '800', fontSize: 15 },
+  classSizeText: { color: colors.textMuted, marginTop: 2 },
+  removeButton: { paddingHorizontal: 10, paddingVertical: 8 },
+  removeButtonText: { color: colors.danger, fontWeight: '700' },
   referralCodePanel: {
     borderWidth: 1,
     borderColor: colors.border,

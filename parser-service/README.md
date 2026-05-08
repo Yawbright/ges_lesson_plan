@@ -1,6 +1,8 @@
 # Parser Service
 
 Dedicated upload parser service for Ghana Lesson Planner.
+npx expo start -c --web
+
 
 ## Responsibility
 
@@ -33,7 +35,7 @@ By default the service looks for:
 Required environment variables:
 
 ```env
-ANTHROPIC_API_KEY=...
+ANTHROPIC_API_KEY
 PARSER_SERVICE_PORT=8788
 LOCAL_AI_MODEL=claude-sonnet-4-5
 ```
@@ -92,7 +94,7 @@ The repo root includes a [render.yaml](</abs/path/c:/Users/KHERKHELLY/Desktop/LE
 6. Add the secret environment variable:
 
 ```env
-ANTHROPIC_API_KEY=your_real_key
+ANTHROPIC_API_KEY
 ```
 
 Render will provide the `PORT` environment variable. The blueprint also sets:

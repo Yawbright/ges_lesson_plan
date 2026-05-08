@@ -7,6 +7,7 @@ export type TeacherProfile = {
   teacherName: string;
   schoolName: string;
   schoolDistrict: string;
+  classSizes: Record<string, string>;
 };
 
 export async function loadTeacherProfile(): Promise<TeacherProfile> {
@@ -29,6 +30,7 @@ export function emptyTeacherProfile(): TeacherProfile {
     teacherName: '',
     schoolName: '',
     schoolDistrict: '',
+    classSizes: {},
   };
 }
 
@@ -49,4 +51,3 @@ const storage = {
     await AsyncStorage.setItem(key, value);
   },
 };
-

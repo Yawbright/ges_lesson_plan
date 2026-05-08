@@ -6,6 +6,10 @@ interface Props {
   plan: LessonPlan;
 }
 
+interface StackProps {
+  plans: LessonPlan[];
+}
+
 /**
  * Renders a LessonPlan in the EXACT layout of the official Ghanaian
  * NaCCA/GES lesson plan template (verified against B7 Science Term 2 plans).
@@ -19,10 +23,30 @@ interface Props {
  *      └─ Assessment block embedded inside Phase 2
  */
 export function LessonPlanTable({ plan }: Props) {
+  return (
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+      <LessonPlanContent plan={plan} />
+    </ScrollView>
+  );
+}
+
+export function LessonPlanStack({ plans }: StackProps) {
+  return (
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+      {plans.map((plan, index) => (
+        <View key={plan.id ?? `${plan.week}-${plan.lessonNumber}-${index}`} style={index > 0 && styles.lessonDivider}>
+          <LessonPlanContent plan={plan} />
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
+function LessonPlanContent({ plan }: Props) {
   const title = buildLessonTitle(plan);
 
   return (
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+    <View>
       {/* ── 1. Title block ────────────────────────────────── */}
       <View style={styles.titleBlock}>
         <Text style={styles.titleMain}>{(plan.termTitle || '').toUpperCase()}</Text>
@@ -119,7 +143,7 @@ export function LessonPlanTable({ plan }: Props) {
           ) : null}
         </View>
       ) : null}
-    </ScrollView>
+    </View>
   );
 }
 
@@ -184,6 +208,12 @@ function PhaseRow({ phase, alt }: { phase: LessonPhase; alt: boolean }) {
 const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 12, paddingBottom: 64 },
+  lessonDivider: {
+    marginTop: 24,
+    paddingTop: 18,
+    borderTopWidth: 2,
+    borderTopColor: colors.primary,
+  },
 
   // Title block
   titleBlock: { alignItems: 'center', paddingVertical: 12, marginBottom: 8 },

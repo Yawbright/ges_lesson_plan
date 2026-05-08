@@ -39,9 +39,13 @@ export async function deleteLessonPlan(id: string): Promise<void> {
 
 function normalizeLessonPlan(plan: LessonPlan): LessonPlan {
   const createdAt = plan.createdAt ?? new Date().toISOString();
+  const lessonSegment =
+    plan.sessionIndex && plan.sessionsPerWeek
+      ? `lesson-${plan.sessionIndex}-of-${plan.sessionsPerWeek}`
+      : slugify(plan.lessonNumber) || 'lesson';
   const id =
     plan.id ??
-    `${slugify(plan.subject)}-${plan.classLevel}-${plan.week}-${slugify(plan.termTitle)}-${createdAt}`;
+    `${slugify(plan.subject)}-${plan.classLevel}-${plan.week}-${lessonSegment}-${slugify(plan.termTitle)}-${createdAt}`;
 
   return {
     ...plan,

@@ -2,7 +2,7 @@ import { corsHeaders } from '../_shared/claude.ts';
 import { consumeCreditsForRequest, refundCredits } from '../_shared/credits.ts';
 import { HttpError } from '../_shared/supabase.ts';
 
-const SCHEME_PARSE_CREDIT_COST = 2;
+const SCHEME_PARSE_CREDIT_COST = 1;
 
 type ParseUploadedSchemeBody = {
   subject?: string;

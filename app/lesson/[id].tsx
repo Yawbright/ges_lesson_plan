@@ -3,12 +3,14 @@ import { Alert, Platform, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '@/components/Button';
 import { LessonPlanTable } from '@/components/LessonPlanTable';
+import { useToast } from '@/components/ToastProvider';
 import { exportLessonPlanPdf } from '@/lib/export';
 import { deleteLessonPlan, getLessonPlanById } from '@/lib/lessonStore';
 import { colors } from '@/theme/colors';
 import type { LessonPlan } from '@/types/lessonPlan';
 
 export default function LessonDetailScreen() {
+  const { showToast } = useToast();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [plan, setPlan] = useState<LessonPlan | null>(null);
 
@@ -44,6 +46,7 @@ export default function LessonDetailScreen() {
             );
             if (!confirmed || !plan.id) return;
             await deleteLessonPlan(plan.id);
+            showToast({ message: 'Lesson plan deleted.' });
             router.back();
           }}
         />

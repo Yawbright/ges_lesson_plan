@@ -3,12 +3,14 @@ import { Alert, Platform, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '@/components/Button';
 import { SchemeTable } from '@/components/SchemeTable';
+import { useToast } from '@/components/ToastProvider';
 import { exportSchemePdf } from '@/lib/export';
 import { deleteScheme, getSchemeById } from '@/lib/schemeStore';
 import { colors } from '@/theme/colors';
 import type { SchemeOfWork } from '@/types/scheme';
 
 export default function SchemeDetailScreen() {
+  const { showToast } = useToast();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [scheme, setScheme] = useState<SchemeOfWork | null>(null);
 
@@ -44,6 +46,7 @@ export default function SchemeDetailScreen() {
             );
             if (!confirmed || !scheme.id) return;
             await deleteScheme(scheme.id);
+            showToast({ message: 'Scheme deleted.' });
             router.back();
           }}
         />

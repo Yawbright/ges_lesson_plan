@@ -101,6 +101,7 @@ export interface LessonPlanPromptInput {
   teacherName?: string;
   schoolName?: string;
   schoolDistrict?: string;
+  classSize?: string;
   /** Optional id of a stored Scheme of Learning to ground generation */
   schemeOfLearningId?: string;
 }

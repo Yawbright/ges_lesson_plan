@@ -8,7 +8,7 @@ import {
 import { consumeCreditsForRequest, refundCredits } from '../_shared/credits.ts';
 import { HttpError } from '../_shared/supabase.ts';
 
-const SCHEME_CREDIT_COST = 3;
+const SCHEME_CREDIT_COST = 1;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {

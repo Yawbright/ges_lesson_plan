@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Button } from '@/components/Button';
+import { useToast } from '@/components/ToastProvider';
 import { exportLessonPlanPdf, exportSchemePdf } from '@/lib/export';
 import { deleteLessonPlan, loadLessonPlans } from '@/lib/lessonStore';
 import { deleteScheme, loadSchemes } from '@/lib/schemeStore';
@@ -10,6 +11,7 @@ import type { LessonPlan } from '@/types/lessonPlan';
 import type { SchemeOfWork } from '@/types/scheme';
 
 export default function LibraryScreen() {
+  const { showToast } = useToast();
   const [plans, setPlans] = useState<LessonPlan[]>([]);
   const [schemes, setSchemes] = useState<SchemeOfWork[]>([]);
 
@@ -40,6 +42,7 @@ export default function LibraryScreen() {
     if (!confirmed || !plan.id) return;
     await deleteLessonPlan(plan.id);
     await refresh();
+    showToast({ message: 'Lesson plan deleted.' });
   }
 
   async function confirmDeleteScheme(scheme: SchemeOfWork) {
@@ -50,6 +53,7 @@ export default function LibraryScreen() {
     if (!confirmed || !scheme.id) return;
     await deleteScheme(scheme.id);
     await refresh();
+    showToast({ message: 'Scheme deleted.' });
   }
 
   return (

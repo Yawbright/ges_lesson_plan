@@ -12,16 +12,17 @@ import {
 import { router, useFocusEffect } from 'expo-router';
 import { Field } from '@/components/Field';
 import { Button } from '@/components/Button';
-import { LessonPlanTable } from '@/components/LessonPlanTable';
+import { DatePickerField } from '@/components/DatePickerField';
+import { LessonPlanStack, LessonPlanTable } from '@/components/LessonPlanTable';
 import { SelectField } from '@/components/SelectField';
-import { Toast } from '@/components/Toast';
+import { useToast } from '@/components/ToastProvider';
 import { formatAiActionError, generateLessonPlan, isInsufficientCreditsError } from '@/lib/ai';
-import { exportLessonPlanPdf } from '@/lib/export';
+import { loadCreditBalance } from '@/lib/credits';
+import { exportLessonPlanPdf, exportLessonPlansPdf } from '@/lib/export';
 import { saveLessonPlan } from '@/lib/lessonStore';
 import {
   CLASS_LEVEL_OPTIONS,
   getDefaultSubjectForClassLevel,
-  getLessonIndexOptions,
   getSubjectOptionsForClassLevel,
   getWeekOptions,
   LESSONS_PER_WEEK_OPTIONS,
@@ -38,22 +39,24 @@ import { colors } from '@/theme/colors';
 import type { ClassLevel, LessonPlan } from '@/types/lessonPlan';
 import type { SchemeOfWork } from '@/types/scheme';
 
+type LessonSelection = number | 'all';
+
 export default function GenerateScreen() {
+  const { showToast } = useToast();
   const [classLevel, setClassLevel] = useState<ClassLevel>('B7');
   const [subject, setSubject] = useState(getDefaultSubjectForClassLevel('B7'));
   const [week, setWeek] = useState('1');
   const [term, setTerm] = useState('Term 1');
   const [sessionsPerWeekInput, setSessionsPerWeekInput] = useState('3');
-  const [sessionIndex, setSessionIndex] = useState(1);
+  const [sessionIndex, setSessionIndex] = useState<LessonSelection>(1);
   const [termStartDate, setTermStartDate] = useState('');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
-  const [plan, setPlan] = useState<LessonPlan | null>(null);
+  const [generatedPlans, setGeneratedPlans] = useState<LessonPlan[]>([]);
   const [matchedScheme, setMatchedScheme] = useState<SchemeOfWork | null>(null);
   const [matchingSchemes, setMatchingSchemes] = useState<SchemeOfWork[]>([]);
   const [selectedSchemeId, setSelectedSchemeId] = useState<string | null>(null);
-  const [savedPlanId, setSavedPlanId] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [savedPlanIds, setSavedPlanIds] = useState<string[]>([]);
 
   const subjectOptions = useMemo(
     () => getSubjectOptionsForClassLevel(classLevel),
@@ -106,7 +109,7 @@ export default function GenerateScreen() {
 
   const selectedScheme =
     matchingSchemes.find((scheme) => scheme.id === selectedSchemeId) ?? matchedScheme;
-  const sessionsPerWeek = Math.max(1, Math.min(7, Number(sessionsPerWeekInput) || 1));
+  const sessionsPerWeek = Math.max(1, Math.min(4, Number(sessionsPerWeekInput) || 1));
   const availableWeeks = useMemo(
     () =>
       selectedScheme?.weeks.length
@@ -116,13 +119,18 @@ export default function GenerateScreen() {
   );
 
   const weekOptions = useMemo(() => getWeekOptions(availableWeeks.length), [availableWeeks.length]);
-  const lessonOptions = useMemo(
-    () => getLessonIndexOptions(sessionsPerWeek),
+  const lessonNumbers = useMemo(
+    () => Array.from({ length: sessionsPerWeek }, (_, index) => index + 1),
     [sessionsPerWeek],
   );
 
+  const selectedLessonNumbers = useMemo(
+    () => (sessionIndex === 'all' ? lessonNumbers : [sessionIndex]),
+    [lessonNumbers, sessionIndex],
+  );
+
   useEffect(() => {
-    if (sessionIndex > sessionsPerWeek) {
+    if (sessionIndex !== 'all' && sessionIndex > sessionsPerWeek) {
       setSessionIndex(sessionsPerWeek);
     }
   }, [sessionIndex, sessionsPerWeek]);
@@ -156,12 +164,6 @@ export default function GenerateScreen() {
       setWeek(String(availableWeeks[0]));
     }
   }, [availableWeeks, week]);
-
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 3200);
-    return () => clearTimeout(timer);
-  }, [toast]);
 
   useEffect(() => {
     let active = true;
@@ -202,48 +204,76 @@ export default function GenerateScreen() {
 
     setLoading(true);
     try {
+      if (sessionIndex === 'all') {
+        const balance = await loadCreditBalance();
+        if (balance < sessionsPerWeek) {
+          const message = `You need ${sessionsPerWeek} credits to generate all ${sessionsPerWeek} lessons for this week.`;
+          showToast({ message, type: 'error' });
+          Alert.alert('Not enough credits', message, [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Buy credits', onPress: () => router.push('/(tabs)/credits') },
+          ]);
+          return;
+        }
+      }
+
       const teacherProfile = await loadTeacherProfile();
       const weekEnding = calculateWeekEnding(termStartDate, weekNum);
-      const result = await generateLessonPlan(
-        {
-          subject: subject.trim(),
-          classLevel,
-          week: weekNum,
-          term: term.trim() || undefined,
-          weekEnding: weekEnding || undefined,
+      const classSize = teacherProfile.classSizes?.[classLevel]?.trim() ?? '';
+      const generated: LessonPlan[] = [];
+      const savedIds: string[] = [];
+
+      for (const lessonNumber of selectedLessonNumbers) {
+        const result = await generateLessonPlan(
+          {
+            subject: subject.trim(),
+            classLevel,
+            week: weekNum,
+            term: term.trim() || undefined,
+            weekEnding: weekEnding || undefined,
+            duration: '60 mins',
+            sessionIndex: lessonNumber,
+            sessionsPerWeek,
+            notes: notes.trim() || undefined,
+            teacherName: teacherProfile.teacherName || undefined,
+            schoolName: teacherProfile.schoolName || undefined,
+            schoolDistrict: teacherProfile.schoolDistrict || undefined,
+            classSize,
+          },
+          selectedScheme,
+        );
+        const enrichedResult = {
+          ...result,
+          date: weekEnding || result.date,
           duration: '60 mins',
-          sessionIndex,
-          sessionsPerWeek,
-          notes: notes.trim() || undefined,
+          classSize,
           teacherName: teacherProfile.teacherName || undefined,
           schoolName: teacherProfile.schoolName || undefined,
           schoolDistrict: teacherProfile.schoolDistrict || undefined,
-        },
-        selectedScheme,
+        };
+        const saved = await saveLessonPlan(enrichedResult);
+        generated.push(enrichedResult);
+        if (saved.id) savedIds.push(saved.id);
+      }
+
+      setSavedPlanIds(savedIds);
+      setGeneratedPlans(generated);
+      const usedFallback = generated.some(
+        (result) =>
+          typeof result.references === 'string' &&
+          result.references.toLowerCase().includes('fallback template'),
       );
-      const enrichedResult = {
-        ...result,
-        date: weekEnding || result.date,
-        duration: '60 mins',
-        teacherName: teacherProfile.teacherName || undefined,
-        schoolName: teacherProfile.schoolName || undefined,
-        schoolDistrict: teacherProfile.schoolDistrict || undefined,
-      };
-      const saved = await saveLessonPlan(enrichedResult);
-      setSavedPlanId(saved.id ?? null);
-      setPlan(enrichedResult);
-      const usedFallback =
-        typeof result.references === 'string' &&
-        result.references.toLowerCase().includes('fallback template');
-      setToast({
-        message: usedFallback
-          ? 'Lesson plan generated from fallback template.'
-          : 'Lesson plan generated successfully.',
-        type: 'success',
+      showToast({
+        message:
+          sessionIndex === 'all'
+            ? `${generated.length} lesson plans generated for the week.`
+            : usedFallback
+              ? 'Lesson plan generated from fallback template.'
+              : 'Lesson plan generated successfully.',
       });
     } catch (err: unknown) {
       const message = formatAiActionError(err);
-      setToast({ message, type: 'error' });
+      showToast({ message, type: 'error' });
       if (isInsufficientCreditsError(err)) {
         Alert.alert('Not enough credits', message, [
           { text: 'Cancel', style: 'cancel' },
@@ -257,29 +287,45 @@ export default function GenerateScreen() {
     }
   }
 
-  if (plan) {
+  if (generatedPlans.length) {
+    const singlePlan = generatedPlans.length === 1 ? generatedPlans[0] : null;
     return (
       <View style={{ flex: 1 }}>
-        <LessonPlanTable plan={plan} />
+        {singlePlan ? <LessonPlanTable plan={singlePlan} /> : <LessonPlanStack plans={generatedPlans} />}
         <View style={styles.actions}>
-          <Button title="Save as PDF" onPress={() => exportLessonPlanPdf(plan)} />
-          {savedPlanId ? (
+          <Button
+            title="Save as PDF"
+            onPress={() => {
+              if (singlePlan) {
+                exportLessonPlanPdf(singlePlan);
+              } else {
+                exportLessonPlansPdf(generatedPlans);
+              }
+            }}
+          />
+          <Button
+            title="Back"
+            variant="secondary"
+            onPress={() => {
+              setGeneratedPlans([]);
+            }}
+          />
+          {singlePlan && savedPlanIds[0] ? (
             <Button
               title="Open full view"
               variant="secondary"
-              onPress={() => router.push(`/lesson/${savedPlanId}`)}
+              onPress={() => router.push(`/lesson/${savedPlanIds[0]}`)}
             />
           ) : null}
           <Button
             title="Generate another"
             variant="ghost"
             onPress={() => {
-              setPlan(null);
-              setSavedPlanId(null);
+              setGeneratedPlans([]);
+              setSavedPlanIds([]);
             }}
           />
         </View>
-        <Toast visible={!!toast} message={toast?.message ?? ''} type={toast?.type} />
       </View>
     );
   }
@@ -295,6 +341,30 @@ export default function GenerateScreen() {
           Choose the class first. The subject list updates automatically so it only shows subjects
           mapped for that level.
         </Text>
+
+        <View style={styles.headerPanel}>
+          <View style={styles.headerControls}>
+            <View style={styles.headerControl}>
+              <SelectField
+                label="Term"
+                value={term}
+                options={TERM_OPTIONS}
+                onChange={setTerm}
+              />
+            </View>
+            <View style={styles.headerControl}>
+              <DatePickerField
+                label="Term start date"
+                value={termStartDate}
+                onChange={setTermStartDate}
+                placeholder="Select start date"
+              />
+            </View>
+          </View>
+          <Text style={styles.headerMeta}>
+            Week ending: {calculateWeekEnding(termStartDate, Number(week)) || 'Enter term start date'}
+          </Text>
+        </View>
 
         <SelectField
           label="Class"
@@ -318,13 +388,6 @@ export default function GenerateScreen() {
         />
 
         <SelectField
-          label="Term"
-          value={term}
-          options={TERM_OPTIONS}
-          onChange={setTerm}
-        />
-
-        <SelectField
           label="Week"
           value={week}
           options={weekOptions}
@@ -338,27 +401,40 @@ export default function GenerateScreen() {
           onChange={setSessionsPerWeekInput}
         />
 
-        <SelectField
-          label="Lesson This Week"
-          value={String(sessionIndex)}
-          options={lessonOptions}
-          onChange={(value) => setSessionIndex(Number(value))}
-        />
-
-        <Field
-          label="Term start date"
-          value={termStartDate}
-          onChangeText={setTermStartDate}
-          placeholder="YYYY-MM-DD"
-          autoCapitalize="none"
-        />
-        <View style={styles.schemeHint}>
-          <Text style={styles.schemeHintTitle}>Week ending</Text>
-          <Text style={styles.schemeHintText}>
-            {calculateWeekEnding(termStartDate, Number(week))
-              ? calculateWeekEnding(termStartDate, Number(week))
-              : 'Enter the term start date as YYYY-MM-DD to auto-fill the week ending.'}
-          </Text>
+        <View style={styles.lessonStripWrap}>
+          <Text style={styles.lessonStripLabel}>Lesson This Week</Text>
+          <View style={styles.lessonStripRow}>
+            {lessonNumbers.map((lessonNumber) => {
+              const active = lessonNumber === sessionIndex;
+              return (
+                <Pressable
+                  key={lessonNumber}
+                  onPress={() => setSessionIndex(lessonNumber)}
+                  style={({ pressed }) => [
+                    styles.lessonStrip,
+                    active && styles.lessonStripActive,
+                    pressed && styles.lessonStripPressed,
+                  ]}
+                >
+                  <Text style={[styles.lessonStripText, active && styles.lessonStripTextActive]}>
+                    Lesson {lessonNumber}
+                  </Text>
+                </Pressable>
+              );
+            })}
+            <Pressable
+              onPress={() => setSessionIndex('all')}
+              style={({ pressed }) => [
+                styles.lessonStrip,
+                sessionIndex === 'all' && styles.lessonStripActive,
+                pressed && styles.lessonStripPressed,
+              ]}
+            >
+              <Text style={[styles.lessonStripText, sessionIndex === 'all' && styles.lessonStripTextActive]}>
+                All
+              </Text>
+            </Pressable>
+          </View>
         </View>
 
         <Field
@@ -377,7 +453,9 @@ export default function GenerateScreen() {
           </Text>
           <Text style={styles.schemeHintText}>
             {selectedScheme
-              ? `${selectedScheme.subject} - ${selectedScheme.classLevel} - ${selectedScheme.term}. Week ${week || '?'} will be grounded on that scheme for Lesson ${sessionIndex} of ${sessionsPerWeek}.`
+              ? sessionIndex === 'all'
+                ? `${selectedScheme.subject} - ${selectedScheme.classLevel} - ${selectedScheme.term}. Week ${week || '?'} will generate all ${sessionsPerWeek} lessons and use ${sessionsPerWeek} credits.`
+                : `${selectedScheme.subject} - ${selectedScheme.classLevel} - ${selectedScheme.term}. Week ${week || '?'} will be grounded on that scheme for Lesson ${sessionIndex} of ${sessionsPerWeek}.`
               : 'Lesson plans now depend on a saved scheme of work. Generate or select a scheme for this subject, class and term first.'}
           </Text>
         </View>
@@ -411,9 +489,12 @@ export default function GenerateScreen() {
           </View>
         ) : null}
 
-        <Button title="Generate lesson plan" onPress={handleGenerate} loading={loading} />
+        <Button
+          title={sessionIndex === 'all' ? `Generate all ${sessionsPerWeek} lesson plans` : 'Generate lesson plan'}
+          onPress={handleGenerate}
+          loading={loading}
+        />
       </ScrollView>
-      <Toast visible={!!toast} message={toast?.message ?? ''} type={toast?.type} />
     </KeyboardAvoidingView>
   );
 }
@@ -422,6 +503,26 @@ const styles = StyleSheet.create({
   content: { padding: 20, paddingBottom: 60 },
   heading: { fontSize: 22, fontWeight: '800', color: colors.primaryDark, marginBottom: 6 },
   sub: { color: colors.textMuted, marginBottom: 20, lineHeight: 20 },
+  headerPanel: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  headerControls: {
+    flexDirection: Platform.OS === 'web' ? 'row' : 'column',
+    gap: 12,
+  },
+  headerControl: {
+    flex: 1,
+  },
+  headerMeta: {
+    color: colors.primary,
+    fontWeight: '700',
+    marginTop: 2,
+  },
   actions: {
     padding: 16,
     borderTopWidth: 1,
@@ -446,6 +547,45 @@ const styles = StyleSheet.create({
   schemeHintText: {
     color: colors.textMuted,
     lineHeight: 19,
+  },
+  lessonStripWrap: {
+    marginBottom: 16,
+  },
+  lessonStripLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  lessonStripRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  lessonStrip: {
+    minHeight: 44,
+    minWidth: 92,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  lessonStripActive: {
+    borderColor: colors.primary,
+    backgroundColor: '#eef6f2',
+  },
+  lessonStripPressed: {
+    opacity: 0.85,
+  },
+  lessonStripText: {
+    color: colors.text,
+    fontWeight: '700',
+  },
+  lessonStripTextActive: {
+    color: colors.primary,
   },
   schemeList: {
     backgroundColor: colors.surface,

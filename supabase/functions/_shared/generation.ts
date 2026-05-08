@@ -36,6 +36,7 @@ export interface LessonGenerationBody {
   teacherName?: string;
   schoolName?: string;
   schoolDistrict?: string;
+  classSize?: string;
   schemeContext?: SchemeContext;
 }
 
@@ -181,6 +182,7 @@ scheme context explicitly does so.\n`
     (body.term ? `- Term: ${body.term}\n` : '') +
     (body.weekEnding ? `- Week ending: ${body.weekEnding}\n` : '') +
     (body.duration ? `- Lesson duration: ${body.duration}\n` : '- Lesson duration: 60 mins\n') +
+    (body.classSize ? `- Class size: ${body.classSize}\n` : '') +
     (body.notes ? `- Additional notes: ${body.notes}\n` : '') +
     sessionBlock +
     schemeContextBlock +
@@ -225,6 +227,7 @@ export function normalizeLessonPlanResponse(
     weekTitle: cleanText(payload?.weekTitle) || `WEEK ${Number(body?.week) || 1}`,
     date: cleanText(payload?.date) || cleanText(body?.weekEnding),
     duration: cleanText(body?.duration) || cleanText(payload?.duration) || '60 mins',
+    classSize: cleanText(body?.classSize) || cleanText(payload?.classSize),
     termTitle:
       cleanText(payload?.termTitle) ||
       `${termLabel.toUpperCase()} LESSON PLAN`,

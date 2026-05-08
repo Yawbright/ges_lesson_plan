@@ -73,10 +73,10 @@ supabase link --project-ref <your-project-ref>
 supabase db push
 
 # set the Anthropic key (server-only)
-supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
-supabase secrets set PAYSTACK_SECRET_KEY=sk_test_or_live_...
+npx supabase secrets set ANTHROPIC_API_KEY
+npx supabase secrets set PAYSTACK_SECRET_KEY
 supabase secrets set PARSER_SERVICE_URL=https://your-parser-service-url
-supabase secrets set DEV_CREDIT_GRANT_SECRET=choose-a-long-random-secret
+npx supabase secrets set DEV_CREDIT_GRANT_SECRET
 
 # optional: where Paystack sends users after checkout
 supabase secrets set PAYSTACK_CALLBACK_URL=http://localhost:8081
@@ -89,6 +89,8 @@ supabase functions deploy verify-credit-purchase
 supabase functions deploy paystack-webhook
 supabase functions deploy parse-uploaded-scheme
 supabase functions deploy dev-grant-credits
+supabase functions deploy referral-dashboard
+supabase functions deploy apply-referral
 ```
 
 For production Paystack reliability, add this webhook URL in the Paystack dashboard:
@@ -113,6 +115,10 @@ npm start
 ```
 
 Press `a` for Android, `i` for iOS, or `w` for web.
+
+## Deployment
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the first production deployment checklist.
 
 ## Next steps
 

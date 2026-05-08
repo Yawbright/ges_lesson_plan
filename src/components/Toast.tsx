@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { colors } from '@/theme/colors';
 
-type ToastType = 'success' | 'error';
+export type ToastType = 'success' | 'error' | 'info';
 
 interface Props {
   visible: boolean;
@@ -17,7 +17,7 @@ export function Toast({ visible, message, type = 'success' }: Props) {
       pointerEvents="none"
       style={[
         styles.wrap,
-        type === 'success' ? styles.successWrap : styles.errorWrap,
+        type === 'success' ? styles.successWrap : type === 'info' ? styles.infoWrap : styles.errorWrap,
       ]}
     >
       <Text style={styles.text}>{message}</Text>
@@ -46,6 +46,9 @@ const styles = StyleSheet.create({
   },
   errorWrap: {
     backgroundColor: colors.danger,
+  },
+  infoWrap: {
+    backgroundColor: colors.primaryDark,
   },
   text: {
     color: '#fff',

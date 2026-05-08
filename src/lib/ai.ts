@@ -44,6 +44,7 @@ const bypassAuth = process.env.EXPO_PUBLIC_BYPASS_AUTH === 'true';
 const explicitUseLocalAi = process.env.EXPO_PUBLIC_USE_LOCAL_AI === 'true';
 const forceCloudAi = process.env.EXPO_PUBLIC_USE_LOCAL_AI === 'false';
 const useLocalAi = explicitUseLocalAi || (bypassAuth && !forceCloudAi);
+const hostedParserBaseUrl = process.env.EXPO_PUBLIC_PARSER_SERVICE_URL?.trim().replace(/\/$/, '');
 
 const localAiBaseUrl =
   (process.env.EXPO_PUBLIC_LOCAL_AI_URL ?? 'http://localhost:8787').replace(/\/$/, '');
@@ -173,6 +174,14 @@ export async function parseUploadedScheme(input: {
     curriculumYearHint,
   };
 
+  if (!useLocalAi && hostedParserBaseUrl) {
+    return postJson<ParsedUploadedSchemeResult>(
+      hostedParserBaseUrl,
+      '/parse-scheme',
+      requestBody,
+    );
+  }
+
   if (useLocalAi) {
     return postJson<ParsedUploadedSchemeResult>(
       localAiBaseUrl,
@@ -181,7 +190,9 @@ export async function parseUploadedScheme(input: {
     );
   }
 
-  return invokeEdgeFunctionJson<ParsedUploadedSchemeResult>('parse-uploaded-scheme', requestBody);
+  throw new Error(
+    'Uploaded scheme parsing is not configured yet. Set EXPO_PUBLIC_PARSER_SERVICE_URL for the hosted parser, or enable local AI mode during development.'
+  );
 }
 
 async function postLocal<T>(path: string, body: unknown): Promise<T> {

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/Button';
 import { Field } from '@/components/Field';
+import { useToast } from '@/components/ToastProvider';
 import { getAuthErrorMessage, signInWithEmail, signUpWithEmail } from '@/lib/auth';
 import { applyReferralCode, consumePendingReferralCode, savePendingReferralCode } from '@/lib/referrals';
 import { isSupabaseConfigured } from '@/lib/supabase';
@@ -14,15 +15,18 @@ export interface EmailPasswordAuthFormProps {
 }
 
 export function EmailPasswordAuthForm({ onSignedIn, subtitle, referralCode }: EmailPasswordAuthFormProps) {
+  const { showToast } = useToast();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fieldError, setFieldError] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function submit() {
     setFieldError(null);
+    setInfoMessage(null);
 
     if (!isSupabaseConfigured) {
       Alert.alert(
@@ -56,6 +60,7 @@ export function EmailPasswordAuthForm({ onSignedIn, subtitle, referralCode }: Em
       if (mode === 'signin') {
         await signInWithEmail(normalizedEmail, password);
         await applyPendingReferral();
+        showToast({ message: 'Signed in successfully.' });
         onSignedIn?.();
       } else {
         const data = await signUpWithEmail(normalizedEmail, password);
@@ -64,19 +69,24 @@ export function EmailPasswordAuthForm({ onSignedIn, subtitle, referralCode }: Em
         }
         if (data.session) {
           await applyPendingReferral();
-          Alert.alert('Account created', 'Your account was created and you are now signed in.');
+          showToast({ message: 'Account created. You are now signed in.' });
           onSignedIn?.();
         } else {
-          Alert.alert(
-            'Check your inbox',
-            'Your account was created. Confirm your email, then come back and sign in.',
-          );
+          showToast({
+            message: 'Account created. Please confirm your email, then sign in.',
+            type: 'info',
+          });
+          setInfoMessage('Sign-up successful. Check your email and confirm your account before signing in.');
           setMode('signin');
         }
       }
     } catch (err: unknown) {
       const message = getAuthErrorMessage(err, mode);
-      Alert.alert(mode === 'signin' ? 'Sign-in failed' : 'Sign-up failed', message);
+      setFieldError(message);
+      if (message.toLowerCase().includes('confirm your email')) {
+        setInfoMessage('Your email is not confirmed yet. Open the confirmation link in your inbox, then sign in again.');
+      }
+      showToast({ message, type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -126,6 +136,7 @@ export function EmailPasswordAuthForm({ onSignedIn, subtitle, referralCode }: Em
       {mode === 'signup' && referralCode ? (
         <Text style={styles.referralNote}>Referral code: {referralCode.trim().toUpperCase()}</Text>
       ) : null}
+      {infoMessage ? <Text style={styles.infoNote}>{infoMessage}</Text> : null}
 
       <Button
         title={mode === 'signin' ? 'Sign in' : 'Create account'}
@@ -137,6 +148,7 @@ export function EmailPasswordAuthForm({ onSignedIn, subtitle, referralCode }: Em
         variant="ghost"
         onPress={() => {
           setFieldError(null);
+          setInfoMessage(null);
           setConfirmPassword('');
           setMode((m) => (m === 'signin' ? 'signup' : 'signin'));
         }}
@@ -169,5 +181,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: -6,
     marginBottom: 12,
+  },
+  infoNote: {
+    backgroundColor: '#EEF5EF',
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: 8,
+    color: colors.primaryDark,
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 19,
+    marginBottom: 12,
+    padding: 10,
   },
 });
