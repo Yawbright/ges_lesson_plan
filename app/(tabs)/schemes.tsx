@@ -5,6 +5,7 @@ import * as FileSystem from 'expo-file-system';
 import { router, useFocusEffect } from 'expo-router';
 import { Button } from '@/components/Button';
 import { SelectField } from '@/components/SelectField';
+import { useToast } from '@/components/ToastProvider';
 import {
   formatAiActionError,
   generateSchemeOfWork,
@@ -25,6 +26,7 @@ import type { ClassLevel } from '@/types/lessonPlan';
 import type { SchemeOfWork } from '@/types/scheme';
 
 export default function SchemesScreen() {
+  const { showToast } = useToast();
   const webInputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -100,16 +102,11 @@ export default function SchemesScreen() {
         term: term.trim(),
       });
       const parserMessage = buildParserNotice(saved);
-      Alert.alert(
-        'Scheme parsed',
-        [
-          `${asset.name} was converted into ${saved.weeks.length} weekly records and saved for lesson planning.`,
-          mismatchMessage,
-          parserMessage,
-        ]
-          .filter(Boolean)
-          .join('\n\n'),
-      );
+      showToast({ message: `${asset.name} parsed and saved.` });
+      const details = [mismatchMessage, parserMessage].filter(Boolean).join('\n\n');
+      if (details) {
+        Alert.alert('Scheme parsed', details);
+      }
     } catch (err: unknown) {
       showSchemeActionError('Upload or parsing failed', err);
     } finally {
@@ -149,7 +146,7 @@ export default function SchemesScreen() {
       const saved = await saveScheme(scheme);
       setLatestScheme(saved);
       await refreshSchemes();
-      Alert.alert('Scheme generated', `${saved.weeks.length} weeks drafted for ${saved.subject}.`);
+      showToast({ message: `${saved.weeks.length} weeks drafted for ${saved.subject}.` });
     } catch (err: unknown) {
       showSchemeActionError('Generation failed', err);
     } finally {
@@ -159,6 +156,7 @@ export default function SchemesScreen() {
 
   function showSchemeActionError(title: string, err: unknown) {
     const message = formatAiActionError(err);
+    showToast({ message, type: 'error' });
 
     if (isInsufficientCreditsError(err)) {
       Alert.alert('Not enough credits', message, [

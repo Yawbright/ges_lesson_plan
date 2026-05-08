@@ -142,6 +142,17 @@ Do not switch to a different weekly topic just because it is a new session.\n`
 
     try {
       const extractedText = await extractSchemeTextFromUpload(body.fileName, body.fileBase64);
+      const detectedMetadata = detectUploadedSchemeMetadata(extractedText);
+      if (
+        detectedMetadata.subject &&
+        !subjectsRoughlyMatch(detectedMetadata.subject, body.subject)
+      ) {
+        writeJson(res, 400, {
+          error: `This file appears to contain a ${detectedMetadata.subject} scheme, not ${body.subject}.`,
+        });
+        return;
+      }
+
       const availableClassLevels = detectAvailableClassLevels(extractedText);
       if (
         availableClassLevels.length &&
@@ -156,7 +167,6 @@ Do not switch to a different weekly topic just because it is a new session.\n`
         return;
       }
 
-      const detectedMetadata = detectUploadedSchemeMetadata(extractedText);
       const annualPlanText = extractAnnualPlanText(extractedText, body.classLevel);
       const selectedSection = selectPreferredSchemeSection(
         extractedText,
@@ -870,6 +880,27 @@ function detectUploadedSchemeMetadata(text) {
     classLevel: classMatch ? `B${classMatch[1]}` : '',
     term: termMatch || '',
   };
+}
+
+function subjectsRoughlyMatch(left, right) {
+  const normalize = (value) => {
+    const lower = cleanText(value).toLowerCase();
+    if (!lower) return '';
+    if (/\bmathematics\b|\bmaths\b|\bcore mathematics\b/.test(lower)) return 'mathematics';
+    if (/\bscience\b|\bintegrated science\b|\bgeneral science\b/.test(lower)) return 'science';
+    if (/\bcomputing\b|\bict\b|\binformation and communication technology\b|\bcomputer studies\b/.test(lower)) return 'computing';
+    if (/\benglish language\b|\benglish\b/.test(lower)) return 'english language';
+    if (/\bsocial studies\b/.test(lower)) return 'social studies';
+    if (/\breligious and moral education\b|\breligious moral education\b|\brme\b/.test(lower)) return 'rme';
+    if (/\bghanaian language\b|\bghanaian languages\b|\bgl\b/.test(lower)) return 'ghanaian language';
+    if (/\bcareer technology\b|\bcareer tech\b|\bct\b/.test(lower)) return 'career technology';
+    if (/\bcreative arts and design\b|\bcreative arts\b|\bcad\b/.test(lower)) return 'creative arts and design';
+    if (/\bfrench\b/.test(lower)) return 'french';
+    if (/\bhistory\b/.test(lower)) return 'history';
+    return lower.replace(/\s+/g, ' ').trim();
+  };
+
+  return normalize(left) === normalize(right);
 }
 
 function normalizeSchemeResponse(payload, input) {
