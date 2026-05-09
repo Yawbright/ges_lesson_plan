@@ -278,7 +278,7 @@ export default function ProfileScreen() {
               <Stat label="This month" value={`${referral?.stats.rewardsThisMonth ?? 0}/${referral?.stats.monthlyLimit ?? 5}`} />
               <Stat label="Pending" value={String(referral?.stats.pending ?? 0)} />
               <Stat label="Rewarded" value={String(referral?.stats.rewarded ?? 0)} />
-              <Stat label="Rejected" value={String(referral?.stats.rejected ?? 0)} />
+              <Stat label="Not rewarded" value={String(referral?.stats.rejected ?? 0)} />
             </View>
 
             {referral?.referrals.length ? (
@@ -362,6 +362,7 @@ function getMessage(err: unknown) {
 }
 
 function formatStatus(status: string) {
+  if (status === 'rejected') return 'Not rewarded';
   return status.slice(0, 1).toUpperCase() + status.slice(1);
 }
 

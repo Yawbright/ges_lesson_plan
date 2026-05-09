@@ -230,7 +230,7 @@ export default function SchemesScreen() {
           </View>
         ) : null}
         <Button
-          title={Platform.OS === 'web' ? 'Parse Selected File' : 'Choose PDF or DOCX'}
+          title={Platform.OS === 'web' ? 'Analyze Custom Scheme' : 'Choose PDF or DOCX'}
           variant="secondary"
           onPress={handleUpload}
           loading={uploading}
@@ -239,8 +239,8 @@ export default function SchemesScreen() {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Generate Scheme of Work</Text>
-        <Button title="Generate Scheme of Work" onPress={handleGenerate} loading={generating} />
+        <Text style={styles.cardTitle}>No custom scheme?</Text>
+        <Button title="Generate Scheme From AI" onPress={handleGenerate} loading={generating} />
       </View>
 
       {latestScheme ? (
