@@ -49,6 +49,7 @@ export default function AdminScreen() {
   const [section, setSection] = useState<Section>('overview');
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
   const [dashboard, setDashboard] = useState<AdminDashboard | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState('');
@@ -68,8 +69,11 @@ export default function AdminScreen() {
       const next = await adminLoadDashboard();
       setDashboard(next);
       setUsers(next.users);
+      setLoadError(null);
     } catch (err: unknown) {
-      Alert.alert('Admin unavailable', getMessage(err));
+      const message = getMessage(err);
+      setLoadError(message);
+      Alert.alert('Admin unavailable', message);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -239,7 +243,17 @@ export default function AdminScreen() {
                 />
               ) : null}
             </>
-          ) : null}
+          ) : (
+            <Panel title="Admin Data Unavailable">
+              <Text style={styles.bodyText}>
+                The admin shell loaded, but the dashboard data could not be retrieved. Use Refresh to try again.
+              </Text>
+              {loadError ? <Text style={styles.errorText}>{loadError}</Text> : null}
+              <View style={styles.buttonRow}>
+                <Button title="Refresh" onPress={load} loading={refreshing} />
+              </View>
+            </Panel>
+          )}
         </ScrollView>
       </View>
     </View>
@@ -263,14 +277,18 @@ function Overview({ dashboard, openUser }: { dashboard: AdminDashboard; openUser
       </View>
       <View style={styles.twoColumn}>
         <Panel title="Recent Users">
-          {dashboard.users.slice(0, 6).map((user) => (
-            <UserRow key={user.user_id} user={user} onPress={() => openUser(user)} />
-          ))}
+          {dashboard.users.length ? (
+            dashboard.users.slice(0, 6).map((user) => <UserRow key={user.user_id} user={user} onPress={() => openUser(user)} />)
+          ) : (
+            <Text style={styles.emptyText}>No users are available yet.</Text>
+          )}
         </Panel>
         <Panel title="Recent Payments">
-          {dashboard.purchases.slice(0, 6).map((item) => (
-            <PaymentRow key={item.id} purchase={item} />
-          ))}
+          {dashboard.purchases.length ? (
+            dashboard.purchases.slice(0, 6).map((item) => <PaymentRow key={item.id} purchase={item} />)
+          ) : (
+            <Text style={styles.emptyText}>No payment records yet.</Text>
+          )}
         </Panel>
       </View>
     </>
@@ -302,9 +320,11 @@ function UsersSection(props: {
           <Button title="Search" onPress={props.searchUsers} loading={props.searching} style={styles.searchButton} />
         </View>
         <Text style={styles.helpText}>Latest users load automatically. Search only when you need a specific account.</Text>
-        {props.users.map((user) => (
-          <UserRow key={user.user_id} user={user} onPress={() => props.openUser(user)} />
-        ))}
+        {props.users.length ? (
+          props.users.map((user) => <UserRow key={user.user_id} user={user} onPress={() => props.openUser(user)} />)
+        ) : (
+          <Text style={styles.emptyText}>No users found.</Text>
+        )}
       </Panel>
       {props.selectedUser?.user ? (
         <Panel title="User Details">
@@ -327,9 +347,11 @@ function CreditsSection({ transactions }: { transactions: AdminTransaction[] }) 
   const adjustments = transactions.filter((item) => item.kind === 'adjustment');
   return (
     <Panel title="Credit Adjustments">
-      {(adjustments.length ? adjustments : transactions).map((item) => (
-        <TransactionRow key={item.id} item={item} />
-      ))}
+      {(adjustments.length ? adjustments : transactions).length ? (
+        (adjustments.length ? adjustments : transactions).map((item) => <TransactionRow key={item.id} item={item} />)
+      ) : (
+        <Text style={styles.emptyText}>No credit adjustments yet.</Text>
+      )}
     </Panel>
   );
 }
@@ -337,9 +359,11 @@ function CreditsSection({ transactions }: { transactions: AdminTransaction[] }) 
 function PaymentsSection({ purchases }: { purchases: AdminPurchase[] }) {
   return (
     <Panel title="Payment Receipts">
-      {purchases.map((item) => (
-        <PaymentRow key={item.id} purchase={item} />
-      ))}
+      {purchases.length ? (
+        purchases.map((item) => <PaymentRow key={item.id} purchase={item} />)
+      ) : (
+        <Text style={styles.emptyText}>No payment records yet.</Text>
+      )}
     </Panel>
   );
 }
@@ -348,9 +372,11 @@ function UsageSection({ transactions }: { transactions: AdminTransaction[] }) {
   const usage = transactions.filter((item) => ['lesson_generation', 'scheme_generation', 'scheme_parsing'].includes(item.kind));
   return (
     <Panel title="Usage History">
-      {usage.map((item) => (
-        <TransactionRow key={item.id} item={item} />
-      ))}
+      {usage.length ? (
+        usage.map((item) => <TransactionRow key={item.id} item={item} />)
+      ) : (
+        <Text style={styles.emptyText}>No credit-consuming usage yet.</Text>
+      )}
     </Panel>
   );
 }
@@ -358,17 +384,21 @@ function UsageSection({ transactions }: { transactions: AdminTransaction[] }) {
 function ReferralsSection({ referrals }: { referrals: AdminReferral[] }) {
   return (
     <Panel title="Referral Activity">
-      {referrals.map((item) => (
-        <View key={item.id} style={styles.dataRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.rowTitle}>{item.referrer_email || item.referrer_user_id}</Text>
-            <Text style={styles.meta}>Referred: {item.referred_email || item.referred_user_id}</Text>
-            <Text style={styles.meta}>Code: {item.referral_code}</Text>
-            {item.rejection_reason ? <Text style={styles.meta}>Reason: {item.rejection_reason}</Text> : null}
+      {referrals.length ? (
+        referrals.map((item) => (
+          <View key={item.id} style={styles.dataRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowTitle}>{item.referrer_email || item.referrer_user_id}</Text>
+              <Text style={styles.meta}>Referred: {item.referred_email || item.referred_user_id}</Text>
+              <Text style={styles.meta}>Code: {item.referral_code}</Text>
+              {item.rejection_reason ? <Text style={styles.meta}>Reason: {item.rejection_reason}</Text> : null}
+            </View>
+            <StatusPill status={item.status === 'rejected' ? 'not rewarded' : item.status} />
           </View>
-          <StatusPill status={item.status === 'rejected' ? 'not rewarded' : item.status} />
-        </View>
-      ))}
+        ))
+      ) : (
+        <Text style={styles.emptyText}>No referrals yet.</Text>
+      )}
     </Panel>
   );
 }
@@ -376,7 +406,7 @@ function ReferralsSection({ referrals }: { referrals: AdminReferral[] }) {
 function LogsSection(props: { logs: AdminLog[]; selectedLog: string | null; setSelectedLog: (id: string | null) => void }) {
   return (
     <Panel title="Error Logs">
-      {props.logs.map((log) => {
+      {props.logs.length ? props.logs.map((log) => {
         const open = props.selectedLog === log.id;
         return (
           <Pressable key={log.id} style={styles.dataRow} onPress={() => props.setSelectedLog(open ? null : log.id)}>
@@ -389,7 +419,7 @@ function LogsSection(props: { logs: AdminLog[]; selectedLog: string | null; setS
             </View>
           </Pressable>
         );
-      })}
+      }) : <Text style={styles.emptyText}>No logs yet.</Text>}
     </Panel>
   );
 }
@@ -410,15 +440,19 @@ function SettingsSection(props: {
           <Text style={styles.tableCell}>Final Price</Text>
           <Text style={styles.tableCell}>Badge</Text>
         </View>
-        {props.packages.map((pack) => (
-          <Pressable key={pack.id} style={styles.tableRow} onPress={() => props.setEditingPackage(toDraft(pack))}>
-            <Text style={styles.tableCell}>{pack.credits}</Text>
-            <Text style={styles.tableCell}>{formatMoney(pack.original_price_subunit ?? pack.price_subunit)}</Text>
-            <Text style={styles.tableCell}>{promotionLabel(pack)}</Text>
-            <Text style={styles.tableCell}>{formatMoney(pack.price_subunit)}</Text>
-            <Text style={styles.tableCell}>{pack.badge_text || '-'}</Text>
-          </Pressable>
-        ))}
+        {props.packages.length ? (
+          props.packages.map((pack) => (
+            <Pressable key={pack.id} style={styles.tableRow} onPress={() => props.setEditingPackage(toDraft(pack))}>
+              <Text style={styles.tableCell}>{pack.credits}</Text>
+              <Text style={styles.tableCell}>{formatMoney(pack.original_price_subunit ?? pack.price_subunit)}</Text>
+              <Text style={styles.tableCell}>{promotionLabel(pack)}</Text>
+              <Text style={styles.tableCell}>{formatMoney(pack.price_subunit)}</Text>
+              <Text style={styles.tableCell}>{pack.badge_text || '-'}</Text>
+            </Pressable>
+          ))
+        ) : (
+          <Text style={styles.emptyText}>No credit packages are available.</Text>
+        )}
       </Panel>
       {props.editingPackage ? (
         <Panel title={`Edit ${props.editingPackage.name}`}>
@@ -710,6 +744,7 @@ const styles = StyleSheet.create({
   detailValue: { color: colors.text, fontWeight: '800', marginTop: 4 },
   sectionLabel: { color: colors.primaryDark, fontWeight: '900', marginTop: 14, marginBottom: 6 },
   emptyText: { color: colors.textMuted, lineHeight: 20 },
+  errorText: { color: colors.danger, fontWeight: '700', lineHeight: 20, marginTop: 10 },
   tableHeader: { flexDirection: 'row', backgroundColor: colors.primary, borderRadius: 8, padding: 10 },
   tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.border, padding: 10 },
   tableCell: { flex: 1, color: colors.text, fontWeight: '700' },

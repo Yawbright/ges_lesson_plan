@@ -134,13 +134,13 @@ function json(payload: unknown, status: number) {
 
 async function loadDashboard(service: ReturnType<typeof createServiceClient>) {
   const [users, transactions, purchases, referrals, logs, packages, settings] = await Promise.all([
-    loadUsers(service, '', 1000),
-    loadTransactions(service, 250),
-    loadPurchases(service, 200),
-    loadReferrals(service, 200),
-    loadLogs(service),
-    loadPackages(service),
-    loadSettings(service),
+    safeLoad(() => loadUsers(service, '', 1000), [] as AdminUser[]),
+    safeLoad(() => loadTransactions(service, 250), []),
+    safeLoad(() => loadPurchases(service, 200), []),
+    safeLoad(() => loadReferrals(service, 200), []),
+    safeLoad(() => loadLogs(service), []),
+    safeLoad(() => loadPackages(service), []),
+    safeLoad(() => loadSettings(service), []),
   ]);
 
   const now = new Date();
@@ -215,7 +215,7 @@ async function loadDirectoryUsers(service: ReturnType<typeof createServiceClient
   const authUsers: DirectoryUser[] = [];
   for (let page = 1; page <= 10; page += 1) {
     const { data: pageData, error: authError } = await service.auth.admin.listUsers({ page, perPage: 1000 });
-    if (authError) throw new Error(authError.message);
+    if (authError) return authUsers;
     const pageUsers = (pageData.users ?? []) as ListedAuthUser[];
     authUsers.push(
       ...pageUsers.map((item) => ({
@@ -251,20 +251,15 @@ async function enrichUsers(service: ReturnType<typeof createServiceClient>, user
       service.from('referrals').select('referred_user_id,referrer_user_id').in('referred_user_id', ids),
     ]);
 
-    if (balances.error) throw new Error(balances.error.message);
-    if (admins.error) throw new Error(admins.error.message);
-    if (profiles.error) throw new Error(profiles.error.message);
-    if (codes.error) throw new Error(codes.error.message);
-    if (referrals.error) throw new Error(referrals.error.message);
+    for (const row of balances.error ? [] : balances.data ?? []) balanceByUser.set(row.user_id, Number(row.balance ?? 0));
+    for (const row of admins.error ? [] : admins.data ?? []) adminUserIds.add(row.user_id);
+    for (const row of profiles.error ? [] : profiles.data ?? []) profileByUser.set(row.user_id, row);
+    for (const row of codes.error ? [] : codes.data ?? []) referralCodeByUser.set(row.user_id, row.code ?? '');
 
-    for (const row of balances.data ?? []) balanceByUser.set(row.user_id, Number(row.balance ?? 0));
-    for (const row of admins.data ?? []) adminUserIds.add(row.user_id);
-    for (const row of profiles.data ?? []) profileByUser.set(row.user_id, row);
-    for (const row of codes.data ?? []) referralCodeByUser.set(row.user_id, row.code ?? '');
-
-    const referrerIds = Array.from(new Set((referrals.data ?? []).map((row) => row.referrer_user_id).filter(Boolean)));
+    const referralRows = referrals.error ? [] : referrals.data ?? [];
+    const referrerIds = Array.from(new Set(referralRows.map((row) => row.referrer_user_id).filter(Boolean)));
     const referrerEmailById = await loadEmails(service, referrerIds);
-    for (const row of referrals.data ?? []) {
+    for (const row of referralRows) {
       referredByUser.set(row.referred_user_id, referrerEmailById.get(row.referrer_user_id) ?? row.referrer_user_id);
     }
   }
@@ -403,4 +398,12 @@ async function updatePackage(service: ReturnType<typeof createServiceClient>, in
   const { data, error } = await service.from('credit_packages').update(cleanUpdates).eq('id', input.id).select().single();
   if (error) throw new Error(error.message);
   return data;
+}
+
+async function safeLoad<T>(loader: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await loader();
+  } catch {
+    return fallback;
+  }
 }
