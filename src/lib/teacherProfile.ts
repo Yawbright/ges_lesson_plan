@@ -13,6 +13,17 @@ export type TeacherProfile = {
 };
 
 export async function loadTeacherProfile(): Promise<TeacherProfile> {
+  const { data } = await supabase.auth.getUser();
+  const userId = data.user?.id;
+  if (userId) {
+    const remote = await loadRemoteTeacherProfile(userId).catch(() => null);
+    if (remote) {
+      await storage.setItem(scopedStorageKey(userId), JSON.stringify(remote));
+      return remote;
+    }
+    return emptyTeacherProfile();
+  }
+
   const raw = await storage.getItem(STORAGE_KEY);
   if (!raw) return emptyTeacherProfile();
 
@@ -24,8 +35,14 @@ export async function loadTeacherProfile(): Promise<TeacherProfile> {
 }
 
 export async function saveTeacherProfile(profile: TeacherProfile) {
+  const { data } = await supabase.auth.getUser();
+  const userId = data.user?.id;
+  if (userId) {
+    await storage.setItem(scopedStorageKey(userId), JSON.stringify(profile));
+    await saveRemoteTeacherProfile(userId, profile);
+    return;
+  }
   await storage.setItem(STORAGE_KEY, JSON.stringify(profile));
-  await saveRemoteTeacherProfile(profile).catch(() => undefined);
 }
 
 export async function isTeacherOnboardingComplete() {
@@ -46,11 +63,25 @@ export function emptyTeacherProfile(): TeacherProfile {
   };
 }
 
-async function saveRemoteTeacherProfile(profile: TeacherProfile) {
-  const { data } = await supabase.auth.getUser();
-  const userId = data.user?.id;
-  if (!userId) return;
+async function loadRemoteTeacherProfile(userId: string): Promise<TeacherProfile | null> {
+  const { data, error } = await supabase
+    .from('teacher_profiles')
+    .select('teacher_name,school_name,school_district,class_sizes,onboarding_completed')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
 
+  return {
+    teacherName: data.teacher_name ?? '',
+    schoolName: data.school_name ?? '',
+    schoolDistrict: data.school_district ?? '',
+    classSizes: (data.class_sizes as Record<string, string>) ?? {},
+    onboardingCompleted: Boolean(data.onboarding_completed),
+  };
+}
+
+async function saveRemoteTeacherProfile(userId: string, profile: TeacherProfile) {
   await supabase.from('teacher_profiles').upsert({
     user_id: userId,
     teacher_name: profile.teacherName,
@@ -60,6 +91,10 @@ async function saveRemoteTeacherProfile(profile: TeacherProfile) {
     onboarding_completed: profile.onboardingCompleted,
     updated_at: new Date().toISOString(),
   });
+}
+
+function scopedStorageKey(userId: string) {
+  return `${STORAGE_KEY}:${userId}`;
 }
 
 const storage = {

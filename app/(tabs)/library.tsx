@@ -3,7 +3,7 @@ import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from '
 import { router, useFocusEffect } from 'expo-router';
 import { Button } from '@/components/Button';
 import { useToast } from '@/components/ToastProvider';
-import { exportLessonPlanPdf, exportSchemePdf } from '@/lib/export';
+import { exportLessonPlanPdf, exportSchemePdf, shareLessonPlan, shareScheme } from '@/lib/export';
 import { deleteLessonPlan, loadLessonPlans } from '@/lib/lessonStore';
 import { deleteScheme, loadSchemes } from '@/lib/schemeStore';
 import { colors } from '@/theme/colors';
@@ -85,6 +85,12 @@ export default function LibraryScreen() {
                 style={styles.cardButton}
               />
               <Button
+                title="Share"
+                variant="secondary"
+                onPress={() => shareLessonPlan(plan)}
+                style={styles.cardButton}
+              />
+              <Button
                 title="Delete"
                 variant="danger"
                 onPress={() => confirmDeleteLesson(plan)}
@@ -118,6 +124,12 @@ export default function LibraryScreen() {
                 title="PDF"
                 variant="secondary"
                 onPress={() => exportSchemePdf(scheme)}
+                style={styles.cardButton}
+              />
+              <Button
+                title="Share"
+                variant="secondary"
+                onPress={() => shareScheme(scheme)}
                 style={styles.cardButton}
               />
               <Button

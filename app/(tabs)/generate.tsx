@@ -19,7 +19,7 @@ import { SelectField } from '@/components/SelectField';
 import { useToast } from '@/components/ToastProvider';
 import { formatAiActionError, generateLessonPlan, isInsufficientCreditsError } from '@/lib/ai';
 import { loadCreditBalance } from '@/lib/credits';
-import { exportLessonPlanPdf, exportLessonPlansPdf } from '@/lib/export';
+import { exportLessonPlanPdf, exportLessonPlansPdf, shareLessonPlan } from '@/lib/export';
 import { saveLessonPlan } from '@/lib/lessonStore';
 import { logAppError } from '@/lib/logger';
 import {
@@ -315,6 +315,9 @@ export default function GenerateScreen() {
               }
             }}
           />
+          {singlePlan ? (
+            <Button title="Share" variant="secondary" onPress={() => shareLessonPlan(singlePlan)} />
+          ) : null}
           <Button
             title="Back"
             variant="secondary"

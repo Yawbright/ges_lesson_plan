@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '@/components/Button';
 import { SchemeTable } from '@/components/SchemeTable';
 import { useToast } from '@/components/ToastProvider';
-import { exportSchemePdf } from '@/lib/export';
+import { exportSchemePdf, shareScheme } from '@/lib/export';
 import { deleteScheme, getSchemeById } from '@/lib/schemeStore';
 import { colors } from '@/theme/colors';
 import type { SchemeOfWork } from '@/types/scheme';
@@ -36,6 +36,7 @@ export default function SchemeDetailScreen() {
       <SchemeTable scheme={scheme} />
       <View style={styles.actions}>
         <Button title="Save as PDF" onPress={() => exportSchemePdf(scheme)} />
+        <Button title="Share" variant="secondary" onPress={() => shareScheme(scheme)} />
         <Button
           title="Delete"
           variant="danger"

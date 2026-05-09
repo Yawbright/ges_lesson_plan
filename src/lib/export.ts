@@ -1,4 +1,5 @@
 import { Alert, Platform } from 'react-native';
+import { Share } from 'react-native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import {
@@ -15,6 +16,22 @@ export async function exportLessonPlanPdf(plan: LessonPlan) {
   const html = pageHtml(buildLessonPlanContent(plan));
   const fileName = `${slugify(plan.subject)}-${plan.classLevel}-week-${plan.week}.pdf`;
   await exportHtmlAsPdf(html, fileName);
+}
+
+export async function shareLessonPlan(plan: LessonPlan) {
+  if (Platform.OS === 'web') {
+    await shareText(`Lesson plan: ${plan.subject} ${plan.classLevel} Week ${plan.week}`);
+    return;
+  }
+  await exportLessonPlanPdf(plan);
+}
+
+export async function shareScheme(scheme: SchemeOfWork) {
+  if (Platform.OS === 'web') {
+    await shareText(`Scheme of work: ${scheme.subject} ${scheme.classLevel} ${scheme.term}`);
+    return;
+  }
+  await exportSchemePdf(scheme);
 }
 
 export async function exportLessonPlansPdf(plans: LessonPlan[]) {
@@ -63,6 +80,26 @@ async function exportHtmlAsPdf(html: string, fileName: string) {
   }
 
   await Print.printAsync({ uri });
+}
+
+async function shareText(message: string) {
+  const webNavigator =
+    typeof navigator !== 'undefined'
+      ? (navigator as Navigator & {
+          share?: (data: { text?: string; title?: string }) => Promise<void>;
+          clipboard?: { writeText: (text: string) => Promise<void> };
+        })
+      : undefined;
+  if (webNavigator?.share) {
+    await webNavigator.share({ text: message, title: 'GES Lesson Plan' });
+    return;
+  }
+  if (webNavigator?.clipboard) {
+    await webNavigator.clipboard.writeText(message);
+    Alert.alert('Copied', 'Share text copied to clipboard.');
+    return;
+  }
+  await Share.share({ message });
 }
 
 function buildLessonPlanContent(plan: LessonPlan) {

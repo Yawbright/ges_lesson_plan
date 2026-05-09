@@ -14,7 +14,7 @@ import {
   parseUploadedScheme,
 } from '@/lib/ai';
 import { loadCreditBalance } from '@/lib/credits';
-import { exportSchemePdf } from '@/lib/export';
+import { exportSchemePdf, shareScheme } from '@/lib/export';
 import { logAppError } from '@/lib/logger';
 import {
   CLASS_LEVEL_OPTIONS,
@@ -290,6 +290,11 @@ export default function SchemesScreen() {
               title="Save as PDF"
               onPress={() => exportSchemePdf(latestScheme)}
             />
+            <Button
+              title="Share"
+              variant="secondary"
+              onPress={() => shareScheme(latestScheme)}
+            />
           </View>
           {latestScheme.weeks.map((week) => (
             <View key={`${latestScheme.id}-${week.week}`} style={styles.weekRow}>
@@ -324,6 +329,12 @@ export default function SchemesScreen() {
                 title="PDF"
                 variant="secondary"
                 onPress={() => exportSchemePdf(scheme)}
+                style={styles.savedButton}
+              />
+              <Button
+                title="Share"
+                variant="secondary"
+                onPress={() => shareScheme(scheme)}
                 style={styles.savedButton}
               />
             </Pressable>

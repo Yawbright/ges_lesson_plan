@@ -60,10 +60,15 @@ export async function signUpWithEmail(
   password: string,
   invitationCode?: string,
 ): Promise<AuthResponse['data']> {
+  const emailRedirectTo =
+    typeof window !== 'undefined' && window.location?.origin
+      ? `${window.location.origin}/onboarding`
+      : undefined;
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
+      emailRedirectTo,
       data: {
         invitation_code: invitationCode?.trim().toUpperCase() ?? '',
       },

@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '@/components/Button';
 import { LessonPlanTable } from '@/components/LessonPlanTable';
 import { useToast } from '@/components/ToastProvider';
-import { exportLessonPlanPdf } from '@/lib/export';
+import { exportLessonPlanPdf, shareLessonPlan } from '@/lib/export';
 import { deleteLessonPlan, getLessonPlanById } from '@/lib/lessonStore';
 import { colors } from '@/theme/colors';
 import type { LessonPlan } from '@/types/lessonPlan';
@@ -36,6 +36,7 @@ export default function LessonDetailScreen() {
       <LessonPlanTable plan={plan} />
       <View style={styles.actions}>
         <Button title="Save as PDF" onPress={() => exportLessonPlanPdf(plan)} />
+        <Button title="Share" variant="secondary" onPress={() => shareLessonPlan(plan)} />
         <Button
           title="Delete"
           variant="danger"
