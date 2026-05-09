@@ -6,7 +6,7 @@ import {
   type LessonGenerationBody,
 } from '../_shared/generation.ts';
 import { consumeCreditsForRequest, refundCredits } from '../_shared/credits.ts';
-import { HttpError } from '../_shared/supabase.ts';
+import { HttpError, logEdgeError } from '../_shared/supabase.ts';
 import { rewardReferralIfQualified } from '../_shared/referrals.ts';
 
 const LESSON_PLAN_CREDIT_COST = 1;
@@ -63,6 +63,14 @@ Deno.serve(async (req) => {
     if (err instanceof HttpError) {
       return json({ error: err.message, ...(err.payload ?? {}) }, err.status);
     }
+
+    await logEdgeError({
+      userId: creditDebit?.user.id ?? null,
+      source: 'edge',
+      action: 'generate_lesson_plan',
+      message: (err as Error).message,
+      metadata: { subject: body.subject, classLevel: body.classLevel, week: body.week },
+    });
 
     if (creditDebit) {
       await refundCredits(

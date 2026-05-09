@@ -6,15 +6,17 @@ import { Button } from '@/components/Button';
 import { useToast } from '@/components/ToastProvider';
 import {
   formatCreditPrice,
-  grantDeveloperCredits,
   initializeCreditPurchase,
   loadCreditBalance,
   loadCreditPackages,
+  loadCreditPurchases,
   loadCreditTransactions,
+  type CreditPurchase,
   type CreditPackage,
   type CreditTransaction,
   verifyCreditPurchase,
 } from '@/lib/credits';
+import { logAppError } from '@/lib/logger';
 import { colors } from '@/theme/colors';
 
 export default function CreditsScreen() {
@@ -22,6 +24,7 @@ export default function CreditsScreen() {
   const [balance, setBalance] = useState(0);
   const [packages, setPackages] = useState<CreditPackage[]>([]);
   const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
+  const [purchases, setPurchases] = useState<CreditPurchase[]>([]);
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
   const [pendingReference, setPendingReference] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,14 +35,16 @@ export default function CreditsScreen() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [nextBalance, nextPackages, nextTransactions] = await Promise.all([
+      const [nextBalance, nextPackages, nextTransactions, nextPurchases] = await Promise.all([
         loadCreditBalance(),
         loadCreditPackages(),
         loadCreditTransactions(),
+        loadCreditPurchases(),
       ]);
       setBalance(nextBalance);
       setPackages(nextPackages);
       setTransactions(nextTransactions);
+      setPurchases(nextPurchases);
       setSelectedPackageId((current) => current ?? nextPackages[0]?.id ?? null);
     } catch (err: unknown) {
       Alert.alert('Credits unavailable', getMessage(err));
@@ -57,19 +62,6 @@ export default function CreditsScreen() {
       refresh();
     }, [refresh]),
   );
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (!event.ctrlKey || !event.shiftKey || event.key.toLowerCase() !== 'g') return;
-      event.preventDefault();
-      grantDevCreditsFromShortcut();
-    }
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [refresh]);
 
   async function startCheckout() {
     setCheckoutStatus('Paystack button pressed. Preparing checkout...');
@@ -95,6 +87,7 @@ export default function CreditsScreen() {
       }
     } catch (err: unknown) {
       const message = getMessage(err);
+      logAppError({ source: 'client', action: 'start_checkout', message, metadata: { selectedPackageId } });
       setCheckoutStatus(`Checkout failed: ${message}`);
       Alert.alert('Checkout failed', getMessage(err));
     } finally {
@@ -117,47 +110,10 @@ export default function CreditsScreen() {
         Alert.alert('Payment not complete', result.message ?? 'Paystack has not confirmed this payment yet.');
       }
     } catch (err: unknown) {
+      logAppError({ source: 'client', action: 'verify_checkout', message: getMessage(err), metadata: { pendingReference } });
       Alert.alert('Verification failed', getMessage(err));
     } finally {
       setVerifyLoading(false);
-    }
-  }
-
-  async function grantDevCreditsFromShortcut() {
-    if (typeof window === 'undefined') {
-      Alert.alert('Shortcut unavailable', 'Developer credit shortcut is available on web.');
-      return;
-    }
-
-    const storedSecret = window.localStorage.getItem('glp-dev-credit-secret') ?? '';
-    const secret =
-      storedSecret ||
-      window.prompt('Developer credit secret')?.trim() ||
-      '';
-
-    if (!secret) return;
-
-    if (!storedSecret) {
-      window.localStorage.setItem('glp-dev-credit-secret', secret);
-    }
-
-    const amountText = window.prompt('Credits to grant', '25')?.trim();
-    if (!amountText) return;
-
-    const amount = Number(amountText);
-    if (!Number.isInteger(amount) || amount <= 0) {
-      Alert.alert('Invalid amount', 'Enter a whole number greater than 0.');
-      return;
-    }
-
-    try {
-      const result = await grantDeveloperCredits({ secret, amount });
-      setBalance(result.balance);
-      await refresh();
-      showToast({ message: `${result.amount} developer credits added. New balance: ${result.balance}.` });
-    } catch (err: unknown) {
-      window.localStorage.removeItem('glp-dev-credit-secret');
-      Alert.alert('Developer grant failed', getMessage(err));
     }
   }
 
@@ -219,6 +175,34 @@ export default function CreditsScreen() {
           />
         </View>
       ) : null}
+
+      <Text style={styles.sectionTitle}>Payment Receipts</Text>
+      {purchases.length ? (
+        purchases.map((item) => (
+          <View key={item.id} style={styles.receiptRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.transactionTitle}>{item.credits} credits</Text>
+              <Text style={styles.transactionMeta}>
+                {formatCreditPrice(item.amountSubunit, item.currency)} | {item.status}
+              </Text>
+              <Text style={styles.transactionMeta}>Ref: {item.reference}</Text>
+              <Text style={styles.transactionMeta}>{new Date(item.paidAt ?? item.createdAt).toLocaleString()}</Text>
+            </View>
+            <Pressable
+              onPress={() => {
+                if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                  navigator.clipboard.writeText(item.reference);
+                  showToast({ message: 'Receipt reference copied.' });
+                }
+              }}
+            >
+              <Text style={styles.copyText}>Copy ref</Text>
+            </Pressable>
+          </View>
+        ))
+      ) : (
+        <Text style={styles.emptyText}>No payments yet.</Text>
+      )}
 
       <Text style={styles.sectionTitle}>Recent Activity</Text>
       {transactions.length ? (
@@ -310,5 +294,16 @@ const styles = StyleSheet.create({
   transactionMeta: { color: colors.textMuted, fontSize: 12, marginTop: 3 },
   transactionAmount: { color: colors.primary, fontSize: 18, fontWeight: '800' },
   transactionDebit: { color: colors.danger },
+  receiptRow: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 10,
+    flexDirection: 'row',
+    gap: 12,
+  },
+  copyText: { color: colors.primary, fontWeight: '800' },
   emptyText: { color: colors.textMuted, lineHeight: 20 },
 });

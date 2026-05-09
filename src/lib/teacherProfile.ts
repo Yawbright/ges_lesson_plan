@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from './supabase';
 
 const STORAGE_KEY = 'teacher-profile';
 
@@ -8,6 +9,7 @@ export type TeacherProfile = {
   schoolName: string;
   schoolDistrict: string;
   classSizes: Record<string, string>;
+  onboardingCompleted: boolean;
 };
 
 export async function loadTeacherProfile(): Promise<TeacherProfile> {
@@ -23,6 +25,15 @@ export async function loadTeacherProfile(): Promise<TeacherProfile> {
 
 export async function saveTeacherProfile(profile: TeacherProfile) {
   await storage.setItem(STORAGE_KEY, JSON.stringify(profile));
+  await saveRemoteTeacherProfile(profile).catch(() => undefined);
+}
+
+export async function isTeacherOnboardingComplete() {
+  const profile = await loadTeacherProfile();
+  return Boolean(
+    profile.onboardingCompleted ||
+      (profile.teacherName.trim() && profile.schoolName.trim() && Object.keys(profile.classSizes).length),
+  );
 }
 
 export function emptyTeacherProfile(): TeacherProfile {
@@ -31,7 +42,24 @@ export function emptyTeacherProfile(): TeacherProfile {
     schoolName: '',
     schoolDistrict: '',
     classSizes: {},
+    onboardingCompleted: false,
   };
+}
+
+async function saveRemoteTeacherProfile(profile: TeacherProfile) {
+  const { data } = await supabase.auth.getUser();
+  const userId = data.user?.id;
+  if (!userId) return;
+
+  await supabase.from('teacher_profiles').upsert({
+    user_id: userId,
+    teacher_name: profile.teacherName,
+    school_name: profile.schoolName,
+    school_district: profile.schoolDistrict,
+    class_sizes: profile.classSizes,
+    onboarding_completed: profile.onboardingCompleted,
+    updated_at: new Date().toISOString(),
+  });
 }
 
 const storage = {

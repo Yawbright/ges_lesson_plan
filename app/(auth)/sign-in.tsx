@@ -21,7 +21,7 @@ export default function SignInScreen() {
         <EmailPasswordAuthForm
           referralCode={referralCode}
           onSignedIn={() => router.replace('/(tabs)/generate')}
-          onAccountCreated={() => router.replace('/(tabs)/profile')}
+          onAccountCreated={() => router.replace('/onboarding')}
         />
       </ScrollView>
     </KeyboardAvoidingView>

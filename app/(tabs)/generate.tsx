@@ -12,6 +12,7 @@ import {
 import { router, useFocusEffect } from 'expo-router';
 import { Field } from '@/components/Field';
 import { Button } from '@/components/Button';
+import { CreditUsagePreview } from '@/components/CreditUsagePreview';
 import { DatePickerField } from '@/components/DatePickerField';
 import { LessonPlanStack, LessonPlanTable } from '@/components/LessonPlanTable';
 import { SelectField } from '@/components/SelectField';
@@ -20,6 +21,7 @@ import { formatAiActionError, generateLessonPlan, isInsufficientCreditsError } f
 import { loadCreditBalance } from '@/lib/credits';
 import { exportLessonPlanPdf, exportLessonPlansPdf } from '@/lib/export';
 import { saveLessonPlan } from '@/lib/lessonStore';
+import { logAppError } from '@/lib/logger';
 import {
   CLASS_LEVEL_OPTIONS,
   getDefaultSubjectForClassLevel,
@@ -52,6 +54,7 @@ export default function GenerateScreen() {
   const [termStartDate, setTermStartDate] = useState('');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
+  const [creditBalance, setCreditBalance] = useState(0);
   const [generatedPlans, setGeneratedPlans] = useState<LessonPlan[]>([]);
   const [matchedScheme, setMatchedScheme] = useState<SchemeOfWork | null>(null);
   const [matchingSchemes, setMatchingSchemes] = useState<SchemeOfWork[]>([]);
@@ -104,6 +107,7 @@ export default function GenerateScreen() {
   useFocusEffect(
     useCallback(() => {
       refreshSchemes();
+      loadCreditBalance().then(setCreditBalance).catch(() => undefined);
     }, [refreshSchemes]),
   );
 
@@ -128,6 +132,7 @@ export default function GenerateScreen() {
     () => (sessionIndex === 'all' ? lessonNumbers : [sessionIndex]),
     [lessonNumbers, sessionIndex],
   );
+  const generationCost = selectedLessonNumbers.length;
 
   useEffect(() => {
     if (sessionIndex !== 'all' && sessionIndex > sessionsPerWeek) {
@@ -258,6 +263,7 @@ export default function GenerateScreen() {
 
       setSavedPlanIds(savedIds);
       setGeneratedPlans(generated);
+      loadCreditBalance().then(setCreditBalance).catch(() => undefined);
       const usedFallback = generated.some(
         (result) =>
           typeof result.references === 'string' &&
@@ -273,6 +279,12 @@ export default function GenerateScreen() {
       });
     } catch (err: unknown) {
       const message = formatAiActionError(err);
+      logAppError({
+        source: 'client',
+        action: 'generate_lesson_plan',
+        message,
+        metadata: { subject, classLevel, week, sessionIndex, sessionsPerWeek },
+      });
       showToast({ message, type: 'error' });
       if (isInsufficientCreditsError(err)) {
         Alert.alert('Not enough credits', message, [
@@ -489,6 +501,16 @@ export default function GenerateScreen() {
           </View>
         ) : null}
 
+        <CreditUsagePreview
+          cost={generationCost}
+          balance={creditBalance}
+          label={
+            sessionIndex === 'all'
+              ? `This will use ${generationCost} credits for ${generationCost} lessons.`
+              : 'This will use 1 credit.'
+          }
+          onBuyCredits={() => router.push('/(tabs)/credits')}
+        />
         <Button
           title={sessionIndex === 'all' ? `Generate all ${sessionsPerWeek} lesson plans` : 'Generate lesson plan'}
           onPress={handleGenerate}

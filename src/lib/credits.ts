@@ -18,6 +18,18 @@ export type CreditTransaction = {
   createdAt: string;
 };
 
+export type CreditPurchase = {
+  id: string;
+  reference: string;
+  packageId: string;
+  credits: number;
+  amountSubunit: number;
+  currency: string;
+  status: string;
+  createdAt: string;
+  paidAt?: string | null;
+};
+
 export type InitializedCreditPurchase = {
   authorizationUrl: string;
   accessCode: string;
@@ -69,6 +81,28 @@ export async function loadCreditTransactions(): Promise<CreditTransaction[]> {
     kind: item.kind,
     description: item.description,
     createdAt: item.created_at,
+  }));
+}
+
+export async function loadCreditPurchases(): Promise<CreditPurchase[]> {
+  const { data, error } = await supabase
+    .from('credit_purchases')
+    .select('id,paystack_reference,package_id,credits,amount_subunit,currency,status,created_at,verified_at')
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  if (error) throw error;
+
+  return (data ?? []).map((item) => ({
+    id: item.id,
+    reference: item.paystack_reference,
+    packageId: item.package_id,
+    credits: Number(item.credits),
+    amountSubunit: Number(item.amount_subunit),
+    currency: item.currency,
+    status: item.status,
+    createdAt: item.created_at,
+    paidAt: item.verified_at,
   }));
 }
 

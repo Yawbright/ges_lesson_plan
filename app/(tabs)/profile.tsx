@@ -93,6 +93,7 @@ export default function ProfileScreen() {
         schoolName: schoolName.trim(),
         schoolDistrict: schoolDistrict.trim(),
         classSizes: cleanClassSizes(classSizes),
+        onboardingCompleted: true,
       });
       showToast({ message: 'Teacher details saved.' });
     } catch (err: unknown) {
@@ -150,7 +151,7 @@ export default function ProfileScreen() {
         </Text>
         <EmailPasswordAuthForm
           subtitle="Use the same email and password as your Ghana Lesson Planner account."
-          onAccountCreated={() => router.replace('/(tabs)/profile')}
+          onAccountCreated={() => router.replace('/onboarding')}
         />
       </ScrollView>
     );

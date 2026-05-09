@@ -30,6 +30,8 @@ export default function RootLayout() {
               name="scheme/[id]"
               options={{ title: 'Scheme' }}
             />
+            <Stack.Screen name="admin" options={{ title: 'Admin' }} />
+            <Stack.Screen name="onboarding" options={{ title: 'Teacher Setup', headerShown: false }} />
           </Stack>
         </ToastProvider>
       </SafeAreaProvider>

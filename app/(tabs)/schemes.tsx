@@ -4,6 +4,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { router, useFocusEffect } from 'expo-router';
 import { Button } from '@/components/Button';
+import { CreditUsagePreview } from '@/components/CreditUsagePreview';
 import { SelectField } from '@/components/SelectField';
 import { useToast } from '@/components/ToastProvider';
 import {
@@ -12,7 +13,9 @@ import {
   isInsufficientCreditsError,
   parseUploadedScheme,
 } from '@/lib/ai';
+import { loadCreditBalance } from '@/lib/credits';
 import { exportSchemePdf } from '@/lib/export';
+import { logAppError } from '@/lib/logger';
 import {
   CLASS_LEVEL_OPTIONS,
   getDefaultSubjectForClassLevel,
@@ -36,6 +39,7 @@ export default function SchemesScreen() {
   const [savedSchemes, setSavedSchemes] = useState<SchemeOfWork[]>([]);
   const [latestScheme, setLatestScheme] = useState<SchemeOfWork | null>(null);
   const [webSelectedAsset, setWebSelectedAsset] = useState<UploadAsset | null>(null);
+  const [creditBalance, setCreditBalance] = useState(0);
 
   const subjectOptions = useMemo(
     () => getSubjectOptionsForClassLevel(classLevel),
@@ -60,6 +64,7 @@ export default function SchemesScreen() {
   useFocusEffect(
     useCallback(() => {
       refreshSchemes();
+      loadCreditBalance().then(setCreditBalance).catch(() => undefined);
     }, [refreshSchemes]),
   );
 
@@ -93,6 +98,7 @@ export default function SchemesScreen() {
       const saved = await saveScheme(schemeToSave);
       setLatestScheme(saved);
       await refreshSchemes();
+      loadCreditBalance().then(setCreditBalance).catch(() => undefined);
       if (Platform.OS === 'web') {
         setWebSelectedAsset(null);
       }
@@ -108,6 +114,12 @@ export default function SchemesScreen() {
         Alert.alert('Scheme parsed', details);
       }
     } catch (err: unknown) {
+      logAppError({
+        source: 'client',
+        action: 'parse_uploaded_scheme',
+        message: formatAiActionError(err),
+        metadata: { subject, classLevel, term },
+      });
       showSchemeActionError('Upload or parsing failed', err);
     } finally {
       setUploading(false);
@@ -146,8 +158,15 @@ export default function SchemesScreen() {
       const saved = await saveScheme(scheme);
       setLatestScheme(saved);
       await refreshSchemes();
+      loadCreditBalance().then(setCreditBalance).catch(() => undefined);
       showToast({ message: `${saved.weeks.length} weeks drafted for ${saved.subject}.` });
     } catch (err: unknown) {
+      logAppError({
+        source: 'client',
+        action: 'generate_scheme',
+        message: formatAiActionError(err),
+        metadata: { subject, classLevel, term },
+      });
       showSchemeActionError('Generation failed', err);
     } finally {
       setGenerating(false);
@@ -229,6 +248,12 @@ export default function SchemesScreen() {
             </Text>
           </View>
         ) : null}
+        <CreditUsagePreview
+          cost={1}
+          balance={creditBalance}
+          label="Analyzing a custom scheme uses 1 credit."
+          onBuyCredits={() => router.push('/(tabs)/credits')}
+        />
         <Button
           title={Platform.OS === 'web' ? 'Analyze Custom Scheme' : 'Choose PDF or DOCX'}
           variant="secondary"
@@ -240,6 +265,12 @@ export default function SchemesScreen() {
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>No custom scheme?</Text>
+        <CreditUsagePreview
+          cost={1}
+          balance={creditBalance}
+          label="Generating a scheme from AI uses 1 credit."
+          onBuyCredits={() => router.push('/(tabs)/credits')}
+        />
         <Button title="Generate Scheme From AI" onPress={handleGenerate} loading={generating} />
       </View>
 

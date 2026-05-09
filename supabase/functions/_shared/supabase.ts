@@ -49,3 +49,26 @@ export async function getAuthenticatedUser(req: Request): Promise<EdgeUser> {
 
   return { id: data.user.id, email: data.user.email ?? undefined };
 }
+
+export async function logEdgeError(input: {
+  userId?: string | null;
+  source: string;
+  action: string;
+  message: string;
+  metadata?: Record<string, unknown>;
+  severity?: 'info' | 'warning' | 'error';
+}) {
+  try {
+    const service = createServiceClient();
+    await service.rpc('log_app_error', {
+      p_user_id: input.userId ?? null,
+      p_source: input.source,
+      p_action: input.action,
+      p_message: input.message,
+      p_metadata: input.metadata ?? {},
+      p_severity: input.severity ?? 'error',
+    });
+  } catch {
+    // Logging should never block the original function response.
+  }
+}

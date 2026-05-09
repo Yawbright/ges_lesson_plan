@@ -29,3 +29,9 @@ verify_jwt = true
 
 [functions.validate-referral-code]
 verify_jwt = false
+
+[functions.admin-tools]
+verify_jwt = true
+
+[functions.log-app-error]
+verify_jwt = false
