@@ -38,12 +38,19 @@ Deno.serve(async (req) => {
     startOfMonth.setUTCDate(1);
     startOfMonth.setUTCHours(0, 0, 0, 0);
 
+    const { data: referralSetting } = await service
+      .from('admin_app_settings')
+      .select('value')
+      .eq('key', 'referral_reward')
+      .maybeSingle();
+    const monthlyLimit = Number(referralSetting?.value?.monthly_limit ?? 5);
+
     const stats = {
       pending: 0,
       rewarded: 0,
       rejected: 0,
       rewardsThisMonth: 0,
-      monthlyLimit: 5,
+      monthlyLimit: Number.isFinite(monthlyLimit) ? monthlyLimit : 5,
     };
 
     for (const referral of referrals ?? []) {
@@ -76,4 +83,3 @@ function json(payload: unknown, status: number) {
     headers: { ...corsHeaders, 'content-type': 'application/json' },
   });
 }
-

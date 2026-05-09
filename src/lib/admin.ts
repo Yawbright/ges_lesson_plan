@@ -196,6 +196,11 @@ export async function adminDeletePackage(id: string) {
   return invokeAdmin<{ deleted: boolean; deactivated: boolean }>({ action: 'delete-package', package: { id } });
 }
 
+export async function adminUpdateSettings(settings: Record<string, unknown>) {
+  const data = await invokeAdmin<{ settings: AdminSetting[] }>({ action: 'update-settings', settings });
+  return data.settings;
+}
+
 export async function adminLoadLogs() {
   const data = await invokeAdmin<{ logs: AdminLog[] }>({ action: 'logs' });
   return data.logs;

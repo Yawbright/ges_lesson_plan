@@ -1,5 +1,5 @@
 import { corsHeaders } from '../_shared/claude.ts';
-import { consumeCreditsForRequest, refundCredits } from '../_shared/credits.ts';
+import { consumeCreditsForRequest, getFeatureCreditCost, refundCredits } from '../_shared/credits.ts';
 import { HttpError, logEdgeError } from '../_shared/supabase.ts';
 
 const SCHEME_PARSE_CREDIT_COST = 1;
@@ -39,11 +39,13 @@ Deno.serve(async (req) => {
   }
 
   let creditDebit: Awaited<ReturnType<typeof consumeCreditsForRequest>> | null = null;
+  let creditCost = SCHEME_PARSE_CREDIT_COST;
 
   try {
+    creditCost = await getFeatureCreditCost('scheme_parsing', SCHEME_PARSE_CREDIT_COST);
     creditDebit = await consumeCreditsForRequest(
       req,
-      SCHEME_PARSE_CREDIT_COST,
+      creditCost,
       'scheme_parsing',
       'Scheme upload parsing',
       {
@@ -87,7 +89,7 @@ Deno.serve(async (req) => {
     if (creditDebit) {
       await refundCredits(
         creditDebit.user.id,
-        SCHEME_PARSE_CREDIT_COST,
+        creditCost,
         'Refund for failed scheme upload parsing',
         {
           originalTransactionId: creditDebit.transactionId,

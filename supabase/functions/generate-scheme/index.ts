@@ -5,7 +5,7 @@ import {
   schemeSystemPrompt,
   type SchemeGenerationBody,
 } from '../_shared/generation.ts';
-import { consumeCreditsForRequest, refundCredits } from '../_shared/credits.ts';
+import { consumeCreditsForRequest, getFeatureCreditCost, refundCredits } from '../_shared/credits.ts';
 import { HttpError, logEdgeError } from '../_shared/supabase.ts';
 
 const SCHEME_CREDIT_COST = 1;
@@ -30,11 +30,13 @@ Deno.serve(async (req) => {
   }
 
   let creditDebit: Awaited<ReturnType<typeof consumeCreditsForRequest>> | null = null;
+  let creditCost = SCHEME_CREDIT_COST;
 
   try {
+    creditCost = await getFeatureCreditCost('scheme_generation', SCHEME_CREDIT_COST);
     creditDebit = await consumeCreditsForRequest(
       req,
-      SCHEME_CREDIT_COST,
+      creditCost,
       'scheme_generation',
       'Scheme of work generation',
       {
@@ -72,7 +74,7 @@ Deno.serve(async (req) => {
     if (creditDebit) {
       await refundCredits(
         creditDebit.user.id,
-        SCHEME_CREDIT_COST,
+        creditCost,
         'Refund for failed scheme generation',
         {
           originalTransactionId: creditDebit.transactionId,

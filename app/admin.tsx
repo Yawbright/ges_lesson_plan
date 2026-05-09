@@ -22,12 +22,14 @@ import {
   adminLoadDashboard,
   adminLoadUserDetail,
   adminSearchUsers,
+  adminUpdateSettings,
   adminUpdatePackage,
   type AdminCreditPackage,
   type AdminDashboard,
   type AdminLog,
   type AdminPurchase,
   type AdminReferral,
+  type AdminSetting,
   type AdminTransaction,
   type AdminUser,
   type AdminUserDetail,
@@ -37,6 +39,19 @@ import { colors } from '@/theme/colors';
 type Section = 'overview' | 'users' | 'credits' | 'payments' | 'usage' | 'referrals' | 'logs' | 'settings';
 type PromotionType = 'none' | 'bonus' | 'percent_discount' | 'fixed_discount' | 'custom';
 type ReportFilter = { search: string; startDate: string; endDate: string; status: string };
+type AppSettingsDraft = {
+  starterCredits: string;
+  starterActive: boolean;
+  referralCredits: string;
+  referralMonthlyLimit: string;
+  referralActive: boolean;
+  lessonCost: string;
+  schemeCost: string;
+  parsingCost: string;
+  retentionDays: string;
+  paystackMode: string;
+  parserBackend: string;
+};
 
 const sections: Array<{ id: Section; label: string; icon: keyof typeof MaterialCommunityIcons.glyphMap }> = [
   { id: 'overview', label: 'Overview', icon: 'view-dashboard-outline' },
@@ -114,6 +129,8 @@ export default function AdminScreen() {
   const [amount, setAmount] = useState('10');
   const [reason, setReason] = useState('Admin credit adjustment');
   const [editingPackage, setEditingPackage] = useState<PackageDraft | null>(null);
+  const [appSettingsDraft, setAppSettingsDraft] = useState<AppSettingsDraft>(emptyAppSettingsDraft());
+  const [savingAppSettings, setSavingAppSettings] = useState(false);
   const [reportFilters, setReportFilters] = useState<Record<string, ReportFilter>>({
     credits: emptyFilter(),
     payments: emptyFilter(),
@@ -133,6 +150,7 @@ export default function AdminScreen() {
       const next = await adminLoadDashboard();
       setDashboard(next);
       setUsers(next.users);
+      setAppSettingsDraft(settingsToDraft(next.settings));
       setLoadError(null);
     } catch (err: unknown) {
       const message = getMessage(err);
@@ -245,6 +263,37 @@ export default function AdminScreen() {
         },
       },
     ]);
+  }
+
+  async function saveAppSettings() {
+    setSavingAppSettings(true);
+    try {
+      await adminUpdateSettings({
+        starter_credits: {
+          credits: toWhole(appSettingsDraft.starterCredits),
+          active: appSettingsDraft.starterActive,
+        },
+        referral_reward: {
+          credits: toWhole(appSettingsDraft.referralCredits),
+          monthly_limit: toWhole(appSettingsDraft.referralMonthlyLimit),
+          active: appSettingsDraft.referralActive,
+        },
+        feature_credit_costs: {
+          lesson_generation: toWhole(appSettingsDraft.lessonCost),
+          scheme_generation: toWhole(appSettingsDraft.schemeCost),
+          scheme_parsing: toWhole(appSettingsDraft.parsingCost),
+        },
+        generated_file_retention: {
+          days: Math.max(1, toWhole(appSettingsDraft.retentionDays)),
+        },
+      });
+      Alert.alert('Settings saved', 'App settings have been updated.');
+      await load();
+    } catch (err: unknown) {
+      Alert.alert('Could not save settings', getMessage(err));
+    } finally {
+      setSavingAppSettings(false);
+    }
   }
 
   function updateReportFilter(key: string, patch: Partial<ReportFilter>) {
@@ -392,6 +441,10 @@ export default function AdminScreen() {
                   setEditingPackage={setEditingPackage}
                   savePackage={savePackage}
                   removePackage={removePackage}
+                  appSettings={appSettingsDraft}
+                  setAppSettings={(patch) => setAppSettingsDraft((current) => ({ ...current, ...patch }))}
+                  saveAppSettings={saveAppSettings}
+                  savingAppSettings={savingAppSettings}
                 />
               ) : null}
             </>
@@ -741,6 +794,10 @@ function SettingsSection(props: {
   setEditingPackage: (value: PackageDraft | null) => void;
   savePackage: () => void;
   removePackage: (pack: PackageDraft) => void;
+  appSettings: AppSettingsDraft;
+  setAppSettings: (patch: Partial<AppSettingsDraft>) => void;
+  saveAppSettings: () => void;
+  savingAppSettings: boolean;
 }) {
   const draft = props.editingPackage ? preparePackageDraft(props.editingPackage) : null;
   const setDraft = (patch: Partial<PackageDraft>) => {
@@ -857,6 +914,88 @@ function SettingsSection(props: {
           </View>
         </Panel>
       ) : null}
+      <Panel title="App Settings">
+        <Text style={styles.bodyText}>
+          These controls affect new signups, referral rewards, credit deductions, and generated file retention.
+          Paystack mode and parser backend are shown here as read-only because they still rely on secure deployment
+          secrets.
+        </Text>
+        <View style={styles.settingsGrid}>
+          <View style={styles.settingsBox}>
+            <Text style={styles.sectionLabel}>Starter Credits</Text>
+            <Field
+              label="Credits for new users"
+              value={props.appSettings.starterCredits}
+              onChangeText={(value) => props.setAppSettings({ starterCredits: cleanWholeNumber(value) })}
+              keyboardType="number-pad"
+            />
+            <View style={styles.switchRow}>
+              <Text style={styles.rowTitle}>Active</Text>
+              <Switch
+                value={props.appSettings.starterActive}
+                onValueChange={(value) => props.setAppSettings({ starterActive: value })}
+              />
+            </View>
+          </View>
+          <View style={styles.settingsBox}>
+            <Text style={styles.sectionLabel}>Referral Rewards</Text>
+            <Field
+              label="Reward credits"
+              value={props.appSettings.referralCredits}
+              onChangeText={(value) => props.setAppSettings({ referralCredits: cleanWholeNumber(value) })}
+              keyboardType="number-pad"
+            />
+            <Field
+              label="Monthly reward limit"
+              value={props.appSettings.referralMonthlyLimit}
+              onChangeText={(value) => props.setAppSettings({ referralMonthlyLimit: cleanWholeNumber(value) })}
+              keyboardType="number-pad"
+            />
+            <View style={styles.switchRow}>
+              <Text style={styles.rowTitle}>Active</Text>
+              <Switch
+                value={props.appSettings.referralActive}
+                onValueChange={(value) => props.setAppSettings({ referralActive: value })}
+              />
+            </View>
+          </View>
+          <View style={styles.settingsBox}>
+            <Text style={styles.sectionLabel}>Feature Credit Costs</Text>
+            <Field
+              label="Lesson generation"
+              value={props.appSettings.lessonCost}
+              onChangeText={(value) => props.setAppSettings({ lessonCost: cleanWholeNumber(value) })}
+              keyboardType="number-pad"
+            />
+            <Field
+              label="Scheme generation"
+              value={props.appSettings.schemeCost}
+              onChangeText={(value) => props.setAppSettings({ schemeCost: cleanWholeNumber(value) })}
+              keyboardType="number-pad"
+            />
+            <Field
+              label="Custom scheme analysis"
+              value={props.appSettings.parsingCost}
+              onChangeText={(value) => props.setAppSettings({ parsingCost: cleanWholeNumber(value) })}
+              keyboardType="number-pad"
+            />
+          </View>
+          <View style={styles.settingsBox}>
+            <Text style={styles.sectionLabel}>Retention & Runtime</Text>
+            <Field
+              label="Generated file retention days"
+              value={props.appSettings.retentionDays}
+              onChangeText={(value) => props.setAppSettings({ retentionDays: cleanWholeNumber(value) })}
+              keyboardType="number-pad"
+            />
+            <Field label="Paystack mode" value={props.appSettings.paystackMode} editable={false} />
+            <Field label="Parser backend" value={props.appSettings.parserBackend} editable={false} />
+          </View>
+        </View>
+        <View style={styles.editActionPanel}>
+          <Button title="Save app settings" onPress={props.saveAppSettings} loading={props.savingAppSettings} />
+        </View>
+      </Panel>
     </>
   );
 }
@@ -1087,6 +1226,59 @@ function uniquePackageId(base: string, packages: AdminCreditPackage[]) {
     count += 1;
   }
   return candidate;
+}
+
+function emptyAppSettingsDraft(): AppSettingsDraft {
+  return {
+    starterCredits: '5',
+    starterActive: true,
+    referralCredits: '5',
+    referralMonthlyLimit: '5',
+    referralActive: true,
+    lessonCost: '1',
+    schemeCost: '1',
+    parsingCost: '1',
+    retentionDays: '15',
+    paystackMode: 'live',
+    parserBackend: 'active',
+  };
+}
+
+function settingsToDraft(settings: AdminSetting[]): AppSettingsDraft {
+  const byKey = new Map(settings.map((item) => [item.key, item.value ?? {}]));
+  const starter = byKey.get('starter_credits') ?? {};
+  const referral = byKey.get('referral_reward') ?? {};
+  const costs = byKey.get('feature_credit_costs') ?? {};
+  const retention = byKey.get('generated_file_retention') ?? {};
+  const paystack = byKey.get('paystack_mode') ?? {};
+  const parser = byKey.get('parser_backend') ?? {};
+
+  return {
+    starterCredits: String(numberSetting(starter.credits, 5)),
+    starterActive: booleanSetting(starter.active, true),
+    referralCredits: String(numberSetting(referral.credits, 5)),
+    referralMonthlyLimit: String(numberSetting(referral.monthly_limit, 5)),
+    referralActive: booleanSetting(referral.active, true),
+    lessonCost: String(numberSetting(costs.lesson_generation, 1)),
+    schemeCost: String(numberSetting(costs.scheme_generation, 1)),
+    parsingCost: String(numberSetting(costs.scheme_parsing, 1)),
+    retentionDays: String(numberSetting(retention.days, 15)),
+    paystackMode: String(paystack.mode ?? 'live'),
+    parserBackend: String(parser.provider ?? 'active'),
+  };
+}
+
+function numberSetting(value: unknown, fallback: number) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function booleanSetting(value: unknown, fallback: boolean) {
+  return typeof value === 'boolean' ? value : fallback;
+}
+
+function cleanWholeNumber(value: string) {
+  return value.replace(/[^0-9]/g, '').slice(0, 4);
 }
 
 function formatMoney(subunit: number) {
@@ -1377,4 +1569,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   editActionButton: { minWidth: 140 },
+  settingsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 14 },
+  settingsBox: {
+    flexGrow: 1,
+    flexBasis: 260,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#F7F9F4',
+  },
 });

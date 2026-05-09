@@ -5,7 +5,7 @@ import {
   normalizeLessonPlanResponse,
   type LessonGenerationBody,
 } from '../_shared/generation.ts';
-import { consumeCreditsForRequest, refundCredits } from '../_shared/credits.ts';
+import { consumeCreditsForRequest, getFeatureCreditCost, refundCredits } from '../_shared/credits.ts';
 import { HttpError, logEdgeError } from '../_shared/supabase.ts';
 import { rewardReferralIfQualified } from '../_shared/referrals.ts';
 
@@ -31,11 +31,13 @@ Deno.serve(async (req) => {
   }
 
   let creditDebit: Awaited<ReturnType<typeof consumeCreditsForRequest>> | null = null;
+  let creditCost = LESSON_PLAN_CREDIT_COST;
 
   try {
+    creditCost = await getFeatureCreditCost('lesson_generation', LESSON_PLAN_CREDIT_COST);
     creditDebit = await consumeCreditsForRequest(
       req,
-      LESSON_PLAN_CREDIT_COST,
+      creditCost,
       'lesson_generation',
       'Lesson plan generation',
       {
@@ -75,7 +77,7 @@ Deno.serve(async (req) => {
     if (creditDebit) {
       await refundCredits(
         creditDebit.user.id,
-        LESSON_PLAN_CREDIT_COST,
+        creditCost,
         'Refund for failed lesson plan generation',
         {
           originalTransactionId: creditDebit.transactionId,

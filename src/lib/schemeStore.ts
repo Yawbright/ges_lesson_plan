@@ -2,11 +2,12 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { normalizeSchemeWeek } from '@/lib/schemeWeek';
 import { supabase } from './supabase';
+import { defaultRuntimeSettings, loadRuntimeAppSettings } from './appSettings';
 import type { ClassLevel } from '@/types/lessonPlan';
 import type { SchemeOfWork, SchemeWeek } from '@/types/scheme';
 
 const STORAGE_KEY = 'local-schemes';
-const EXPIRY_DAYS = 15;
+const FALLBACK_EXPIRY_DAYS = defaultRuntimeSettings.generatedFileRetention.days;
 
 type SchemeMatchInput = {
   subject: string;
@@ -29,7 +30,8 @@ export async function saveScheme(scheme: SchemeOfWork): Promise<SchemeOfWork> {
   const normalized = normalizeScheme(scheme);
   const userId = await getUserId();
   if (userId) {
-    const expiresAt = addDays(new Date(), EXPIRY_DAYS).toISOString();
+    const retentionDays = await loadRetentionDays();
+    const expiresAt = addDays(new Date(), retentionDays).toISOString();
     const { error } = await supabase.from('saved_schemes').upsert({
       id: normalized.id,
       user_id: userId,
@@ -156,7 +158,7 @@ async function loadLocalSchemes(): Promise<SchemeOfWork[]> {
     const parsed = JSON.parse(raw) as SchemeOfWork[];
     return parsed
       .map(normalizeScheme)
-      .filter((item) => !isExpired(item.createdAt))
+      .filter((item) => !isExpired(item.createdAt, FALLBACK_EXPIRY_DAYS))
       .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
   } catch {
     return [];
@@ -189,9 +191,14 @@ async function getUserId() {
   return data.user?.id ?? null;
 }
 
-function isExpired(createdAt?: string) {
+async function loadRetentionDays() {
+  const settings = await loadRuntimeAppSettings();
+  return Math.max(1, Math.round(settings.generatedFileRetention.days || FALLBACK_EXPIRY_DAYS));
+}
+
+function isExpired(createdAt: string | undefined, days: number) {
   if (!createdAt) return false;
-  return Date.now() - new Date(createdAt).getTime() > EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+  return Date.now() - new Date(createdAt).getTime() > days * 24 * 60 * 60 * 1000;
 }
 
 function addDays(date: Date, days: number) {

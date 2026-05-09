@@ -8,6 +8,7 @@ type Body = {
   amount?: number;
   reason?: string;
   package?: CreditPackageUpdate;
+  settings?: Record<string, unknown>;
 };
 
 type AdminUser = {
@@ -126,6 +127,14 @@ Deno.serve(async (req) => {
       if (!body.package?.id) return json({ error: 'Package id is required' }, 400);
       const result = await deletePackage(service, body.package.id);
       return json(result, 200);
+    }
+
+    if (body.action === 'update-settings') {
+      if (!body.settings || typeof body.settings !== 'object') {
+        return json({ error: 'settings object is required' }, 400);
+      }
+      const settings = await updateSettings(service, body.settings);
+      return json({ settings }, 200);
     }
 
     return json({ error: 'Unknown admin action' }, 400);
@@ -378,6 +387,32 @@ async function loadPackages(service: ReturnType<typeof createServiceClient>) {
 async function loadSettings(service: ReturnType<typeof createServiceClient>) {
   const { data, error } = await service.from('admin_app_settings').select('key,value,updated_at').order('key');
   if (error) return [];
+  return data ?? [];
+}
+
+async function updateSettings(service: ReturnType<typeof createServiceClient>, settings: Record<string, unknown>) {
+  const allowedKeys = new Set([
+    'starter_credits',
+    'referral_reward',
+    'feature_credit_costs',
+    'generated_file_retention',
+  ]);
+  const rows = Object.entries(settings)
+    .filter(([key]) => allowedKeys.has(key))
+    .map(([key, value]) => ({
+      key,
+      value,
+      updated_at: new Date().toISOString(),
+    }));
+
+  if (!rows.length) throw new Error('No supported settings were provided');
+
+  const { data, error } = await service
+    .from('admin_app_settings')
+    .upsert(rows, { onConflict: 'key' })
+    .select('key,value,updated_at')
+    .order('key');
+  if (error) throw new Error(error.message);
   return data ?? [];
 }
 

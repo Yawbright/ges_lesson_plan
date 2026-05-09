@@ -2,6 +2,14 @@ import { createServiceClient, getAuthenticatedUser, HttpError } from './supabase
 
 export type CreditKind = 'lesson_generation' | 'scheme_generation' | 'scheme_parsing';
 
+export async function getFeatureCreditCost(kind: CreditKind, fallback = 1) {
+  const service = createServiceClient();
+  const { data, error } = await service.from('admin_app_settings').select('value').eq('key', 'feature_credit_costs').maybeSingle();
+  if (error) return fallback;
+  const value = Number(data?.value?.[kind] ?? fallback);
+  return Number.isFinite(value) && value >= 0 ? Math.round(value) : fallback;
+}
+
 export async function consumeCreditsForRequest(
   req: Request,
   amount: number,
