@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/Button';
 import { Field } from '@/components/Field';
 import { adminAdjustCredits, adminLoadLogs, adminSearchUsers, type AdminLog, type AdminUser } from '@/lib/admin';
@@ -7,17 +7,20 @@ import { colors } from '@/theme/colors';
 
 export default function AdminScreen() {
   const [query, setQuery] = useState('');
+  const [submittedQuery, setSubmittedQuery] = useState('');
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [logs, setLogs] = useState<AdminLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searching, setSearching] = useState(false);
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+  const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
   const [amount, setAmount] = useState('10');
   const [reason, setReason] = useState('Admin credit adjustment');
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [nextUsers, nextLogs] = await Promise.all([adminSearchUsers(query), adminLoadLogs()]);
+      const [nextUsers, nextLogs] = await Promise.all([adminSearchUsers(submittedQuery), adminLoadLogs()]);
       setUsers(nextUsers);
       setLogs(nextLogs);
     } catch (err: unknown) {
@@ -25,7 +28,7 @@ export default function AdminScreen() {
     } finally {
       setLoading(false);
     }
-  }, [query]);
+  }, [submittedQuery]);
 
   useEffect(() => {
     refresh();
@@ -48,6 +51,20 @@ export default function AdminScreen() {
     }
   }
 
+  async function searchUsers() {
+    setSearching(true);
+    try {
+      const nextQuery = query.trim();
+      setSubmittedQuery(nextQuery);
+      const nextUsers = await adminSearchUsers(nextQuery);
+      setUsers(nextUsers);
+    } catch (err: unknown) {
+      Alert.alert('Search failed', getMessage(err));
+    } finally {
+      setSearching(false);
+    }
+  }
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -63,18 +80,34 @@ export default function AdminScreen() {
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Users</Text>
-        <Field label="Search by email" value={query} onChangeText={setQuery} autoCapitalize="none" />
-        <Button title="Search" onPress={refresh} />
-        {users.map((user) => (
-          <View key={user.user_id} style={styles.row}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.rowTitle}>{user.email}</Text>
-              <Text style={styles.meta}>Balance: {user.balance} credits</Text>
-              <Text style={styles.meta}>{new Date(user.created_at).toLocaleDateString()}</Text>
+        <Field
+          label="Search by email"
+          value={query}
+          onChangeText={setQuery}
+          autoCapitalize="none"
+          autoCorrect={false}
+          placeholder="teacher@example.com"
+          keyboardType="email-address"
+        />
+        <Button title="Search users" onPress={searchUsers} loading={searching} />
+        <Text style={styles.resultMeta}>
+          {submittedQuery ? `Showing matches for "${submittedQuery}"` : 'Showing latest users'}
+        </Text>
+        {users.length ? (
+          users.map((user) => (
+            <View key={user.user_id} style={styles.row}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle}>{user.email || 'No email'}</Text>
+                <Text style={styles.meta}>Balance: {user.balance} credits</Text>
+                <Text style={styles.meta}>Joined {new Date(user.created_at).toLocaleDateString()}</Text>
+                <Text style={styles.meta}>User ID: {user.user_id}</Text>
+              </View>
+              <Button title="Adjust" variant="secondary" onPress={() => setSelectedUser(user)} style={styles.smallButton} />
             </View>
-            <Button title="Adjust" variant="secondary" onPress={() => setSelectedUser(user)} style={styles.smallButton} />
-          </View>
-        ))}
+          ))
+        ) : (
+          <Text style={styles.emptyText}>No users found. Try a shorter part of the email address.</Text>
+        )}
       </View>
 
       {selectedUser ? (
@@ -92,11 +125,23 @@ export default function AdminScreen() {
         <Text style={styles.cardTitle}>Recent Error Logs</Text>
         {logs.length ? (
           logs.map((log) => (
-            <View key={log.id} style={styles.logRow}>
+            <Pressable
+              key={log.id}
+              style={styles.logRow}
+              onPress={() => setSelectedLogId((current) => (current === log.id ? null : log.id))}
+            >
               <Text style={styles.rowTitle}>{log.action}</Text>
               <Text style={styles.meta}>{log.source} | {log.severity} | {new Date(log.created_at).toLocaleString()}</Text>
               <Text style={styles.logMessage}>{log.message}</Text>
-            </View>
+              {selectedLogId === log.id ? (
+                <View style={styles.logDetails}>
+                  <Text style={styles.meta}>User ID: {log.user_id ?? 'Not available'}</Text>
+                  <Text style={styles.detailText}>{JSON.stringify(log.metadata ?? {}, null, 2)}</Text>
+                </View>
+              ) : (
+                <Text style={styles.expandText}>Tap to view details</Text>
+              )}
+            </Pressable>
           ))
         ) : (
           <Text style={styles.meta}>No logs yet.</Text>
@@ -136,6 +181,21 @@ const styles = StyleSheet.create({
   rowTitle: { color: colors.text, fontWeight: '800' },
   meta: { color: colors.textMuted, marginTop: 3 },
   smallButton: { minHeight: 40, paddingHorizontal: 10, paddingVertical: 8 },
+  resultMeta: { color: colors.textMuted, marginTop: 10, marginBottom: 2, lineHeight: 18 },
+  emptyText: { color: colors.textMuted, marginTop: 12, lineHeight: 20 },
   logRow: { borderTopWidth: 1, borderTopColor: colors.border, paddingVertical: 10 },
   logMessage: { color: colors.text, marginTop: 4, lineHeight: 19 },
+  expandText: { color: colors.primary, fontWeight: '700', marginTop: 6 },
+  logDetails: {
+    backgroundColor: '#F7F9F4',
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 8,
+  },
+  detailText: {
+    color: colors.text,
+    fontFamily: 'monospace',
+    fontSize: 12,
+    marginTop: 6,
+  },
 });
