@@ -3,7 +3,14 @@ import { Alert, Platform, StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/Button';
 import { Field } from '@/components/Field';
 import { useToast } from '@/components/ToastProvider';
-import { getAuthErrorMessage, signInWithEmail, signUpWithEmail } from '@/lib/auth';
+import {
+  completePasswordReset,
+  getAuthErrorMessage,
+  initializePasswordRecoveryFromUrl,
+  requestPasswordReset,
+  signInWithEmail,
+  signUpWithEmail,
+} from '@/lib/auth';
 import {
   applyReferralCode,
   consumePendingReferralCode,
@@ -12,6 +19,8 @@ import {
 } from '@/lib/referrals';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { colors } from '@/theme/colors';
+
+type AuthFormMode = 'signin' | 'signup' | 'reset-request' | 'reset-update';
 
 export interface EmailPasswordAuthFormProps {
   onSignedIn?: () => void;
@@ -27,7 +36,7 @@ export function EmailPasswordAuthForm({
   referralCode,
 }: EmailPasswordAuthFormProps) {
   const { showToast } = useToast();
-  const [mode, setMode] = useState<'signin' | 'signup'>(referralCode ? 'signup' : 'signin');
+  const [mode, setMode] = useState<AuthFormMode>(referralCode ? 'signup' : 'signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -43,6 +52,30 @@ export function EmailPasswordAuthForm({
     }
   }, [referralCode]);
 
+  useEffect(() => {
+    let active = true;
+
+    async function initializeRecovery() {
+      try {
+        const recovery = await initializePasswordRecoveryFromUrl();
+        if (active && recovery) {
+          setMode('reset-update');
+          setInfoMessage('Enter a new password for your account.');
+        }
+      } catch (err: unknown) {
+        if (!active) return;
+        const message = err instanceof Error ? err.message : 'Password reset link could not be opened.';
+        setFieldError(message);
+        showToast({ message, type: 'error' });
+      }
+    }
+
+    initializeRecovery();
+    return () => {
+      active = false;
+    };
+  }, [showToast]);
+
   async function submit() {
     setFieldError(null);
     setInfoMessage(null);
@@ -56,6 +89,56 @@ export function EmailPasswordAuthForm({
     }
 
     const normalizedEmail = email.trim().toLowerCase();
+
+    if (mode === 'reset-request') {
+      if (!normalizedEmail) {
+        Alert.alert('Email required', 'Enter your email address to receive a reset link.');
+        return;
+      }
+
+      setLoading(true);
+      try {
+        await requestPasswordReset(normalizedEmail);
+        showToast({ message: 'Password reset link sent.' });
+        setInfoMessage('Check your email for the password reset link.');
+        setMode('signin');
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Could not send password reset link.';
+        setFieldError(message);
+        showToast({ message, type: 'error' });
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    if (mode === 'reset-update') {
+      if (password.length < 6) {
+        setFieldError('Password must be at least 6 characters.');
+        return;
+      }
+      if (password !== confirmPassword) {
+        setFieldError('Passwords do not match.');
+        return;
+      }
+
+      setLoading(true);
+      try {
+        await completePasswordReset(password);
+        showToast({ message: 'Password updated. Sign in with your new password.' });
+        setInfoMessage('Password updated. You can now sign in with your new password.');
+        setPassword('');
+        setConfirmPassword('');
+        setMode('signin');
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Could not update password.';
+        setFieldError(message);
+        showToast({ message, type: 'error' });
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
 
     if (!normalizedEmail || !password) {
       Alert.alert('Missing info', 'Please enter both email and password.');
@@ -109,7 +192,7 @@ export function EmailPasswordAuthForm({
         }
       }
     } catch (err: unknown) {
-      const message = getAuthErrorMessage(err, mode);
+      const message = getAuthErrorMessage(err, mode === 'signup' ? 'signup' : 'signin');
       setFieldError(message);
       if (message.toLowerCase().includes('confirm your email')) {
         setInfoMessage('Your email is not confirmed yet. Open the confirmation link in your inbox, then sign in again.');
@@ -136,22 +219,24 @@ export function EmailPasswordAuthForm({
         keyboardType="email-address"
         autoComplete="email"
       />
-      <Field
-        label="Password"
-        value={password}
-        onChangeText={(value) => {
-          setPassword(value);
-          setFieldError(null);
-        }}
-        placeholder="Enter your password"
-        secureTextEntry
-        autoComplete={mode === 'signin' ? 'password' : 'new-password'}
-        error={fieldError ?? undefined}
-      />
-      {mode === 'signup' ? (
+      {mode !== 'reset-request' ? (
+        <Field
+          label={mode === 'reset-update' ? 'New password' : 'Password'}
+          value={password}
+          onChangeText={(value) => {
+            setPassword(value);
+            setFieldError(null);
+          }}
+          placeholder={mode === 'reset-update' ? 'Enter new password' : 'Enter your password'}
+          secureTextEntry
+          autoComplete={mode === 'signin' ? 'password' : 'new-password'}
+          error={fieldError ?? undefined}
+        />
+      ) : null}
+      {mode === 'signup' || mode === 'reset-update' ? (
         <>
           <Field
-            label="Confirm password"
+            label={mode === 'reset-update' ? 'Confirm new password' : 'Confirm password'}
             value={confirmPassword}
             onChangeText={(value) => {
               setConfirmPassword(value);
@@ -161,16 +246,18 @@ export function EmailPasswordAuthForm({
             secureTextEntry
             autoComplete="new-password"
           />
-          <Field
-            label="Referral / invitation code"
-            value={invitationCode}
-            onChangeText={(value) => {
-              setInvitationCode(value.trim().toUpperCase());
-              setFieldError(null);
-            }}
-            placeholder="e.g. KHERKHELLY"
-            autoCapitalize="characters"
-          />
+          {mode === 'signup' ? (
+            <Field
+              label="Referral / invitation code"
+              value={invitationCode}
+              onChangeText={(value) => {
+                setInvitationCode(value.trim().toUpperCase());
+                setFieldError(null);
+              }}
+              placeholder="e.g. KHERKHELLY"
+              autoCapitalize="characters"
+            />
+          ) : null}
         </>
       ) : null}
       {mode === 'signup' && referralCode ? (
@@ -179,20 +266,45 @@ export function EmailPasswordAuthForm({
       {infoMessage ? <Text style={styles.infoNote}>{infoMessage}</Text> : null}
 
       <Button
-        title={mode === 'signin' ? 'Sign in' : 'Create account'}
+        title={getPrimaryButtonTitle(mode)}
         onPress={submit}
         loading={loading}
       />
-      <Button
-        title={mode === 'signin' ? 'New here? Create an account' : 'Have an account? Sign in'}
-        variant="ghost"
-        onPress={() => {
-          setFieldError(null);
-          setInfoMessage(null);
-          setConfirmPassword('');
-          setMode((m) => (m === 'signin' ? 'signup' : 'signin'));
-        }}
-      />
+      {mode === 'signin' ? (
+        <>
+          <Button
+            title="Forgot password?"
+            variant="ghost"
+            onPress={() => {
+              setFieldError(null);
+              setInfoMessage('Enter your email and we will send a password reset link.');
+              setPassword('');
+              setMode('reset-request');
+            }}
+          />
+          <Button
+            title="New here? Create an account"
+            variant="ghost"
+            onPress={() => {
+              setFieldError(null);
+              setInfoMessage(null);
+              setConfirmPassword('');
+              setMode('signup');
+            }}
+          />
+        </>
+      ) : (
+        <Button
+          title="Back to sign in"
+          variant="ghost"
+          onPress={() => {
+            setFieldError(null);
+            setInfoMessage(null);
+            setConfirmPassword('');
+            setMode('signin');
+          }}
+        />
+      )}
     </View>
   );
 }
@@ -222,6 +334,13 @@ async function consumePendingTeacherSetup() {
     window.localStorage.removeItem(PENDING_TEACHER_SETUP_KEY);
   }
   return Boolean(value);
+}
+
+function getPrimaryButtonTitle(mode: AuthFormMode) {
+  if (mode === 'signin') return 'Sign in';
+  if (mode === 'signup') return 'Create account';
+  if (mode === 'reset-request') return 'Send reset link';
+  return 'Update password';
 }
 
 const styles = StyleSheet.create({

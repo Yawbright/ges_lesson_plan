@@ -74,6 +74,90 @@ export async function signUpWithEmail(
   return data;
 }
 
+export async function requestPasswordReset(email: string) {
+  const redirectTo =
+    typeof window !== 'undefined' && window.location?.origin
+      ? `${window.location.origin}/sign-in?reset=1`
+      : undefined;
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+  if (error) throw error;
+}
+
+export async function completePasswordReset(password: string) {
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) throw error;
+}
+
+export async function initializePasswordRecoveryFromUrl() {
+  if (typeof window === 'undefined') return false;
+
+  const url = new URL(window.location.href);
+  const hashParams = new URLSearchParams(url.hash.replace(/^#/, ''));
+  const queryParams = url.searchParams;
+  const isRecovery =
+    queryParams.get('reset') === '1' ||
+    hashParams.get('type') === 'recovery' ||
+    queryParams.get('type') === 'recovery';
+
+  if (!isRecovery) return false;
+
+  const code = queryParams.get('code');
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) throw error;
+    clearRecoveryUrl(url);
+    return true;
+  }
+
+  const accessToken = hashParams.get('access_token');
+  const refreshToken = hashParams.get('refresh_token');
+  if (accessToken && refreshToken) {
+    const { error } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+    if (error) throw error;
+    clearRecoveryUrl(url);
+    return true;
+  }
+
+  return isRecovery;
+}
+
+export async function initializeEmailConfirmationFromUrl() {
+  if (typeof window === 'undefined') return false;
+
+  const url = new URL(window.location.href);
+  const hashParams = new URLSearchParams(url.hash.replace(/^#/, ''));
+  const queryParams = url.searchParams;
+  const type = hashParams.get('type') || queryParams.get('type');
+
+  if (type !== 'signup' && type !== 'email_change') return false;
+
+  const code = queryParams.get('code');
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) throw error;
+    clearAuthUrl(url);
+    return true;
+  }
+
+  const accessToken = hashParams.get('access_token');
+  const refreshToken = hashParams.get('refresh_token');
+  if (accessToken && refreshToken) {
+    const { error } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+    if (error) throw error;
+    clearAuthUrl(url);
+    return true;
+  }
+
+  return false;
+}
+
 export async function signOut() {
   await supabase.auth.signOut();
 }
@@ -109,4 +193,15 @@ export function getAuthErrorMessage(err: unknown, mode: 'signin' | 'signup'): st
   }
 
   return message || 'Something went wrong. Please try again.';
+}
+
+function clearRecoveryUrl(url: URL) {
+  clearAuthUrl(url);
+}
+
+function clearAuthUrl(url: URL) {
+  url.searchParams.delete('reset');
+  url.searchParams.delete('code');
+  url.searchParams.delete('type');
+  window.history.replaceState({}, document.title, `${url.pathname}${url.search}`);
 }
