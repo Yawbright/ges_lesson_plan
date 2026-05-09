@@ -174,6 +174,28 @@ export async function adminUpdatePackage(input: {
   return data.package;
 }
 
+export async function adminCreatePackage(input: {
+  id: string;
+  name: string;
+  credits: number;
+  originalPriceSubunit: number;
+  priceSubunit: number;
+  promotionType: string;
+  promotionValue: number;
+  badgeText: string;
+  bonusCredits: number;
+  promoStartsAt?: string | null;
+  promoEndsAt?: string | null;
+  active: boolean;
+}) {
+  const data = await invokeAdmin<{ package: AdminCreditPackage }>({ action: 'create-package', package: input });
+  return data.package;
+}
+
+export async function adminDeletePackage(id: string) {
+  return invokeAdmin<{ deleted: boolean; deactivated: boolean }>({ action: 'delete-package', package: { id } });
+}
+
 export async function adminLoadLogs() {
   const data = await invokeAdmin<{ logs: AdminLog[] }>({ action: 'logs' });
   return data.logs;

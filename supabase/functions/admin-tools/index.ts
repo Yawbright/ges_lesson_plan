@@ -116,6 +116,18 @@ Deno.serve(async (req) => {
       return json({ package: pack }, 200);
     }
 
+    if (body.action === 'create-package') {
+      if (!body.package?.id) return json({ error: 'Package id is required' }, 400);
+      const pack = await createPackage(service, body.package);
+      return json({ package: pack }, 200);
+    }
+
+    if (body.action === 'delete-package') {
+      if (!body.package?.id) return json({ error: 'Package id is required' }, 400);
+      const result = await deletePackage(service, body.package.id);
+      return json(result, 200);
+    }
+
     return json({ error: 'Unknown admin action' }, 400);
   } catch (err) {
     if (err instanceof HttpError) {
@@ -398,6 +410,55 @@ async function updatePackage(service: ReturnType<typeof createServiceClient>, in
   const { data, error } = await service.from('credit_packages').update(cleanUpdates).eq('id', input.id).select().single();
   if (error) throw new Error(error.message);
   return data;
+}
+
+async function createPackage(service: ReturnType<typeof createServiceClient>, input: CreditPackageUpdate) {
+  const row = {
+    id: input.id?.trim(),
+    name: input.name?.trim() || `${input.credits ?? 0} credits`,
+    credits: input.credits,
+    original_price_subunit: input.originalPriceSubunit,
+    price_subunit: input.priceSubunit,
+    currency: 'GHS',
+    promotion_type: input.promotionType?.trim() || 'none',
+    promotion_value: input.promotionValue ?? 0,
+    badge_text: input.badgeText?.trim() ?? '',
+    bonus_credits: input.bonusCredits ?? 0,
+    promo_starts_at: input.promoStartsAt || null,
+    promo_ends_at: input.promoEndsAt || null,
+    active: input.active ?? true,
+    sort_order: input.credits ?? 0,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (!row.id || !row.credits || !row.price_subunit) {
+    throw new Error('Package id, credits, and final price are required');
+  }
+
+  const { data, error } = await service.from('credit_packages').insert(row).select().single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function deletePackage(service: ReturnType<typeof createServiceClient>, packageId: string) {
+  const { count, error: countError } = await service
+    .from('credit_purchases')
+    .select('id', { count: 'exact', head: true })
+    .eq('package_id', packageId);
+  if (countError) throw new Error(countError.message);
+
+  if ((count ?? 0) > 0) {
+    const { error } = await service
+      .from('credit_packages')
+      .update({ active: false, updated_at: new Date().toISOString() })
+      .eq('id', packageId);
+    if (error) throw new Error(error.message);
+    return { deleted: false, deactivated: true };
+  }
+
+  const { error } = await service.from('credit_packages').delete().eq('id', packageId);
+  if (error) throw new Error(error.message);
+  return { deleted: true, deactivated: false };
 }
 
 async function safeLoad<T>(loader: () => Promise<T>, fallback: T): Promise<T> {
