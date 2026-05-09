@@ -9,6 +9,12 @@ type Body = {
   reason?: string;
 };
 
+type ListedUser = {
+  id: string;
+  email?: string | null;
+  created_at?: string;
+};
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
@@ -25,12 +31,8 @@ Deno.serve(async (req) => {
     if (!isAdmin) return json({ error: 'Admin access required' }, 403);
 
     if (body.action === 'search-users') {
-      const { data, error } = await service.rpc('admin_search_users', {
-        p_admin_user_id: user.id,
-        p_query: body.query ?? '',
-      });
-      if (error) throw new Error(error.message);
-      return json({ users: data ?? [] }, 200);
+      const users = await listAdminUsers(service, body.query ?? '');
+      return json({ users }, 200);
     }
 
     if (body.action === 'adjust-credits') {
@@ -71,4 +73,58 @@ function json(payload: unknown, status: number) {
     status,
     headers: { ...corsHeaders, 'content-type': 'application/json' },
   });
+}
+
+async function listAdminUsers(service: ReturnType<typeof createServiceClient>, query: string) {
+  const normalizedQuery = query.trim().toLowerCase();
+  const authUsers: ListedUser[] = [];
+
+  for (let page = 1; page <= 10; page += 1) {
+    const { data, error } = await service.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) throw new Error(error.message);
+
+    const pageUsers = data.users ?? [];
+    authUsers.push(...pageUsers);
+
+    if (pageUsers.length < 1000) break;
+  }
+
+  const filteredUsers = authUsers
+    .filter((item) => {
+      if (!normalizedQuery) return true;
+      return (item.email ?? '').toLowerCase().includes(normalizedQuery) || item.id.toLowerCase().includes(normalizedQuery);
+    })
+    .sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime())
+    .slice(0, 50);
+
+  const userIds = filteredUsers.map((item) => item.id);
+  const balanceByUser = new Map<string, number>();
+  const adminUserIds = new Set<string>();
+
+  if (userIds.length) {
+    const { data: balances, error: balanceError } = await service
+      .from('user_credit_balances')
+      .select('user_id,balance')
+      .in('user_id', userIds);
+    if (balanceError) throw new Error(balanceError.message);
+
+    for (const row of balances ?? []) {
+      balanceByUser.set(row.user_id, Number(row.balance ?? 0));
+    }
+
+    const { data: admins, error: adminsError } = await service.from('admin_users').select('user_id').in('user_id', userIds);
+    if (adminsError) throw new Error(adminsError.message);
+
+    for (const row of admins ?? []) {
+      adminUserIds.add(row.user_id);
+    }
+  }
+
+  return filteredUsers.map((item) => ({
+    user_id: item.id,
+    email: item.email ?? '',
+    created_at: item.created_at ?? new Date().toISOString(),
+    balance: balanceByUser.get(item.id) ?? 0,
+    is_admin: adminUserIds.has(item.id),
+  }));
 }
