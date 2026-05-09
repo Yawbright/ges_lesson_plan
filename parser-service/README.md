@@ -40,14 +40,8 @@ PARSER_SERVICE_PORT=8788
 LOCAL_AI_MODEL=claude-sonnet-4-5
 ```
 
-Optional app-side environment variable for Expo clients:
-
-```env
-EXPO_PUBLIC_PARSER_SERVICE_URL=https://your-parser-service-url
-```
-
-When that variable is set, uploaded scheme parsing goes to the hosted parser service instead
-of the local development parser.
+Production clients do not call this service directly. Uploaded scheme parsing goes through
+the Supabase `parse-uploaded-scheme` Edge Function, which then calls the active parser backend.
 
 ## Endpoint
 
@@ -106,10 +100,18 @@ LOCAL_AI_MODEL=claude-sonnet-4-5
 
 ### After deploy
 
-Copy the Render service URL and add it to your Expo app:
+Copy the Render service URL and set it as the active Supabase parser backend:
 
-```env
-EXPO_PUBLIC_PARSER_SERVICE_URL=https://your-service-name.onrender.com
+```bash
+npm run parser:switch -- -Provider render -Url https://your-service-name.onrender.com
 ```
 
-Then uploaded scheme parsing will use the hosted Render parser instead of localhost.
+Then uploaded scheme parsing will use the hosted Render parser.
+
+## Cloud Run
+
+The same Dockerfile can be used on Google Cloud Run. After deployment, switch Supabase:
+
+```bash
+npm run parser:switch -- -Provider cloud-run -Url https://your-cloud-run-service.run.app
+```

@@ -33,9 +33,9 @@ Deno.serve(async (req) => {
     return json({ error: 'subject, classLevel, term, fileName and fileBase64 are required' }, 400);
   }
 
-  const parserBaseUrl = Deno.env.get('PARSER_SERVICE_URL')?.replace(/\/$/, '');
+  const { baseUrl: parserBaseUrl, provider: parserProvider } = getParserBackend();
   if (!parserBaseUrl) {
-    return json({ error: 'PARSER_SERVICE_URL is not configured for this edge function' }, 500);
+    return json({ error: 'Parser backend URL is not configured for this edge function' }, 500);
   }
 
   let creditDebit: Awaited<ReturnType<typeof consumeCreditsForRequest>> | null = null;
@@ -51,6 +51,7 @@ Deno.serve(async (req) => {
         classLevel: body.classLevel,
         term: body.term,
         fileName: body.fileName,
+        parserProvider,
       },
     );
 
@@ -90,6 +91,27 @@ Deno.serve(async (req) => {
     return json({ error: (err as Error).message }, 500);
   }
 });
+
+function getParserBackend() {
+  const provider = (Deno.env.get('PARSER_BACKEND') || 'active').trim().toLowerCase();
+  const activeUrl = cleanUrl(Deno.env.get('PARSER_SERVICE_URL'));
+  const renderUrl = cleanUrl(Deno.env.get('PARSER_RENDER_SERVICE_URL'));
+  const cloudRunUrl = cleanUrl(Deno.env.get('PARSER_CLOUD_RUN_SERVICE_URL'));
+
+  if (provider === 'render') {
+    return { provider, baseUrl: renderUrl || activeUrl };
+  }
+
+  if (provider === 'cloud-run' || provider === 'cloudrun') {
+    return { provider: 'cloud-run', baseUrl: cloudRunUrl || activeUrl };
+  }
+
+  return { provider: 'active', baseUrl: activeUrl };
+}
+
+function cleanUrl(value?: string | null) {
+  return value?.trim().replace(/\/$/, '') || '';
+}
 
 function json(payload: unknown, status: number) {
   return new Response(JSON.stringify(payload), {

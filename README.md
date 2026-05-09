@@ -75,7 +75,10 @@ supabase db push
 # set the Anthropic key (server-only)
 npx supabase secrets set ANTHROPIC_API_KEY
 npx supabase secrets set PAYSTACK_SECRET_KEY
+supabase secrets set PARSER_BACKEND=render
 supabase secrets set PARSER_SERVICE_URL=https://your-parser-service-url
+supabase secrets set PARSER_RENDER_SERVICE_URL=https://your-render-parser-service-url
+supabase secrets set PARSER_CLOUD_RUN_SERVICE_URL=https://your-cloud-run-parser-service-url
 npx supabase secrets set DEV_CREDIT_GRANT_SECRET
 
 # optional: where Paystack sends users after checkout

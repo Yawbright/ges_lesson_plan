@@ -5,6 +5,7 @@
   "scripts": {
     "local-ai": "node local-ai-server.mjs",
     "parser-service": "node parser-service/src/server.mjs",
+    "parser:switch": "powershell -ExecutionPolicy Bypass -File scripts/switch-parser-backend.ps1",
     "start": "expo start",
     "build:web": "expo export -p web",
     "android": "expo start --android",

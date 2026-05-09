@@ -20,7 +20,6 @@ Create a production `.env` locally before building the web app:
 ```env
 EXPO_PUBLIC_SUPABASE_URL=https://xzgflafcenfnwiqexxuf.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-EXPO_PUBLIC_PARSER_SERVICE_URL=https://your-render-parser-url.onrender.com
 ```
 
 Do not put server secrets in the Expo hosting provider. Server secrets belong in Supabase or Render only.
@@ -40,6 +39,8 @@ Set production function secrets:
 npx supabase secrets set ANTHROPIC_API_KEY
 npx supabase secrets set PAYSTACK_SECRET_KEY
 npx supabase secrets set PAYSTACK_CALLBACK_URL=https://your-web-app-domain/credits
+npx supabase secrets set PARSER_BACKEND=render
+npx supabase secrets set PARSER_RENDER_SERVICE_URL=https://your-render-parser-url.onrender.com
 npx supabase secrets set PARSER_SERVICE_URL=https://your-render-parser-url.onrender.com
 npx supabase secrets set DEV_CREDIT_GRANT_SECRET
 ```
@@ -126,7 +127,64 @@ https://xzgflafcenfnwiqexxuf.supabase.co/functions/v1/paystack-webhook
 
 Run one small live payment test before public launch.
 
-## 4. Parser Service on Render
+## 4. Parser Service Backend
+
+The parser service can run on either Render or Google Cloud Run. The Expo app does not call the parser directly in production. Upload parsing goes:
+
+```text
+Expo app -> Supabase Edge Function -> active parser backend
+```
+
+This keeps credit deduction and auth inside Supabase.
+
+### Backend Secrets
+
+Supabase uses these secrets:
+
+```env
+PARSER_BACKEND=render
+PARSER_SERVICE_URL=https://active-parser-url
+PARSER_RENDER_SERVICE_URL=https://your-render-parser-url.onrender.com
+PARSER_CLOUD_RUN_SERVICE_URL=https://your-cloud-run-parser-url.run.app
+```
+
+`PARSER_SERVICE_URL` is the active fallback URL. `PARSER_BACKEND` can be:
+
+```text
+render
+cloud-run
+active
+```
+
+### Switch Backend
+
+Render:
+
+```powershell
+npm run parser:switch -- -Provider render -Url https://your-render-parser-url.onrender.com
+npx supabase functions deploy parse-uploaded-scheme
+```
+
+Cloud Run:
+
+```powershell
+npm run parser:switch -- -Provider cloud-run -Url https://your-cloud-run-parser-url.run.app
+npx supabase functions deploy parse-uploaded-scheme
+```
+
+If only `PARSER_BACKEND` changes and both backend URL secrets already exist, you can run:
+
+```powershell
+npm run parser:switch -- -Provider render
+```
+
+or:
+
+```powershell
+npm run parser:switch -- -Provider cloud-run
+```
+
+### Render
 
 The repo has `render.yaml` and `parser-service/Dockerfile`.
 
@@ -149,13 +207,32 @@ https://your-render-parser-url.onrender.com/health
 Then copy the Render URL into Supabase:
 
 ```powershell
-npx supabase secrets set PARSER_SERVICE_URL=https://your-render-parser-url.onrender.com
+npm run parser:switch -- -Provider render -Url https://your-render-parser-url.onrender.com
 ```
 
-And into the Expo web build environment:
+### Cloud Run
 
-```env
-EXPO_PUBLIC_PARSER_SERVICE_URL=https://your-render-parser-url.onrender.com
+Build and deploy the same Docker service to Cloud Run:
+
+```powershell
+gcloud run deploy ghana-lesson-planner-parser `
+  --source . `
+  --region us-central1 `
+  --allow-unauthenticated `
+  --set-env-vars PARSER_SERVICE_PORT=8080,LOCAL_AI_MODEL=claude-sonnet-4-5 `
+  --set-secrets ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest
+```
+
+After deploy, open:
+
+```text
+https://your-cloud-run-parser-url.run.app/health
+```
+
+Then switch Supabase to Cloud Run:
+
+```powershell
+npm run parser:switch -- -Provider cloud-run -Url https://your-cloud-run-parser-url.run.app
 ```
 
 ## 5. Build the Web App
@@ -190,7 +267,6 @@ Environment variables for the static host:
 ```env
 EXPO_PUBLIC_SUPABASE_URL=https://xzgflafcenfnwiqexxuf.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-EXPO_PUBLIC_PARSER_SERVICE_URL=https://your-render-parser-url.onrender.com
 ```
 
 ## 6. Launch Smoke Test
