@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Button } from '@/components/Button';
 import { Field } from '@/components/Field';
+import { supabase } from '@/lib/supabase';
 import {
   adminAdjustCredits,
   adminLoadDashboard,
@@ -60,6 +61,9 @@ export default function AdminScreen() {
   const [amount, setAmount] = useState('10');
   const [reason, setReason] = useState('Admin credit adjustment');
   const [editingPackage, setEditingPackage] = useState<PackageDraft | null>(null);
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminSigningIn, setAdminSigningIn] = useState(false);
   const sidebarVisible = sidebarOpen || !isMobile;
   const sidebarCollapsed = !isMobile && !sidebarOpen;
 
@@ -73,7 +77,9 @@ export default function AdminScreen() {
     } catch (err: unknown) {
       const message = getMessage(err);
       setLoadError(message);
-      Alert.alert('Admin unavailable', message);
+      if (!isAdminAuthError(message)) {
+        Alert.alert('Admin unavailable', message);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -152,6 +158,31 @@ export default function AdminScreen() {
       await load();
     } catch (err: unknown) {
       Alert.alert('Could not save package', getMessage(err));
+    }
+  }
+
+  async function signInAdmin() {
+    if (!adminEmail.trim() || !adminPassword) {
+      Alert.alert('Admin sign in', 'Enter the admin email and password.');
+      return;
+    }
+
+    setAdminSigningIn(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: adminEmail.trim(),
+        password: adminPassword,
+      });
+      if (error) throw error;
+      setDashboard(null);
+      setLoadError(null);
+      setAdminPassword('');
+      await load();
+    } catch (err: unknown) {
+      setLoadError(getMessage(err));
+      Alert.alert('Admin sign in failed', getMessage(err));
+    } finally {
+      setAdminSigningIn(false);
     }
   }
 
@@ -244,19 +275,69 @@ export default function AdminScreen() {
               ) : null}
             </>
           ) : (
-            <Panel title="Admin Data Unavailable">
-              <Text style={styles.bodyText}>
-                The admin shell loaded, but the dashboard data could not be retrieved. Use Refresh to try again.
-              </Text>
-              {loadError ? <Text style={styles.errorText}>{loadError}</Text> : null}
-              <View style={styles.buttonRow}>
-                <Button title="Refresh" onPress={load} loading={refreshing} />
-              </View>
-            </Panel>
+            <AdminAccessPanel
+              loadError={loadError}
+              adminEmail={adminEmail}
+              setAdminEmail={setAdminEmail}
+              adminPassword={adminPassword}
+              setAdminPassword={setAdminPassword}
+              signInAdmin={signInAdmin}
+              adminSigningIn={adminSigningIn}
+              refresh={load}
+              refreshing={refreshing}
+            />
           )}
         </ScrollView>
       </View>
     </View>
+  );
+}
+
+function AdminAccessPanel(props: {
+  loadError: string | null;
+  adminEmail: string;
+  setAdminEmail: (value: string) => void;
+  adminPassword: string;
+  setAdminPassword: (value: string) => void;
+  signInAdmin: () => void;
+  adminSigningIn: boolean;
+  refresh: () => void;
+  refreshing: boolean;
+}) {
+  const authIssue = isAdminAuthError(props.loadError);
+  return (
+    <Panel title={authIssue ? 'Admin Sign In Required' : 'Admin Data Unavailable'}>
+      <Text style={styles.bodyText}>
+        {authIssue
+          ? 'You are signed in, but this browser session is not using an admin account. Sign in with the admin account to continue.'
+          : 'The admin shell loaded, but the dashboard data could not be retrieved. Use Refresh to try again.'}
+      </Text>
+      {props.loadError ? <Text style={styles.errorText}>{props.loadError}</Text> : null}
+      {authIssue ? (
+        <View style={styles.adminLoginBox}>
+          <Field
+            label="Admin email"
+            value={props.adminEmail}
+            onChangeText={props.setAdminEmail}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            placeholder="admin@example.com"
+          />
+          <Field
+            label="Admin password"
+            value={props.adminPassword}
+            onChangeText={props.setAdminPassword}
+            secureTextEntry
+            placeholder="Password"
+          />
+          <Button title="Sign in to admin" onPress={props.signInAdmin} loading={props.adminSigningIn} />
+        </View>
+      ) : null}
+      <View style={styles.buttonRow}>
+        <Button title="Refresh" variant={authIssue ? 'ghost' : 'primary'} onPress={props.refresh} loading={props.refreshing} />
+      </View>
+    </Panel>
   );
 }
 
@@ -636,6 +717,12 @@ function getMessage(err: unknown) {
   return err instanceof Error ? err.message : 'Something went wrong.';
 }
 
+function isAdminAuthError(message?: string | null) {
+  if (!message) return false;
+  const normalized = message.toLowerCase();
+  return normalized.includes('admin access required') || normalized.includes('sign in first');
+}
+
 const styles = StyleSheet.create({
   shell: { flex: 1, flexDirection: 'row', backgroundColor: colors.bg },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg },
@@ -745,6 +832,7 @@ const styles = StyleSheet.create({
   sectionLabel: { color: colors.primaryDark, fontWeight: '900', marginTop: 14, marginBottom: 6 },
   emptyText: { color: colors.textMuted, lineHeight: 20 },
   errorText: { color: colors.danger, fontWeight: '700', lineHeight: 20, marginTop: 10 },
+  adminLoginBox: { marginTop: 16, maxWidth: 440 },
   tableHeader: { flexDirection: 'row', backgroundColor: colors.primary, borderRadius: 8, padding: 10 },
   tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.border, padding: 10 },
   tableCell: { flex: 1, color: colors.text, fontWeight: '700' },
