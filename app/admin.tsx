@@ -750,6 +750,13 @@ function SettingsSection(props: {
 
   return (
     <>
+      <View style={styles.settingsIntro}>
+        <Text style={styles.settingsIntroTitle}>Settings</Text>
+        <Text style={styles.settingsIntroText}>
+          Manage credit packages, promotions, starter credits, referral reward limits, feature credit costs,
+          Paystack mode, and parser backend controls from this area.
+        </Text>
+      </View>
       <Panel title="Credit Pricing & Promotions">
         <View style={styles.buttonRow}>
           <Button title="Add package" onPress={() => props.setEditingPackage(newPackageDraft(props.packages))} />
@@ -850,9 +857,6 @@ function SettingsSection(props: {
           </View>
         </Panel>
       ) : null}
-      <Panel title="App Settings">
-        <Text style={styles.bodyText}>Starter credits, referral reward limits, feature credit costs, Paystack mode, and parser backend are displayed here first. Editable controls can be safely added after the pricing table proves stable.</Text>
-      </Panel>
     </>
   );
 }
@@ -1313,6 +1317,14 @@ const styles = StyleSheet.create({
   emptyText: { color: colors.textMuted, lineHeight: 20 },
   errorText: { color: colors.danger, fontWeight: '700', lineHeight: 20, marginTop: 10 },
   adminLoginBox: { marginTop: 16, maxWidth: 440 },
+  settingsIntro: {
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 14,
+  },
+  settingsIntroTitle: { color: '#fff', fontSize: 20, fontWeight: '900', marginBottom: 6 },
+  settingsIntroText: { color: '#EAF2EE', lineHeight: 20 },
   packageGrid: { gap: 10, marginTop: 10 },
   packageAdminCard: {
     borderWidth: 1,
