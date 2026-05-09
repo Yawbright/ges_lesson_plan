@@ -148,7 +148,10 @@ export default function ProfileScreen() {
         <Text style={styles.lead}>
           Sign in with your Supabase account to use cloud lesson and scheme generation.
         </Text>
-        <EmailPasswordAuthForm subtitle="Use the same email and password as your Ghana Lesson Planner account." />
+        <EmailPasswordAuthForm
+          subtitle="Use the same email and password as your Ghana Lesson Planner account."
+          onAccountCreated={() => router.replace('/(tabs)/profile')}
+        />
       </ScrollView>
     );
   }

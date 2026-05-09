@@ -40,6 +40,32 @@ export async function applyReferralCode(code: string) {
   }>('apply-referral', { code: trimmed, deviceId });
 }
 
+export async function validateReferralCode(code: string) {
+  const cleaned = code.trim().toUpperCase();
+  if (!cleaned) {
+    throw new Error('Invitation code is required.');
+  }
+  if (!supabaseUrl || !supabaseAnonKey) throw new Error('Supabase is not configured.');
+
+  const response = await fetch(`${supabaseUrl}/functions/v1/validate-referral-code`, {
+    method: 'POST',
+    headers: {
+      apikey: supabaseAnonKey,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ code: cleaned }),
+  });
+
+  const raw = await response.text();
+  const payload = raw ? JSON.parse(raw) : null;
+
+  if (!response.ok || !payload?.valid) {
+    throw new Error(payload?.error ?? 'Invitation code is invalid.');
+  }
+
+  return String(payload.code ?? cleaned).toUpperCase();
+}
+
 export async function savePendingReferralCode(code: string) {
   const cleaned = code.trim().toUpperCase();
   if (!cleaned) return;
@@ -114,4 +140,3 @@ const storage = {
     await AsyncStorage.removeItem(key);
   },
 };
-

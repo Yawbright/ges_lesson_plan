@@ -1,28 +1,47 @@
-import { useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Platform, StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/Button';
 import { Field } from '@/components/Field';
 import { useToast } from '@/components/ToastProvider';
 import { getAuthErrorMessage, signInWithEmail, signUpWithEmail } from '@/lib/auth';
-import { applyReferralCode, consumePendingReferralCode, savePendingReferralCode } from '@/lib/referrals';
+import {
+  applyReferralCode,
+  consumePendingReferralCode,
+  savePendingReferralCode,
+  validateReferralCode,
+} from '@/lib/referrals';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { colors } from '@/theme/colors';
 
 export interface EmailPasswordAuthFormProps {
   onSignedIn?: () => void;
+  onAccountCreated?: () => void;
   subtitle?: string;
   referralCode?: string;
 }
 
-export function EmailPasswordAuthForm({ onSignedIn, subtitle, referralCode }: EmailPasswordAuthFormProps) {
+export function EmailPasswordAuthForm({
+  onSignedIn,
+  onAccountCreated,
+  subtitle,
+  referralCode,
+}: EmailPasswordAuthFormProps) {
   const { showToast } = useToast();
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [mode, setMode] = useState<'signin' | 'signup'>(referralCode ? 'signup' : 'signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [invitationCode, setInvitationCode] = useState(referralCode?.trim().toUpperCase() ?? '');
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (referralCode) {
+      setInvitationCode(referralCode.trim().toUpperCase());
+      setMode('signup');
+    }
+  }, [referralCode]);
 
   async function submit() {
     setFieldError(null);
@@ -44,6 +63,11 @@ export function EmailPasswordAuthForm({ onSignedIn, subtitle, referralCode }: Em
     }
 
     if (mode === 'signup') {
+      if (!invitationCode.trim()) {
+        setFieldError('Invitation code is required to create an account.');
+        return;
+      }
+
       if (password.length < 6) {
         setFieldError('Password must be at least 6 characters.');
         return;
@@ -61,22 +85,26 @@ export function EmailPasswordAuthForm({ onSignedIn, subtitle, referralCode }: Em
         await signInWithEmail(normalizedEmail, password);
         await applyPendingReferral();
         showToast({ message: 'Signed in successfully.' });
-        onSignedIn?.();
-      } else {
-        const data = await signUpWithEmail(normalizedEmail, password);
-        if (referralCode) {
-          await savePendingReferralCode(referralCode);
+        if (await consumePendingTeacherSetup()) {
+          onAccountCreated?.();
+        } else {
+          onSignedIn?.();
         }
+      } else {
+        const validatedCode = await validateReferralCode(invitationCode);
+        await savePendingReferralCode(validatedCode);
+        const data = await signUpWithEmail(normalizedEmail, password, validatedCode);
         if (data.session) {
           await applyPendingReferral();
           showToast({ message: 'Account created. You are now signed in.' });
-          onSignedIn?.();
+          onAccountCreated?.();
         } else {
           showToast({
             message: 'Account created. Please confirm your email, then sign in.',
             type: 'info',
           });
           setInfoMessage('Sign-up successful. Check your email and confirm your account before signing in.');
+          await savePendingTeacherSetup();
           setMode('signin');
         }
       }
@@ -121,17 +149,29 @@ export function EmailPasswordAuthForm({ onSignedIn, subtitle, referralCode }: Em
         error={fieldError ?? undefined}
       />
       {mode === 'signup' ? (
-        <Field
-          label="Confirm password"
-          value={confirmPassword}
-          onChangeText={(value) => {
-            setConfirmPassword(value);
-            setFieldError(null);
-          }}
-          placeholder="Re-enter your password"
-          secureTextEntry
-          autoComplete="new-password"
-        />
+        <>
+          <Field
+            label="Referral / invitation code"
+            value={invitationCode}
+            onChangeText={(value) => {
+              setInvitationCode(value.trim().toUpperCase());
+              setFieldError(null);
+            }}
+            placeholder="e.g. KHERKHELLY"
+            autoCapitalize="characters"
+          />
+          <Field
+            label="Confirm password"
+            value={confirmPassword}
+            onChangeText={(value) => {
+              setConfirmPassword(value);
+              setFieldError(null);
+            }}
+            placeholder="Re-enter your password"
+            secureTextEntry
+            autoComplete="new-password"
+          />
+        </>
       ) : null}
       {mode === 'signup' && referralCode ? (
         <Text style={styles.referralNote}>Referral code: {referralCode.trim().toUpperCase()}</Text>
@@ -165,6 +205,23 @@ async function applyPendingReferral() {
   } catch (error) {
     console.warn('[referrals] Could not apply referral code', error);
   }
+}
+
+const PENDING_TEACHER_SETUP_KEY = 'pending-teacher-setup-after-signup';
+
+async function savePendingTeacherSetup() {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    window.localStorage.setItem(PENDING_TEACHER_SETUP_KEY, '1');
+  }
+}
+
+async function consumePendingTeacherSetup() {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
+  const value = window.localStorage.getItem(PENDING_TEACHER_SETUP_KEY);
+  if (value) {
+    window.localStorage.removeItem(PENDING_TEACHER_SETUP_KEY);
+  }
+  return Boolean(value);
 }
 
 const styles = StyleSheet.create({

@@ -56,7 +56,15 @@ npx supabase functions deploy parse-uploaded-scheme
 npx supabase functions deploy dev-grant-credits
 npx supabase functions deploy referral-dashboard
 npx supabase functions deploy apply-referral
+npx supabase functions deploy validate-referral-code
 ```
+
+Invitation-only signup notes:
+
+- Run `npx supabase db push` before testing new signups.
+- The founder invitation code is `KHERKHELLY`.
+- Migration `0007_founder_referral_code.sql` maps that code to `sesorkelly@gmail.com`. That founder account must exist before the migration can create the code.
+- Migration `0008_enforce_invitation_signup.sql` blocks new Auth users unless signup metadata contains a valid invitation code.
 
 In Supabase Auth settings:
 

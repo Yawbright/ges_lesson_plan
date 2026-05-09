@@ -58,8 +58,17 @@ export async function signInWithEmail(
 export async function signUpWithEmail(
   email: string,
   password: string,
+  invitationCode?: string,
 ): Promise<AuthResponse['data']> {
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: {
+        invitation_code: invitationCode?.trim().toUpperCase() ?? '',
+      },
+    },
+  });
 
   if (error) throw error;
   return data;
@@ -86,6 +95,10 @@ export function getAuthErrorMessage(err: unknown, mode: 'signin' | 'signup'): st
 
   if (lower.includes('user already registered') || lower.includes('already registered')) {
     return 'This email already has an account. Switch to sign in instead.';
+  }
+
+  if (lower.includes('invitation code')) {
+    return message;
   }
 
   if (lower.includes('password should be at least') || lower.includes('password')) {

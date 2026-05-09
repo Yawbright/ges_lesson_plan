@@ -91,6 +91,7 @@ supabase functions deploy parse-uploaded-scheme
 supabase functions deploy dev-grant-credits
 supabase functions deploy referral-dashboard
 supabase functions deploy apply-referral
+supabase functions deploy validate-referral-code
 ```
 
 For production Paystack reliability, add this webhook URL in the Paystack dashboard:
