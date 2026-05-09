@@ -754,23 +754,41 @@ function SettingsSection(props: {
         <View style={styles.buttonRow}>
           <Button title="Add package" onPress={() => props.setEditingPackage(newPackageDraft(props.packages))} />
         </View>
-        <View style={styles.tableHeader}>
-          <Text style={styles.tableCell}>Credits</Text>
-          <Text style={styles.tableCell}>Original Price</Text>
-          <Text style={styles.tableCell}>Promotion</Text>
-          <Text style={styles.tableCell}>Final Price</Text>
-          <Text style={styles.tableCell}>Badge</Text>
-        </View>
         {props.packages.length ? (
-          props.packages.map((pack) => (
-            <Pressable key={pack.id} style={styles.tableRow} onPress={() => props.setEditingPackage(toDraft(pack))}>
-              <Text style={styles.tableCell}>{pack.credits}</Text>
-              <Text style={styles.tableCell}>{formatMoney(pack.original_price_subunit ?? pack.price_subunit)}</Text>
-              <Text style={styles.tableCell}>{promotionLabel(pack)}</Text>
-              <Text style={styles.tableCell}>{formatMoney(pack.price_subunit)}</Text>
-              <Text style={styles.tableCell}>{pack.badge_text || '-'}</Text>
-            </Pressable>
-          ))
+          <View style={styles.packageGrid}>
+            {props.packages.map((pack) => {
+              const packDraft = toDraft(pack);
+              return (
+                <View key={pack.id} style={styles.packageAdminCard}>
+                  <View style={styles.packageAdminMain}>
+                    <Text style={styles.packageAdminTitle}>{pack.credits} credits</Text>
+                    <Text style={styles.meta}>ID: {pack.id}</Text>
+                    <Text style={styles.meta}>Original: {formatMoney(pack.original_price_subunit ?? pack.price_subunit)}</Text>
+                    <Text style={styles.meta}>Final: {formatMoney(pack.price_subunit)}</Text>
+                    <Text style={styles.meta}>Promotion: {promotionLabel(pack)}</Text>
+                    <Text style={styles.meta}>Badge: {pack.badge_text || '-'}</Text>
+                  </View>
+                  <View style={styles.packageAdminActions}>
+                    <Text style={[styles.packageStatus, pack.active ? styles.packageStatusActive : styles.packageStatusInactive]}>
+                      {pack.active ? 'Active' : 'Inactive'}
+                    </Text>
+                    <Button
+                      title="Edit"
+                      variant="secondary"
+                      onPress={() => props.setEditingPackage(packDraft)}
+                      style={styles.packageActionButton}
+                    />
+                    <Button
+                      title="Delete/deactivate"
+                      variant="danger"
+                      onPress={() => props.removePackage(packDraft)}
+                      style={styles.packageActionButton}
+                    />
+                  </View>
+                </View>
+              );
+            })}
+          </View>
         ) : (
           <Text style={styles.emptyText}>No credit packages are available.</Text>
         )}
@@ -818,10 +836,17 @@ function SettingsSection(props: {
               <Text style={styles.meta}>User receives {toWhole(draft.credits) + toWhole(draft.promotionValue)} credits.</Text>
             ) : null}
           </View>
-          <View style={styles.buttonRow}>
-            <Button title="Save package" onPress={props.savePackage} />
-            {!draft.isNew ? <Button title="Delete/deactivate" variant="danger" onPress={() => props.removePackage(draft)} /> : null}
-            <Button title="Cancel" variant="ghost" onPress={() => props.setEditingPackage(null)} />
+          <View style={styles.editActionPanel}>
+            <Button title="Save package" onPress={props.savePackage} style={styles.editActionButton} />
+            {!draft.isNew ? (
+              <Button
+                title="Delete/deactivate"
+                variant="danger"
+                onPress={() => props.removePackage(draft)}
+                style={styles.editActionButton}
+              />
+            ) : null}
+            <Button title="Cancel" variant="ghost" onPress={() => props.setEditingPackage(null)} style={styles.editActionButton} />
           </View>
         </Panel>
       ) : null}
@@ -1288,9 +1313,38 @@ const styles = StyleSheet.create({
   emptyText: { color: colors.textMuted, lineHeight: 20 },
   errorText: { color: colors.danger, fontWeight: '700', lineHeight: 20, marginTop: 10 },
   adminLoginBox: { marginTop: 16, maxWidth: 440 },
-  tableHeader: { flexDirection: 'row', backgroundColor: colors.primary, borderRadius: 8, padding: 10 },
-  tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.border, padding: 10 },
-  tableCell: { flex: 1, color: colors.text, fontWeight: '700' },
+  packageGrid: { gap: 10, marginTop: 10 },
+  packageAdminCard: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#F7F9F4',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flexWrap: 'wrap',
+  },
+  packageAdminMain: { flex: 1, minWidth: 220 },
+  packageAdminTitle: { color: colors.primaryDark, fontSize: 16, fontWeight: '900', marginBottom: 2 },
+  packageAdminActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 8,
+    flexWrap: 'wrap',
+    flexShrink: 1,
+  },
+  packageActionButton: { minHeight: 38, paddingVertical: 7, paddingHorizontal: 10 },
+  packageStatus: {
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  packageStatusActive: { color: colors.primary, backgroundColor: '#EAF4EE' },
+  packageStatusInactive: { color: colors.textMuted, backgroundColor: '#ECEDEA' },
   switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
   previewBox: {
     borderWidth: 1,
@@ -1300,4 +1354,15 @@ const styles = StyleSheet.create({
     marginTop: 12,
     backgroundColor: '#F7F9F4',
   },
+  editActionPanel: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    marginTop: 14,
+    paddingTop: 14,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    backgroundColor: colors.surface,
+  },
+  editActionButton: { minWidth: 140 },
 });
