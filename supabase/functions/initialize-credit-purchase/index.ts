@@ -11,7 +11,14 @@ type CreditPackage = {
   name: string;
   credits: number;
   price_subunit: number;
+  original_price_subunit: number | null;
   currency: string;
+  badge_text: string;
+  bonus_credits: number;
+  promotion_type: string;
+  promotion_value: number;
+  promo_starts_at: string | null;
+  promo_ends_at: string | null;
 };
 
 Deno.serve(async (req) => {
@@ -33,13 +40,16 @@ Deno.serve(async (req) => {
     const service = createServiceClient();
     const { data: pack, error: packageError } = await service
       .from('credit_packages')
-      .select('id,name,credits,price_subunit,currency')
+      .select('id,name,credits,price_subunit,original_price_subunit,currency,badge_text,bonus_credits,promotion_type,promotion_value,promo_starts_at,promo_ends_at')
       .eq('id', packageId)
       .eq('active', true)
       .single<CreditPackage>();
 
     if (packageError || !pack) {
       return json({ error: 'Credit package not found' }, 404);
+    }
+    if (!isPackageAvailable(pack)) {
+      return json({ error: 'This credit package is not available right now' }, 400);
     }
 
     const secretKey = Deno.env.get('PAYSTACK_SECRET_KEY');
@@ -64,7 +74,9 @@ Deno.serve(async (req) => {
         metadata: JSON.stringify({
           userId: user.id,
           packageId: pack.id,
-          credits: pack.credits,
+          credits: pack.credits + Number(pack.bonus_credits ?? 0),
+          baseCredits: pack.credits,
+          bonusCredits: Number(pack.bonus_credits ?? 0),
         }),
       }),
     });
@@ -82,7 +94,7 @@ Deno.serve(async (req) => {
     const { error: insertError } = await service.from('credit_purchases').insert({
       user_id: user.id,
       package_id: pack.id,
-      credits: pack.credits,
+      credits: pack.credits + Number(pack.bonus_credits ?? 0),
       amount_subunit: pack.price_subunit,
       currency: pack.currency,
       paystack_reference: reference,
@@ -104,6 +116,8 @@ Deno.serve(async (req) => {
         id: pack.id,
         name: pack.name,
         credits: pack.credits,
+        bonusCredits: Number(pack.bonus_credits ?? 0),
+        badgeText: pack.badge_text,
         amountSubunit: pack.price_subunit,
         currency: pack.currency,
       },
@@ -124,3 +138,9 @@ function json(payload: unknown, status: number) {
   });
 }
 
+function isPackageAvailable(pack: CreditPackage) {
+  const now = Date.now();
+  if (pack.promo_starts_at && new Date(pack.promo_starts_at).getTime() > now) return false;
+  if (pack.promo_ends_at && new Date(pack.promo_ends_at).getTime() < now) return false;
+  return true;
+}

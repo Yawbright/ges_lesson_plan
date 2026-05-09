@@ -137,6 +137,8 @@ export default function CreditsScreen() {
       <View style={styles.packages}>
         {packages.map((pack) => {
           const active = pack.id === selectedPackageId;
+          const hasOriginalPrice = !!pack.originalPriceSubunit && pack.originalPriceSubunit > pack.priceSubunit;
+          const totalCredits = pack.credits + Number(pack.bonusCredits ?? 0);
           return (
             <Pressable
               key={pack.id}
@@ -144,12 +146,21 @@ export default function CreditsScreen() {
               onPress={() => setSelectedPackageId(pack.id)}
             >
               <View>
-                <Text style={styles.packageTitle}>{pack.name}</Text>
-                <Text style={styles.packageMeta}>
-                  {formatCreditPrice(pack.priceSubunit, pack.currency)}
-                </Text>
+                <View style={styles.packageHeader}>
+                  <Text style={styles.packageTitle}>{pack.name}</Text>
+                  {!!pack.badgeText && <Text style={styles.packageBadge}>{pack.badgeText}</Text>}
+                </View>
+                <View style={styles.priceLine}>
+                  <Text style={styles.packageMeta}>{formatCreditPrice(pack.priceSubunit, pack.currency)}</Text>
+                  {hasOriginalPrice ? (
+                    <Text style={styles.originalPrice}>
+                      {formatCreditPrice(Number(pack.originalPriceSubunit), pack.currency)}
+                    </Text>
+                  ) : null}
+                </View>
+                {pack.bonusCredits ? <Text style={styles.bonusText}>You receive {totalCredits} credits</Text> : null}
               </View>
-              <Text style={styles.packageCredits}>{pack.credits}</Text>
+              <Text style={styles.packageCredits}>{totalCredits}</Text>
             </Pressable>
           );
         })}
@@ -256,7 +267,20 @@ const styles = StyleSheet.create({
   },
   packageCardActive: { borderColor: colors.primary, backgroundColor: '#F3F8F5' },
   packageTitle: { fontSize: 16, color: colors.text, fontWeight: '800' },
+  packageHeader: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
+  packageBadge: {
+    color: colors.primary,
+    backgroundColor: '#EAF4EE',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  priceLine: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 3 },
   packageMeta: { color: colors.textMuted, marginTop: 3 },
+  originalPrice: { color: colors.textMuted, textDecorationLine: 'line-through', marginTop: 3 },
+  bonusText: { color: colors.primary, marginTop: 4, fontSize: 12, fontWeight: '700' },
   packageCredits: { fontSize: 22, color: colors.primary, fontWeight: '800' },
   pendingPanel: {
     backgroundColor: colors.surface,

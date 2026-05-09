@@ -6,7 +6,14 @@ export type CreditPackage = {
   name: string;
   credits: number;
   priceSubunit: number;
+  originalPriceSubunit?: number | null;
   currency: string;
+  badgeText?: string;
+  bonusCredits?: number;
+  promotionType?: string;
+  promotionValue?: number;
+  promoStartsAt?: string | null;
+  promoEndsAt?: string | null;
 };
 
 export type CreditTransaction = {
@@ -50,7 +57,7 @@ export async function loadCreditBalance(): Promise<number> {
 export async function loadCreditPackages(): Promise<CreditPackage[]> {
   const { data, error } = await supabase
     .from('credit_packages')
-    .select('id,name,credits,price_subunit,currency')
+    .select('id,name,credits,price_subunit,original_price_subunit,currency,badge_text,bonus_credits,promotion_type,promotion_value,promo_starts_at,promo_ends_at')
     .eq('active', true)
     .order('sort_order', { ascending: true });
 
@@ -61,7 +68,14 @@ export async function loadCreditPackages(): Promise<CreditPackage[]> {
     name: item.name,
     credits: Number(item.credits),
     priceSubunit: Number(item.price_subunit),
+    originalPriceSubunit: item.original_price_subunit == null ? null : Number(item.original_price_subunit),
     currency: item.currency,
+    badgeText: item.badge_text ?? '',
+    bonusCredits: Number(item.bonus_credits ?? 0),
+    promotionType: item.promotion_type ?? 'none',
+    promotionValue: Number(item.promotion_value ?? 0),
+    promoStartsAt: item.promo_starts_at,
+    promoEndsAt: item.promo_ends_at,
   }));
 }
 
