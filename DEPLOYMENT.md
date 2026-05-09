@@ -66,6 +66,36 @@ Invitation-only signup notes:
 - Migration `0007_founder_referral_code.sql` maps that code to `sesorkelly@gmail.com`. That founder account must exist before the migration can create the code.
 - Migration `0008_enforce_invitation_signup.sql` blocks new Auth users unless signup metadata contains a valid invitation code.
 
+If `KHERKHELLY` says it was not found, run this in the Supabase SQL editor after confirming your founder account exists:
+
+```sql
+do $$
+declare
+  v_founder_user_id uuid;
+begin
+  select id
+  into v_founder_user_id
+  from auth.users
+  where lower(email) = 'sesorkelly@gmail.com'
+  limit 1;
+
+  if v_founder_user_id is null then
+    raise exception 'Founder account not found';
+  end if;
+
+  delete from public.referral_codes
+  where upper(code) = 'KHERKHELLY'
+    and user_id <> v_founder_user_id;
+
+  insert into public.referral_codes (user_id, code)
+  values (v_founder_user_id, 'KHERKHELLY')
+  on conflict (user_id) do update
+  set code = excluded.code,
+      updated_at = now();
+end;
+$$;
+```
+
 In Supabase Auth settings:
 
 - Set the production Site URL to your web app URL.

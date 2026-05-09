@@ -151,16 +151,6 @@ export function EmailPasswordAuthForm({
       {mode === 'signup' ? (
         <>
           <Field
-            label="Referral / invitation code"
-            value={invitationCode}
-            onChangeText={(value) => {
-              setInvitationCode(value.trim().toUpperCase());
-              setFieldError(null);
-            }}
-            placeholder="e.g. KHERKHELLY"
-            autoCapitalize="characters"
-          />
-          <Field
             label="Confirm password"
             value={confirmPassword}
             onChangeText={(value) => {
@@ -170,6 +160,16 @@ export function EmailPasswordAuthForm({
             placeholder="Re-enter your password"
             secureTextEntry
             autoComplete="new-password"
+          />
+          <Field
+            label="Referral / invitation code"
+            value={invitationCode}
+            onChangeText={(value) => {
+              setInvitationCode(value.trim().toUpperCase());
+              setFieldError(null);
+            }}
+            placeholder="e.g. KHERKHELLY"
+            autoCapitalize="characters"
           />
         </>
       ) : null}

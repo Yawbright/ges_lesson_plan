@@ -87,10 +87,7 @@ export function getAuthErrorMessage(err: unknown, mode: 'signin' | 'signup'): st
   }
 
   if (mode === 'signin' && lower.includes('invalid login credentials')) {
-    return (
-      'The email or password is incorrect. Supabase does not reveal which one is wrong for security, ' +
-      'so check both and try again.'
-    );
+    return 'Invalid credentials.';
   }
 
   if (lower.includes('user already registered') || lower.includes('already registered')) {
