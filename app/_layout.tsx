@@ -1,5 +1,6 @@
 import 'react-native-gesture-handler';
 import { Stack } from 'expo-router';
+import Head from 'expo-router/head';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -11,6 +12,37 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ToastProvider>
+          <Head>
+            <title>Ghana Lesson Planner</title>
+            <meta
+              name="description"
+              content="AI-powered lesson plans and schemes for Ghanaian classrooms."
+            />
+            <meta name="theme-color" content="#0F4C3A" />
+            <meta name="application-name" content="Ghana Lesson Planner" />
+            <meta name="apple-mobile-web-app-title" content="Ghana Lesson Planner" />
+            <meta property="og:type" content="website" />
+            <meta property="og:site_name" content="Ghana Lesson Planner" />
+            <meta property="og:title" content="Ghana Lesson Planner" />
+            <meta
+              property="og:description"
+              content="Create Ghanaian lesson plans, schemes of learning, and printable classroom documents with AI."
+            />
+            <meta property="og:url" content="https://geslessonplan.netlify.app/" />
+            <meta property="og:image" content="https://geslessonplan.netlify.app/og-image.png" />
+            <meta property="og:image:width" content="1200" />
+            <meta property="og:image:height" content="630" />
+            <meta name="twitter:card" content="summary_large_image" />
+            <meta name="twitter:title" content="Ghana Lesson Planner" />
+            <meta
+              name="twitter:description"
+              content="AI-powered lesson plans and schemes for Ghanaian classrooms."
+            />
+            <meta name="twitter:image" content="https://geslessonplan.netlify.app/og-image.png" />
+            <link rel="icon" type="image/png" href="/favicon.png" />
+            <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+            <link rel="manifest" href="/site.webmanifest" />
+          </Head>
           <StatusBar style="light" />
           <Stack
             screenOptions={{

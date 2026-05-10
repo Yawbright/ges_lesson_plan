@@ -5,11 +5,13 @@ import {
   Alert,
   Pressable,
   ScrollView,
+  StyleProp,
   StyleSheet,
   Switch,
   Text,
   useWindowDimensions,
   View,
+  ViewStyle,
 } from 'react-native';
 import { Button } from '@/components/Button';
 import { Field } from '@/components/Field';
@@ -49,6 +51,7 @@ type AppSettingsDraft = {
   schemeCost: string;
   parsingCost: string;
   retentionDays: string;
+  purchasingEnabled: boolean;
   paystackMode: string;
   parserBackend: string;
 };
@@ -217,11 +220,23 @@ export default function AdminScreen() {
   async function savePackage() {
     if (!editingPackage) return;
     const prepared = preparePackageDraft(editingPackage);
+    const credits = toWhole(prepared.credits);
+    if (!prepared.id || credits <= 0) {
+      Alert.alert('Package incomplete', 'Enter the number of credits for this package.');
+      return;
+    }
+    if (prepared.isNew && dashboard?.packages.some((pack) => pack.id === prepared.id)) {
+      Alert.alert(
+        'Package already exists',
+        `A package for ${credits} credits already exists. Edit the existing package instead.`,
+      );
+      return;
+    }
     try {
       const payload = {
         id: prepared.id,
         name: prepared.name,
-        credits: toWhole(prepared.credits),
+        credits,
         originalPriceSubunit: toSubunit(prepared.originalPrice),
         priceSubunit: toSubunit(prepared.finalPrice),
         promotionType: prepared.promotionType,
@@ -285,6 +300,9 @@ export default function AdminScreen() {
         },
         generated_file_retention: {
           days: Math.max(1, toWhole(appSettingsDraft.retentionDays)),
+        },
+        credit_purchasing: {
+          enabled: appSettingsDraft.purchasingEnabled,
         },
       });
       Alert.alert('Settings saved', 'App settings have been updated.');
@@ -802,11 +820,18 @@ function SettingsSection(props: {
   const draft = props.editingPackage ? preparePackageDraft(props.editingPackage) : null;
   const setDraft = (patch: Partial<PackageDraft>) => {
     if (!props.editingPackage) return;
-    props.setEditingPackage(preparePackageDraft({ ...props.editingPackage, ...patch }));
+    const next = { ...props.editingPackage, ...patch };
+    if (next.isNew && Object.prototype.hasOwnProperty.call(patch, 'credits')) {
+      next.id = packageIdFromCredits(next.credits);
+      if (!next.name.trim() || next.name === `${props.editingPackage.credits} credits`) {
+        next.name = next.credits ? `${toWhole(next.credits)} credits` : '';
+      }
+    }
+    props.setEditingPackage(preparePackageDraft(next));
   };
 
   return (
-    <>
+    <View style={styles.settingsStack}>
       <View style={styles.settingsIntro}>
         <Text style={styles.settingsIntroTitle}>Settings</Text>
         <Text style={styles.settingsIntroText}>
@@ -814,9 +839,9 @@ function SettingsSection(props: {
           Paystack mode, and parser backend controls from this area.
         </Text>
       </View>
-      <Panel title="Credit Pricing & Promotions">
+      <Panel title="Credit Pricing & Promotions" style={styles.settingsPanel}>
         <View style={styles.buttonRow}>
-          <Button title="Add package" onPress={() => props.setEditingPackage(newPackageDraft(props.packages))} />
+          <Button title="Add package" onPress={() => props.setEditingPackage(newPackageDraft())} />
         </View>
         {props.packages.length ? (
           <View style={styles.packageGrid}>
@@ -858,11 +883,26 @@ function SettingsSection(props: {
         )}
       </Panel>
       {draft ? (
-        <Panel title={draft.isNew ? 'Add Credit Package' : `Edit ${draft.name}`}>
+        <Panel title={draft.isNew ? 'Add Credit Package' : `Edit ${draft.name}`} style={styles.settingsPanel}>
           <View style={styles.formGrid}>
-            <Field label="Package ID" value={draft.id} onChangeText={(value) => setDraft({ id: toPackageId(value) })} editable={draft.isNew} />
+            <View style={styles.generatedIdBox}>
+              <Text style={styles.generatedIdLabel}>Package ID</Text>
+              <Text style={styles.generatedIdValue}>
+                {draft.id || 'Enter credits to generate ID'}
+              </Text>
+              {draft.isNew ? (
+                <Text style={styles.generatedIdHelp}>Generated automatically from the credits field.</Text>
+              ) : (
+                <Text style={styles.generatedIdHelp}>Existing package IDs cannot be changed safely.</Text>
+              )}
+            </View>
             <Field label="Package name" value={draft.name} onChangeText={(value) => setDraft({ name: value })} />
-            <Field label="Credits" value={draft.credits} onChangeText={(value) => setDraft({ credits: value })} keyboardType="number-pad" />
+            <Field
+              label="Credits"
+              value={draft.credits}
+              onChangeText={(value) => setDraft({ credits: cleanWholeNumber(value) })}
+              keyboardType="number-pad"
+            />
             <Field label="Original price (GHS)" value={draft.originalPrice} onChangeText={(value) => setDraft({ originalPrice: value })} keyboardType="decimal-pad" />
             <View style={styles.formField}>
               <SelectField
@@ -914,7 +954,7 @@ function SettingsSection(props: {
           </View>
         </Panel>
       ) : null}
-      <Panel title="App Settings">
+      <Panel title="App Settings" style={[styles.settingsPanel, styles.appSettingsPanel]}>
         <Text style={styles.bodyText}>
           These controls affect new signups, referral rewards, credit deductions, and generated file retention.
           Paystack mode and parser backend are shown here as read-only because they still rely on secure deployment
@@ -988,6 +1028,16 @@ function SettingsSection(props: {
               onChangeText={(value) => props.setAppSettings({ retentionDays: cleanWholeNumber(value) })}
               keyboardType="number-pad"
             />
+            <View style={styles.switchRow}>
+              <View style={{ flex: 1, paddingRight: 10 }}>
+                <Text style={styles.rowTitle}>Credit purchasing</Text>
+                <Text style={styles.meta}>When off, users can view packages but cannot start MoMo checkout.</Text>
+              </View>
+              <Switch
+                value={props.appSettings.purchasingEnabled}
+                onValueChange={(value) => props.setAppSettings({ purchasingEnabled: value })}
+              />
+            </View>
             <Field label="Paystack mode" value={props.appSettings.paystackMode} editable={false} />
             <Field label="Parser backend" value={props.appSettings.parserBackend} editable={false} />
           </View>
@@ -996,7 +1046,7 @@ function SettingsSection(props: {
           <Button title="Save app settings" onPress={props.saveAppSettings} loading={props.savingAppSettings} />
         </View>
       </Panel>
-    </>
+    </View>
   );
 }
 
@@ -1024,9 +1074,9 @@ function UserDetails({ detail }: { detail: AdminUserDetail }) {
   );
 }
 
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+function Panel({ title, children, style }: { title: string; children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
   return (
-    <View style={styles.panel}>
+    <View style={[styles.panel, style]}>
       <Text style={styles.panelTitle}>{title}</Text>
       {children}
     </View>
@@ -1131,15 +1181,13 @@ function toDraft(pack: AdminCreditPackage): PackageDraft {
   };
 }
 
-function newPackageDraft(packages: AdminCreditPackage[]): PackageDraft {
-  const nextCredits = 10;
-  const id = uniquePackageId(`credits_${nextCredits}`, packages);
+function newPackageDraft(): PackageDraft {
   return preparePackageDraft({
-    id,
-    name: `${nextCredits} credits`,
-    credits: String(nextCredits),
-    originalPrice: '5.00',
-    finalPrice: '5.00',
+    id: '',
+    name: '',
+    credits: '',
+    originalPrice: '',
+    finalPrice: '0.00',
     promotionType: 'none',
     promotionValue: '0',
     bonusCredits: '0',
@@ -1187,7 +1235,7 @@ function preparePackageDraft(draft: PackageDraft): PackageDraft {
 
   return {
     ...draft,
-    id: toPackageId(draft.id || draft.name || `${draft.credits}_credits`),
+    id: draft.isNew ? packageIdFromCredits(draft.credits) : toPackageId(draft.id),
     promotionType,
     finalPrice: finalPrice.toFixed(2),
     badgeText,
@@ -1217,15 +1265,9 @@ function toPackageId(value: string) {
   return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 48);
 }
 
-function uniquePackageId(base: string, packages: AdminCreditPackage[]) {
-  const ids = new Set(packages.map((item) => item.id));
-  let candidate = toPackageId(base);
-  let count = 2;
-  while (ids.has(candidate)) {
-    candidate = `${toPackageId(base)}_${count}`;
-    count += 1;
-  }
-  return candidate;
+function packageIdFromCredits(value: string) {
+  const credits = cleanWholeNumber(value);
+  return credits ? `credits_${credits}` : '';
 }
 
 function emptyAppSettingsDraft(): AppSettingsDraft {
@@ -1239,6 +1281,7 @@ function emptyAppSettingsDraft(): AppSettingsDraft {
     schemeCost: '1',
     parsingCost: '1',
     retentionDays: '15',
+    purchasingEnabled: false,
     paystackMode: 'live',
     parserBackend: 'active',
   };
@@ -1250,6 +1293,7 @@ function settingsToDraft(settings: AdminSetting[]): AppSettingsDraft {
   const referral = byKey.get('referral_reward') ?? {};
   const costs = byKey.get('feature_credit_costs') ?? {};
   const retention = byKey.get('generated_file_retention') ?? {};
+  const purchasing = byKey.get('credit_purchasing') ?? {};
   const paystack = byKey.get('paystack_mode') ?? {};
   const parser = byKey.get('parser_backend') ?? {};
 
@@ -1263,6 +1307,7 @@ function settingsToDraft(settings: AdminSetting[]): AppSettingsDraft {
     schemeCost: String(numberSetting(costs.scheme_generation, 1)),
     parsingCost: String(numberSetting(costs.scheme_parsing, 1)),
     retentionDays: String(numberSetting(retention.days, 15)),
+    purchasingEnabled: booleanSetting(purchasing.enabled, false),
     paystackMode: String(paystack.mode ?? 'live'),
     parserBackend: String(parser.provider ?? 'active'),
   };
@@ -1509,11 +1554,24 @@ const styles = StyleSheet.create({
   emptyText: { color: colors.textMuted, lineHeight: 20 },
   errorText: { color: colors.danger, fontWeight: '700', lineHeight: 20, marginTop: 10 },
   adminLoginBox: { marginTop: 16, maxWidth: 440 },
+  settingsStack: {
+    width: '100%',
+    gap: 14,
+  },
+  settingsPanel: {
+    width: '100%',
+    flexGrow: 0,
+    flexBasis: 'auto',
+    alignSelf: 'stretch',
+    marginBottom: 0,
+  },
+  appSettingsPanel: {
+    marginTop: 4,
+  },
   settingsIntro: {
     backgroundColor: colors.primary,
     borderRadius: 8,
     padding: 16,
-    marginBottom: 14,
   },
   settingsIntroTitle: { color: '#fff', fontSize: 20, fontWeight: '900', marginBottom: 6 },
   settingsIntroText: { color: '#EAF2EE', lineHeight: 20 },
@@ -1549,6 +1607,34 @@ const styles = StyleSheet.create({
   },
   packageStatusActive: { color: colors.primary, backgroundColor: '#EAF4EE' },
   packageStatusInactive: { color: colors.textMuted, backgroundColor: '#ECEDEA' },
+  generatedIdBox: {
+    minWidth: 220,
+    flexGrow: 1,
+    flexBasis: 220,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+    backgroundColor: '#F7F9F4',
+  },
+  generatedIdLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 6,
+  },
+  generatedIdValue: {
+    color: colors.primaryDark,
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  generatedIdHelp: {
+    color: colors.textMuted,
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 6,
+  },
   switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
   previewBox: {
     borderWidth: 1,

@@ -308,6 +308,11 @@ export default function ProfileScreen() {
       </View>
 
       <Button title="Sign out" variant="secondary" onPress={handleSignOut} />
+      <View style={styles.developerBlock}>
+        <Text style={styles.developerLabel}>Developer</Text>
+        <Text style={styles.developerName}>KG Logics</Text>
+        <Text style={styles.developerContact}>WhatsApp: 0506071735</Text>
+      </View>
     </ScrollView>
   );
 
@@ -484,4 +489,27 @@ const styles = StyleSheet.create({
   emptyText: { color: colors.textMuted, lineHeight: 20 },
   refreshLink: { alignItems: 'center', paddingTop: 8 },
   refreshText: { color: colors.primary, fontWeight: '700' },
+  developerBlock: {
+    marginTop: 18,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    alignItems: 'center',
+  },
+  developerLabel: {
+    color: colors.textMuted,
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  developerName: {
+    color: colors.primaryDark,
+    fontSize: 15,
+    fontWeight: '900',
+    marginTop: 4,
+  },
+  developerContact: {
+    color: colors.textMuted,
+    marginTop: 2,
+  },
 });

@@ -396,6 +396,7 @@ async function updateSettings(service: ReturnType<typeof createServiceClient>, s
     'referral_reward',
     'feature_credit_costs',
     'generated_file_retention',
+    'credit_purchasing',
   ]);
   const rows = Object.entries(settings)
     .filter(([key]) => allowedKeys.has(key))

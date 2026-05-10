@@ -1,0 +1,17 @@
+{
+  "name": "Ghana Lesson Planner",
+  "short_name": "GES Planner",
+  "description": "AI-powered lesson plans and schemes for Ghanaian classrooms.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F7F9F4",
+  "theme_color": "#0F4C3A",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

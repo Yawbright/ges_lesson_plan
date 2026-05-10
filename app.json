@@ -5,6 +5,7 @@
     "scheme": "ghlessonplanner",
     "version": "0.1.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "assetBundlePatterns": ["**/*"],
     "ios": {
@@ -12,11 +13,18 @@
       "bundleIdentifier": "com.ghanalessonplanner.app"
     },
     "android": {
-      "package": "com.ghanalessonplanner.app"
+      "package": "com.ghanalessonplanner.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0F4C3A"
+      }
     },
     "web": {
       "bundler": "metro",
-      "output": "static"
+      "output": "static",
+      "favicon": "./public/favicon.png",
+      "name": "Ghana Lesson Planner",
+      "shortName": "GES Planner"
     },
     "plugins": [
       "expo-router",

@@ -5,6 +5,7 @@ export type RuntimeAppSettings = {
   referralReward: { credits: number; monthlyLimit: number; active: boolean };
   featureCreditCosts: { lesson_generation: number; scheme_generation: number; scheme_parsing: number };
   generatedFileRetention: { days: number };
+  creditPurchasing: { enabled: boolean };
 };
 
 export const defaultRuntimeSettings: RuntimeAppSettings = {
@@ -12,6 +13,7 @@ export const defaultRuntimeSettings: RuntimeAppSettings = {
   referralReward: { credits: 5, monthlyLimit: 5, active: true },
   featureCreditCosts: { lesson_generation: 1, scheme_generation: 1, scheme_parsing: 1 },
   generatedFileRetention: { days: 15 },
+  creditPurchasing: { enabled: false },
 };
 
 export async function loadRuntimeAppSettings(): Promise<RuntimeAppSettings> {
@@ -36,6 +38,9 @@ export async function loadRuntimeAppSettings(): Promise<RuntimeAppSettings> {
     },
     generatedFileRetention: {
       days: numberValue(byKey.get('generated_file_retention')?.days, 15),
+    },
+    creditPurchasing: {
+      enabled: booleanValue(byKey.get('credit_purchasing')?.enabled, false),
     },
   };
 }

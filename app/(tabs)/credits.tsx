@@ -16,8 +16,12 @@ import {
   type CreditTransaction,
   verifyCreditPurchase,
 } from '@/lib/credits';
+import { defaultRuntimeSettings, loadRuntimeAppSettings } from '@/lib/appSettings';
 import { logAppError } from '@/lib/logger';
 import { colors } from '@/theme/colors';
+
+const PURCHASING_UNAVAILABLE_MESSAGE =
+  'Credit Purchasing is coming soon. You can only refer friends to get credit for now or contact admin for special credit grant';
 
 export default function CreditsScreen() {
   const { showToast } = useToast();
@@ -31,20 +35,23 @@ export default function CreditsScreen() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [checkoutStatus, setCheckoutStatus] = useState<string | null>(null);
+  const [purchasingEnabled, setPurchasingEnabled] = useState(defaultRuntimeSettings.creditPurchasing.enabled);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [nextBalance, nextPackages, nextTransactions, nextPurchases] = await Promise.all([
+      const [nextBalance, nextPackages, nextTransactions, nextPurchases, settings] = await Promise.all([
         loadCreditBalance(),
         loadCreditPackages(),
         loadCreditTransactions(),
         loadCreditPurchases(),
+        loadRuntimeAppSettings(),
       ]);
       setBalance(nextBalance);
       setPackages(nextPackages);
       setTransactions(nextTransactions);
       setPurchases(nextPurchases);
+      setPurchasingEnabled(settings.creditPurchasing.enabled);
       setSelectedPackageId((current) => current ?? nextPackages[0]?.id ?? null);
     } catch (err: unknown) {
       Alert.alert('Credits unavailable', getMessage(err));
@@ -64,7 +71,14 @@ export default function CreditsScreen() {
   );
 
   async function startCheckout() {
-    setCheckoutStatus('Paystack button pressed. Preparing checkout...');
+    if (!purchasingEnabled) {
+      setCheckoutStatus(PURCHASING_UNAVAILABLE_MESSAGE);
+      showToast({ message: PURCHASING_UNAVAILABLE_MESSAGE, type: 'error' });
+      Alert.alert('Purchasing unavailable', PURCHASING_UNAVAILABLE_MESSAGE);
+      return;
+    }
+
+    setCheckoutStatus('MoMo button pressed. Preparing checkout...');
 
     if (!selectedPackageId) {
       Alert.alert('Choose a package', 'Select a credit pack first.');
@@ -73,17 +87,17 @@ export default function CreditsScreen() {
     }
 
     setCheckoutLoading(true);
-    setCheckoutStatus('Starting Paystack checkout...');
+    setCheckoutStatus('Starting MoMo checkout...');
     try {
       const purchase = await initializeCreditPurchase(selectedPackageId);
       setPendingReference(purchase.reference);
       setCheckoutStatus(`Checkout created. Reference: ${purchase.reference}`);
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        setCheckoutStatus('Redirecting to Paystack checkout...');
+        setCheckoutStatus('Redirecting to MoMo checkout...');
         window.location.href = purchase.authorizationUrl;
       } else {
         await WebBrowser.openBrowserAsync(purchase.authorizationUrl);
-        setCheckoutStatus('Paystack checkout opened. Return here and verify payment.');
+        setCheckoutStatus('MoMo checkout opened. Return here and verify payment.');
       }
     } catch (err: unknown) {
       const message = getMessage(err);
@@ -107,7 +121,7 @@ export default function CreditsScreen() {
         await refresh();
         showToast({ message: `${result.credits} credits added.` });
       } else {
-        Alert.alert('Payment not complete', result.message ?? 'Paystack has not confirmed this payment yet.');
+        Alert.alert('Payment not complete', result.message ?? 'MoMo payment has not been confirmed yet.');
       }
     } catch (err: unknown) {
       logAppError({ source: 'client', action: 'verify_checkout', message: getMessage(err), metadata: { pendingReference } });
@@ -166,7 +180,7 @@ export default function CreditsScreen() {
         })}
       </View>
 
-      <Button title="Pay with Paystack" onPress={startCheckout} loading={checkoutLoading} />
+      <Button title="Pay with MoMo" onPress={startCheckout} loading={checkoutLoading} />
 
       {checkoutStatus ? (
         <View style={styles.statusPanel}>
@@ -177,7 +191,7 @@ export default function CreditsScreen() {
       {pendingReference ? (
         <View style={styles.pendingPanel}>
           <Text style={styles.pendingTitle}>Payment pending</Text>
-          <Text style={styles.pendingText}>After completing Paystack checkout, verify the payment here.</Text>
+          <Text style={styles.pendingText}>After completing MoMo checkout, verify the payment here.</Text>
           <Button
             title="Verify payment"
             variant="secondary"

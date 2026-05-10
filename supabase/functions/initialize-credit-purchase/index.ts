@@ -38,6 +38,18 @@ Deno.serve(async (req) => {
     }
 
     const service = createServiceClient();
+    const { data: purchasingSetting } = await service
+      .from('admin_app_settings')
+      .select('value')
+      .eq('key', 'credit_purchasing')
+      .maybeSingle();
+    if (purchasingSetting?.value?.enabled !== true) {
+      return json(
+        { error: 'Credit Purchasing is coming soon. You can only refer friends to get credit for now or contact admin for special credit grant' },
+        403,
+      );
+    }
+
     const { data: pack, error: packageError } = await service
       .from('credit_packages')
       .select('id,name,credits,price_subunit,original_price_subunit,currency,badge_text,bonus_credits,promotion_type,promotion_value,promo_starts_at,promo_ends_at')
