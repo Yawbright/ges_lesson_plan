@@ -26,6 +26,18 @@ export async function shareLessonPlan(plan: LessonPlan) {
   await exportLessonPlanPdf(plan);
 }
 
+export async function shareLessonPlans(plans: LessonPlan[]) {
+  if (!plans.length) return;
+  const first = plans[0];
+  if (Platform.OS === 'web') {
+    await shareText(
+      `Lesson plans: ${first.subject} ${first.classLevel} Week ${first.week} (${plans.length} lessons)`,
+    );
+    return;
+  }
+  await exportLessonPlansPdf(plans);
+}
+
 export async function shareScheme(scheme: SchemeOfWork) {
   if (Platform.OS === 'web') {
     await shareText(`Scheme of work: ${scheme.subject} ${scheme.classLevel} ${scheme.term}`);

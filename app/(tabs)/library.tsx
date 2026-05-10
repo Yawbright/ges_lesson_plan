@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, GestureResponderEvent, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
-import { Button } from '@/components/Button';
 import { useToast } from '@/components/ToastProvider';
 import { exportLessonPlanPdf, exportSchemePdf, shareLessonPlan, shareScheme } from '@/lib/export';
 import { deleteLessonPlan, loadLessonPlans } from '@/lib/lessonStore';
@@ -78,23 +78,10 @@ export default function LibraryScreen() {
                 </Text>
                 <Text style={styles.cardSub}>{plan.termTitle}</Text>
               </View>
-              <Button
-                title="PDF"
-                variant="secondary"
-                onPress={() => exportLessonPlanPdf(plan)}
-                style={styles.cardButton}
-              />
-              <Button
-                title="Share"
-                variant="secondary"
-                onPress={() => shareLessonPlan(plan)}
-                style={styles.cardButton}
-              />
-              <Button
-                title="Delete"
-                variant="danger"
-                onPress={() => confirmDeleteLesson(plan)}
-                style={styles.cardButton}
+              <CardActions
+                onShare={() => shareLessonPlan(plan)}
+                onPdf={() => exportLessonPlanPdf(plan)}
+                onDelete={() => confirmDeleteLesson(plan)}
               />
             </Pressable>
           ))
@@ -120,23 +107,10 @@ export default function LibraryScreen() {
                   {scheme.weeks.length} weeks | {scheme.title}
                 </Text>
               </View>
-              <Button
-                title="PDF"
-                variant="secondary"
-                onPress={() => exportSchemePdf(scheme)}
-                style={styles.cardButton}
-              />
-              <Button
-                title="Share"
-                variant="secondary"
-                onPress={() => shareScheme(scheme)}
-                style={styles.cardButton}
-              />
-              <Button
-                title="Delete"
-                variant="danger"
-                onPress={() => confirmDeleteScheme(scheme)}
-                style={styles.cardButton}
+              <CardActions
+                onShare={() => shareScheme(scheme)}
+                onPdf={() => exportSchemePdf(scheme)}
+                onDelete={() => confirmDeleteScheme(scheme)}
               />
             </Pressable>
           ))
@@ -169,6 +143,61 @@ function EmptyState({ text }: { text: string }) {
   );
 }
 
+function CardActions({
+  onShare,
+  onPdf,
+  onDelete,
+}: {
+  onShare: () => void;
+  onPdf: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <View style={styles.cardActions}>
+      <View style={styles.cardActionTopRow}>
+        <ActionIcon icon="share-social-outline" label="Share" onPress={onShare} />
+        <ActionIcon icon="document-text-outline" label="PDF" onPress={onPdf} />
+      </View>
+      <ActionIcon icon="trash-outline" label="Delete" onPress={onDelete} danger wide />
+    </View>
+  );
+}
+
+function ActionIcon({
+  icon,
+  label,
+  onPress,
+  danger,
+  wide,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+  danger?: boolean;
+  wide?: boolean;
+}) {
+  function handlePress(event: GestureResponderEvent) {
+    event.stopPropagation();
+    onPress();
+  }
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={handlePress}
+      style={({ pressed }) => [
+        styles.actionIcon,
+        danger && styles.actionIconDanger,
+        wide && styles.actionIconWide,
+        pressed && styles.actionIconPressed,
+      ]}
+    >
+      <Ionicons name={icon} size={17} color={danger ? colors.danger : colors.primary} />
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 16, paddingBottom: 40 },
@@ -189,10 +218,34 @@ const styles = StyleSheet.create({
   },
   cardTitle: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 2 },
   cardSub: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
-  cardButton: {
-    minHeight: 40,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+  cardActions: {
+    width: 82,
+    alignItems: 'stretch',
+    gap: 6,
+  },
+  cardActionTopRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  actionIcon: {
+    width: 38,
+    height: 34,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionIconWide: {
+    width: '100%',
+  },
+  actionIconDanger: {
+    borderColor: '#F3B8B8',
+    backgroundColor: '#FFF4F4',
+  },
+  actionIconPressed: {
+    opacity: 0.78,
   },
   empty: {
     backgroundColor: colors.surface,

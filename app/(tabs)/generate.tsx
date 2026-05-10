@@ -9,6 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { Field } from '@/components/Field';
 import { Button } from '@/components/Button';
@@ -19,7 +20,7 @@ import { SelectField } from '@/components/SelectField';
 import { useToast } from '@/components/ToastProvider';
 import { formatAiActionError, generateLessonPlan, isInsufficientCreditsError } from '@/lib/ai';
 import { loadCreditBalance } from '@/lib/credits';
-import { exportLessonPlanPdf, exportLessonPlansPdf, shareLessonPlan } from '@/lib/export';
+import { exportLessonPlanPdf, exportLessonPlansPdf, shareLessonPlan, shareLessonPlans } from '@/lib/export';
 import { saveLessonPlan } from '@/lib/lessonStore';
 import { logAppError } from '@/lib/logger';
 import {
@@ -301,45 +302,60 @@ export default function GenerateScreen() {
 
   if (generatedPlans.length) {
     const singlePlan = generatedPlans.length === 1 ? generatedPlans[0] : null;
+    const hasSavedFullView = singlePlan ? Boolean(savedPlanIds[0]) : savedPlanIds.length === generatedPlans.length;
+    const shareGeneratedPlans = () => {
+      if (singlePlan) {
+        shareLessonPlan(singlePlan);
+      } else {
+        shareLessonPlans(generatedPlans);
+      }
+    };
+    const saveGeneratedPlansAsPdf = () => {
+      if (singlePlan) {
+        exportLessonPlanPdf(singlePlan);
+      } else {
+        exportLessonPlansPdf(generatedPlans);
+      }
+    };
+    const openFullView = () => {
+      if (singlePlan && savedPlanIds[0]) {
+        router.push(`/lesson/${savedPlanIds[0]}`);
+        return;
+      }
+      if (savedPlanIds.length) {
+        router.push(`/lesson/week?ids=${encodeURIComponent(savedPlanIds.join(','))}`);
+      }
+    };
     return (
-      <View style={{ flex: 1 }}>
+      <View style={styles.previewContainer}>
+        <View style={styles.previewHeader}>
+          <View style={styles.previewIconGroup}>
+            <PreviewIconButton
+              icon="arrow-back"
+              label="Back"
+              onPress={() => {
+                setGeneratedPlans([]);
+                setSavedPlanIds([]);
+              }}
+            />
+            <PreviewIconButton icon="share-social-outline" label="Share" onPress={shareGeneratedPlans} />
+          </View>
+          <Text style={styles.previewHeaderTitle}>
+            {singlePlan ? 'Lesson Plan' : `Week Plan (${generatedPlans.length})`}
+          </Text>
+          <View style={styles.previewHeaderSpacer} />
+        </View>
         {singlePlan ? <LessonPlanTable plan={singlePlan} /> : <LessonPlanStack plans={generatedPlans} />}
-        <View style={styles.actions}>
-          <Button
-            title="Save as PDF"
-            onPress={() => {
-              if (singlePlan) {
-                exportLessonPlanPdf(singlePlan);
-              } else {
-                exportLessonPlansPdf(generatedPlans);
-              }
-            }}
-          />
-          {singlePlan ? (
-            <Button title="Share" variant="secondary" onPress={() => shareLessonPlan(singlePlan)} />
-          ) : null}
-          <Button
-            title="Back"
-            variant="secondary"
-            onPress={() => {
-              setGeneratedPlans([]);
-            }}
-          />
-          {singlePlan && savedPlanIds[0] ? (
+        <View style={styles.previewActions}>
+          <Button title="Save as PDF" onPress={saveGeneratedPlansAsPdf} style={styles.previewActionButton} />
+          {hasSavedFullView ? (
             <Button
               title="Open full view"
               variant="secondary"
-              onPress={() => router.push(`/lesson/${savedPlanIds[0]}`)}
+              onPress={openFullView}
+              style={styles.previewActionButton}
             />
           ) : null}
-          <Button
-            title="Generate another"
-            variant="ghost"
-            onPress={() => {
-              setGeneratedPlans([]);
-              setSavedPlanIds([]);
-            }}
-          />
         </View>
       </View>
     );
@@ -524,7 +540,76 @@ export default function GenerateScreen() {
   );
 }
 
+function PreviewIconButton({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => [styles.previewIconButton, pressed && styles.previewIconButtonPressed]}
+    >
+      <Ionicons name={icon} size={20} color="#fff" />
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
+  previewContainer: { flex: 1, backgroundColor: colors.bg },
+  previewHeader: {
+    minHeight: 52,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  previewIconGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minWidth: 88,
+  },
+  previewIconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+  },
+  previewIconButtonPressed: {
+    opacity: 0.82,
+  },
+  previewHeaderTitle: {
+    flex: 1,
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  previewHeaderSpacer: {
+    minWidth: 88,
+  },
+  previewActions: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.surface,
+    gap: 10,
+    flexDirection: Platform.OS === 'web' ? 'row' : 'column',
+  },
+  previewActionButton: {
+    flex: Platform.OS === 'web' ? 1 : undefined,
+  },
   content: { padding: 20, paddingBottom: 60 },
   heading: { fontSize: 22, fontWeight: '800', color: colors.primaryDark, marginBottom: 6 },
   sub: { color: colors.textMuted, marginBottom: 20, lineHeight: 20 },
