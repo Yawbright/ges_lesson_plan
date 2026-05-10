@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Alert, GestureResponderEvent, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, GestureResponderEvent, Platform, Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useToast } from '@/components/ToastProvider';
@@ -9,6 +9,16 @@ import { deleteScheme, loadSchemes } from '@/lib/schemeStore';
 import { colors } from '@/theme/colors';
 import type { LessonPlan } from '@/types/lessonPlan';
 import type { SchemeOfWork } from '@/types/scheme';
+
+type LibraryItem =
+  | { kind: 'lesson'; plan: LessonPlan }
+  | { kind: 'scheme'; scheme: SchemeOfWork };
+
+type LibrarySection = {
+  title: string;
+  emptyText: string;
+  data: LibraryItem[];
+};
 
 export default function LibraryScreen() {
   const { showToast } = useToast();
@@ -56,69 +66,105 @@ export default function LibraryScreen() {
     showToast({ message: 'Scheme deleted.' });
   }
 
+  const sections = useMemo<LibrarySection[]>(
+    () => [
+      {
+        title: 'Saved Lesson Plans',
+        emptyText: 'No lesson plans yet. Generate your first lesson plan from the Generate tab.',
+        data: plans.map((plan) => ({ kind: 'lesson', plan })),
+      },
+      {
+        title: 'Saved Schemes',
+        emptyText: 'No saved schemes yet. Generate a scheme from the Schemes tab.',
+        data: schemes.map((scheme) => ({ kind: 'scheme', scheme })),
+      },
+    ],
+    [plans, schemes],
+  );
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <SectionList
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      sections={sections}
+      keyExtractor={(item) =>
+        item.kind === 'lesson'
+          ? `lesson-${item.plan.id ?? `${item.plan.subject}-${item.plan.week}`}`
+          : `scheme-${item.scheme.id ?? `${item.scheme.subject}-${item.scheme.term}`}`
+      }
+      ListHeaderComponent={LibraryHeader}
+      renderSectionHeader={({ section }) => <Text style={styles.sectionTitle}>{section.title}</Text>}
+      renderSectionFooter={({ section }) =>
+        section.data.length ? <View style={styles.sectionSpacer} /> : <EmptyState text={section.emptyText} />
+      }
+      renderItem={({ item }) =>
+        item.kind === 'lesson' ? (
+          <LessonCard plan={item.plan} onDelete={() => confirmDeleteLesson(item.plan)} />
+        ) : (
+          <SchemeCard scheme={item.scheme} onDelete={() => confirmDeleteScheme(item.scheme)} />
+        )
+      }
+      initialNumToRender={12}
+      maxToRenderPerBatch={12}
+      windowSize={7}
+      removeClippedSubviews={Platform.OS !== 'web'}
+      stickySectionHeadersEnabled={false}
+    />
+  );
+}
+
+function LibraryHeader() {
+  return (
+    <>
       <Text style={styles.heading}>Library</Text>
       <Text style={styles.sub}>
         Open full generated works, revisit them later, or save them as PDF.
       </Text>
+    </>
+  );
+}
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Saved Lesson Plans</Text>
-        {plans.length ? (
-          plans.map((plan) => (
-            <Pressable
-              key={plan.id}
-              style={styles.card}
-              onPress={() => router.push(`/lesson/${plan.id}`)}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={styles.cardTitle}>
-                  {plan.subject} - {plan.classLevel} - Week {plan.week}
-                </Text>
-                <Text style={styles.cardSub}>{plan.termTitle}</Text>
-              </View>
-              <CardActions
-                onShare={() => shareLessonPlan(plan)}
-                onPdf={() => exportLessonPlanPdf(plan)}
-                onDelete={() => confirmDeleteLesson(plan)}
-              />
-            </Pressable>
-          ))
-        ) : (
-          <EmptyState text="No lesson plans yet. Generate your first lesson plan from the Generate tab." />
-        )}
+function LessonCard({ plan, onDelete }: { plan: LessonPlan; onDelete: () => void }) {
+  return (
+    <Pressable
+      style={styles.card}
+      onPress={() => router.push(`/lesson/${plan.id}`)}
+    >
+      <View style={{ flex: 1 }}>
+        <Text style={styles.cardTitle}>
+          {plan.subject} - {plan.classLevel} - Week {plan.week}
+        </Text>
+        <Text style={styles.cardSub}>{plan.termTitle}</Text>
       </View>
+      <CardActions
+        onShare={() => shareLessonPlan(plan)}
+        onPdf={() => exportLessonPlanPdf(plan)}
+        onDelete={onDelete}
+      />
+    </Pressable>
+  );
+}
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Saved Schemes</Text>
-        {schemes.length ? (
-          schemes.map((scheme) => (
-            <Pressable
-              key={scheme.id}
-              style={styles.card}
-              onPress={() => router.push(`/scheme/${scheme.id}`)}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={styles.cardTitle}>
-                  {scheme.subject} - {scheme.classLevel} - {scheme.term}
-                </Text>
-                <Text style={styles.cardSub}>
-                  {scheme.weeks.length} weeks | {scheme.title}
-                </Text>
-              </View>
-              <CardActions
-                onShare={() => shareScheme(scheme)}
-                onPdf={() => exportSchemePdf(scheme)}
-                onDelete={() => confirmDeleteScheme(scheme)}
-              />
-            </Pressable>
-          ))
-        ) : (
-          <EmptyState text="No saved schemes yet. Generate a scheme from the Schemes tab." />
-        )}
+function SchemeCard({ scheme, onDelete }: { scheme: SchemeOfWork; onDelete: () => void }) {
+  return (
+    <Pressable
+      style={styles.card}
+      onPress={() => router.push(`/scheme/${scheme.id}`)}
+    >
+      <View style={{ flex: 1 }}>
+        <Text style={styles.cardTitle}>
+          {scheme.subject} - {scheme.classLevel} - {scheme.term}
+        </Text>
+        <Text style={styles.cardSub}>
+          {scheme.weeks.length} weeks | {scheme.title}
+        </Text>
       </View>
-    </ScrollView>
+      <CardActions
+        onShare={() => shareScheme(scheme)}
+        onPdf={() => exportSchemePdf(scheme)}
+        onDelete={onDelete}
+      />
+    </Pressable>
   );
 }
 
@@ -203,8 +249,8 @@ const styles = StyleSheet.create({
   content: { padding: 16, paddingBottom: 40 },
   heading: { fontSize: 22, fontWeight: '800', color: colors.primaryDark, marginBottom: 6 },
   sub: { color: colors.textMuted, marginBottom: 20, lineHeight: 20 },
-  section: { marginBottom: 24 },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 10 },
+  sectionSpacer: { height: 14 },
   card: {
     backgroundColor: colors.surface,
     borderRadius: 10,
@@ -253,6 +299,7 @@ const styles = StyleSheet.create({
     padding: 18,
     borderWidth: 1,
     borderColor: colors.border,
+    marginBottom: 24,
   },
   emptyText: { color: colors.textMuted, lineHeight: 20 },
 });

@@ -13,6 +13,7 @@ Run these from the project root:
 ```powershell
 npm install
 npm.cmd run typecheck
+npm.cmd run verify:refactor
 ```
 
 Create a production `.env` locally before building the web app:
@@ -32,6 +33,11 @@ Apply database migrations:
 npx supabase link --project-ref xzgflafcenfnwiqexxuf
 npx supabase db push
 ```
+
+The latest admin migrations include:
+
+- `0015_admin_overview_metrics.sql`: moves admin dashboard totals into one SQL aggregate RPC.
+- `0016_admin_performance_indexes.sql`: adds indexes for admin report pagination and dashboard metrics.
 
 Set production function secrets:
 
@@ -58,7 +64,16 @@ npx supabase functions deploy dev-grant-credits
 npx supabase functions deploy referral-dashboard
 npx supabase functions deploy apply-referral
 npx supabase functions deploy validate-referral-code
+npx supabase functions deploy log-app-error
+npx supabase functions deploy admin-tools
 ```
+
+Admin dashboard notes:
+
+- `admin-tools` is the only admin API Edge Function.
+- The overview cards use `admin_overview_metrics`, so run `npx supabase db push` before deploying or testing the latest admin dashboard.
+- Users, payments, referrals, usage, credits, and logs use server-side pagination. Use the in-app Load more buttons for older records.
+- For local Edge Function validation, install Deno and run `deno check supabase/functions/admin-tools/index.ts` after dependencies can be fetched.
 
 Invitation-only signup notes:
 

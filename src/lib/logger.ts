@@ -1,4 +1,4 @@
-import { supabase, supabaseAnonKey, supabaseUrl } from './supabase';
+import { invokeEdgeFunction } from './edgeFunctions';
 
 export async function logAppError(input: {
   source: string;
@@ -8,16 +8,8 @@ export async function logAppError(input: {
   severity?: 'info' | 'warning' | 'error';
 }) {
   try {
-    if (!supabaseUrl || !supabaseAnonKey) return;
-    const { data } = await supabase.auth.getSession();
-    await fetch(`${supabaseUrl}/functions/v1/log-app-error`, {
-      method: 'POST',
-      headers: {
-        apikey: supabaseAnonKey,
-        ...(data.session?.access_token ? { Authorization: `Bearer ${data.session.access_token}` } : {}),
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify(input),
+    await invokeEdgeFunction('log-app-error', input, {
+      requireAuth: false,
     });
   } catch {
     // Logging must never break user workflows.

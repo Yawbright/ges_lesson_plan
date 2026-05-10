@@ -1,6 +1,5 @@
-import { Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
+import { appStorage } from './storage';
 
 const STORAGE_KEY = 'teacher-profile';
 
@@ -18,13 +17,13 @@ export async function loadTeacherProfile(): Promise<TeacherProfile> {
   if (userId) {
     const remote = await loadRemoteTeacherProfile(userId).catch(() => null);
     if (remote) {
-      await storage.setItem(scopedStorageKey(userId), JSON.stringify(remote));
+      await appStorage.setItem(scopedStorageKey(userId), JSON.stringify(remote));
       return remote;
     }
     return emptyTeacherProfile();
   }
 
-  const raw = await storage.getItem(STORAGE_KEY);
+  const raw = await appStorage.getItem(STORAGE_KEY);
   if (!raw) return emptyTeacherProfile();
 
   try {
@@ -38,11 +37,11 @@ export async function saveTeacherProfile(profile: TeacherProfile) {
   const { data } = await supabase.auth.getUser();
   const userId = data.user?.id;
   if (userId) {
-    await storage.setItem(scopedStorageKey(userId), JSON.stringify(profile));
+    await appStorage.setItem(scopedStorageKey(userId), JSON.stringify(profile));
     await saveRemoteTeacherProfile(userId, profile);
     return;
   }
-  await storage.setItem(STORAGE_KEY, JSON.stringify(profile));
+  await appStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
 }
 
 export async function isTeacherOnboardingComplete() {
@@ -96,21 +95,3 @@ async function saveRemoteTeacherProfile(userId: string, profile: TeacherProfile)
 function scopedStorageKey(userId: string) {
   return `${STORAGE_KEY}:${userId}`;
 }
-
-const storage = {
-  async getItem(key: string) {
-    if (Platform.OS === 'web') {
-      return typeof window === 'undefined' ? null : window.localStorage.getItem(key);
-    }
-    return AsyncStorage.getItem(key);
-  },
-  async setItem(key: string, value: string) {
-    if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(key, value);
-      }
-      return;
-    }
-    await AsyncStorage.setItem(key, value);
-  },
-};

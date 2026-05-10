@@ -1,4 +1,4 @@
-import { supabase, supabaseAnonKey, supabaseUrl } from './supabase';
+import { invokeEdgeFunction } from './edgeFunctions';
 import { buildFallbackLessonPlan } from './fallbackLessonPlan';
 import { getExplicitCurriculumYearWeeks, getExplicitSchemeOfWork } from './curriculum';
 import { buildSchemeContext, findMatchingScheme } from './schemeStore';
@@ -48,53 +48,10 @@ const useLocalAi = explicitUseLocalAi || (bypassAuth && !forceCloudAi);
 const localAiBaseUrl =
   (process.env.EXPO_PUBLIC_LOCAL_AI_URL ?? 'http://localhost:8787').replace(/\/$/, '');
 
-async function hasSessionForCloudAi() {
-  if (useLocalAi) return false;
-  const { data } = await supabase.auth.getSession();
-  return Boolean(data.session);
-}
-
 async function invokeEdgeFunctionJson<T>(functionName: string, body: object): Promise<T> {
-  const hasSession = await hasSessionForCloudAi();
-  if (!hasSession) {
-    throw new Error('Cloud AI unavailable: no signed-in Supabase session.');
-  }
-
-  const { data: sessionData } = await supabase.auth.getSession();
-  const token = sessionData.session?.access_token;
-  if (!token) {
-    throw new Error('Cloud AI unavailable: no signed-in Supabase session.');
-  }
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Supabase URL or anon key is missing.');
-  }
-
-  const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
-    method: 'POST',
-    headers: {
-      apikey: supabaseAnonKey,
-      Authorization: `Bearer ${token}`,
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify(body),
+  return invokeEdgeFunction<T>(functionName, body, {
+    authErrorMessage: 'Cloud AI unavailable: no signed-in Supabase session.',
   });
-
-  const raw = await response.text();
-  const payload = raw ? JSON.parse(raw) : null;
-
-  if (!response.ok) {
-    const detail =
-      typeof payload?.error === 'string'
-        ? payload.error
-        : raw.trim().slice(0, 1200) || `${functionName} failed with HTTP ${response.status}.`;
-    throw new Error(`${functionName} failed (HTTP ${response.status}): ${detail}`);
-  }
-
-  if (!payload) {
-    throw new Error(`No response body from ${functionName}`);
-  }
-
-  return payload as T;
 }
 
 export async function generateLessonPlan(

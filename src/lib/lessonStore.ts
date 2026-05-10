@@ -1,7 +1,6 @@
-import { Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 import { defaultRuntimeSettings, loadRuntimeAppSettings } from './appSettings';
+import { appStorage } from './storage';
 import type { LessonPlan } from '@/types/lessonPlan';
 
 const STORAGE_KEY = 'local-lesson-plans';
@@ -78,7 +77,7 @@ export async function deleteLessonPlan(id: string): Promise<void> {
 }
 
 async function loadLocalLessonPlans(): Promise<LessonPlan[]> {
-  const raw = await storage.getItem(STORAGE_KEY);
+  const raw = await appStorage.getItem(STORAGE_KEY);
   if (!raw) return [];
 
   try {
@@ -111,7 +110,7 @@ function normalizeLessonPlan(plan: LessonPlan): LessonPlan {
 }
 
 async function writeLessonPlans(plans: LessonPlan[]) {
-  await storage.setItem(STORAGE_KEY, JSON.stringify(plans));
+  await appStorage.setItem(STORAGE_KEY, JSON.stringify(plans));
 }
 
 async function getUserId() {
@@ -146,21 +145,3 @@ function slugify(value?: string) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 }
-
-const storage = {
-  async getItem(key: string) {
-    if (Platform.OS === 'web') {
-      return typeof window === 'undefined' ? null : window.localStorage.getItem(key);
-    }
-    return AsyncStorage.getItem(key);
-  },
-  async setItem(key: string, value: string) {
-    if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(key, value);
-      }
-      return;
-    }
-    await AsyncStorage.setItem(key, value);
-  },
-};

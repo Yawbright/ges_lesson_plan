@@ -1,7 +1,6 @@
-import { Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getDeviceId } from './device';
-import { supabase, supabaseAnonKey, supabaseUrl } from './supabase';
+import { invokeEdgeFunction } from './edgeFunctions';
+import { appStorage } from './storage';
 
 const PENDING_REFERRAL_KEY = 'pending-referral-code';
 
@@ -45,21 +44,14 @@ export async function validateReferralCode(code: string) {
   if (!cleaned) {
     throw new Error('Invitation code is required.');
   }
-  if (!supabaseUrl || !supabaseAnonKey) throw new Error('Supabase is not configured.');
 
-  const response = await fetch(`${supabaseUrl}/functions/v1/validate-referral-code`, {
-    method: 'POST',
-    headers: {
-      apikey: supabaseAnonKey,
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({ code: cleaned }),
-  });
+  const payload = await invokeEdgeFunction<{ valid?: boolean; code?: string; error?: string }>(
+    'validate-referral-code',
+    { code: cleaned },
+    { requireAuth: false },
+  );
 
-  const raw = await response.text();
-  const payload = raw ? JSON.parse(raw) : null;
-
-  if (!response.ok || !payload?.valid) {
+  if (!payload?.valid) {
     throw new Error(payload?.error ?? 'Invitation code is invalid.');
   }
 
@@ -69,13 +61,13 @@ export async function validateReferralCode(code: string) {
 export async function savePendingReferralCode(code: string) {
   const cleaned = code.trim().toUpperCase();
   if (!cleaned) return;
-  await storage.setItem(PENDING_REFERRAL_KEY, cleaned);
+  await appStorage.setItem(PENDING_REFERRAL_KEY, cleaned);
 }
 
 export async function consumePendingReferralCode() {
-  const code = await storage.getItem(PENDING_REFERRAL_KEY);
+  const code = await appStorage.getItem(PENDING_REFERRAL_KEY);
   if (code) {
-    await storage.removeItem(PENDING_REFERRAL_KEY);
+    await appStorage.removeItem(PENDING_REFERRAL_KEY);
   }
   return code;
 }
@@ -89,54 +81,7 @@ export function buildReferralLink(code: string) {
 }
 
 async function invokeAuthedReferralFunction<T>(functionName: string, body: object): Promise<T> {
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
-  if (!token) throw new Error('Sign in first.');
-  if (!supabaseUrl || !supabaseAnonKey) throw new Error('Supabase is not configured.');
-
-  const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
-    method: 'POST',
-    headers: {
-      apikey: supabaseAnonKey,
-      Authorization: `Bearer ${token}`,
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify(body),
+  return invokeEdgeFunction<T>(functionName, body, {
+    authErrorMessage: 'Sign in first.',
   });
-
-  const raw = await response.text();
-  const payload = raw ? JSON.parse(raw) : null;
-
-  if (!response.ok) {
-    throw new Error(payload?.error ?? `${functionName} failed with HTTP ${response.status}.`);
-  }
-
-  return payload as T;
 }
-
-const storage = {
-  async getItem(key: string) {
-    if (Platform.OS === 'web') {
-      return typeof window === 'undefined' ? null : window.localStorage.getItem(key);
-    }
-    return AsyncStorage.getItem(key);
-  },
-  async setItem(key: string, value: string) {
-    if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(key, value);
-      }
-      return;
-    }
-    await AsyncStorage.setItem(key, value);
-  },
-  async removeItem(key: string) {
-    if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined') {
-        window.localStorage.removeItem(key);
-      }
-      return;
-    }
-    await AsyncStorage.removeItem(key);
-  },
-};

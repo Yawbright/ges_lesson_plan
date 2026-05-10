@@ -1,4 +1,4 @@
-import { supabase, supabaseAnonKey, supabaseUrl } from './supabase';
+import { invokeEdgeFunction } from './edgeFunctions';
 
 export type AdminUser = {
   user_id: string;
@@ -115,6 +115,15 @@ export type AdminSetting = {
   updated_at: string;
 };
 
+export type AdminReportKind = 'transactions' | 'purchases' | 'referrals' | 'logs';
+
+export type AdminPage<T> = {
+  items: T[];
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+};
+
 export type AdminDashboard = {
   overview: AdminOverview;
   users: AdminUser[];
@@ -122,6 +131,12 @@ export type AdminDashboard = {
   purchases: AdminPurchase[];
   referrals: AdminReferral[];
   logs: AdminLog[];
+  reportPages?: {
+    transactions: AdminPage<AdminTransaction>;
+    purchases: AdminPage<AdminPurchase>;
+    referrals: AdminPage<AdminReferral>;
+    logs: AdminPage<AdminLog>;
+  };
   packages: AdminCreditPackage[];
   settings: AdminSetting[];
 };
@@ -145,6 +160,16 @@ export async function adminSearchUsers(query = '') {
 export async function adminLoadUserDetail(userId: string) {
   const data = await invokeAdmin<{ detail: AdminUserDetail }>({ action: 'user-detail', userId });
   return data.detail;
+}
+
+export async function adminListReport<T>(report: AdminReportKind, page: number, pageSize = 80) {
+  const data = await invokeAdmin<AdminPage<T> & { report: AdminReportKind }>({
+    action: 'list-report',
+    report,
+    page,
+    pageSize,
+  });
+  return data;
 }
 
 export async function adminAdjustCredits(input: { userId: string; amount: number; reason: string }) {
@@ -207,22 +232,7 @@ export async function adminLoadLogs() {
 }
 
 async function invokeAdmin<T>(body: object): Promise<T> {
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
-  if (!token) throw new Error('Sign in first.');
-  if (!supabaseUrl || !supabaseAnonKey) throw new Error('Supabase is not configured.');
-
-  const response = await fetch(`${supabaseUrl}/functions/v1/admin-tools`, {
-    method: 'POST',
-    headers: {
-      apikey: supabaseAnonKey,
-      Authorization: `Bearer ${token}`,
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify(body),
+  return invokeEdgeFunction<T>('admin-tools', body, {
+    authErrorMessage: 'Sign in first.',
   });
-  const raw = await response.text();
-  const payload = raw ? JSON.parse(raw) : null;
-  if (!response.ok) throw new Error(payload?.error ?? `Admin request failed with HTTP ${response.status}`);
-  return payload as T;
 }

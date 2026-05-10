@@ -1,5 +1,5 @@
-import { FunctionsHttpError } from '@supabase/supabase-js';
-import { supabase, supabaseAnonKey, supabaseUrl } from './supabase';
+import { supabase } from './supabase';
+import { invokeEdgeFunction } from './edgeFunctions';
 
 export type CreditPackage = {
   id: string;
@@ -123,15 +123,16 @@ export async function loadCreditPurchases(): Promise<CreditPurchase[]> {
 export async function initializeCreditPurchase(
   packageId: string,
 ): Promise<InitializedCreditPurchase> {
-  const { data, error } = await withTimeout(
-    invokeAuthedFunction<InitializedCreditPurchase>('initialize-credit-purchase', {
+  const data = await withTimeout(
+    invokeEdgeFunction<InitializedCreditPurchase>('initialize-credit-purchase', {
       packageId,
+    }, {
+      authErrorMessage: 'Sign in again before using credits.',
     }),
     20000,
     'Paystack checkout took too long to start. Check the function deployment and PAYSTACK_SECRET_KEY.',
   );
 
-  if (error) throw await formatFunctionError(error, 'Could not start Paystack checkout.');
   if (!data?.authorizationUrl || !data.reference) {
     throw new Error('Paystack did not return a checkout URL.');
   }
@@ -161,15 +162,16 @@ export async function verifyCreditPurchase(reference: string): Promise<{
   balance: number;
   message?: string;
 }> {
-  const { data, error } = await invokeAuthedFunction<{
+  const data = await invokeEdgeFunction<{
     status: string;
     credited: boolean;
     credits: number;
     balance: number;
     message?: string;
-  }>('verify-credit-purchase', { reference });
+  }>('verify-credit-purchase', { reference }, {
+    authErrorMessage: 'Sign in again before using credits.',
+  });
 
-  if (error) throw await formatFunctionError(error, 'Could not verify Paystack payment.');
   if (!data) throw new Error('No verification response from Paystack.');
   return data;
 }
@@ -190,7 +192,7 @@ export async function grantDeveloperCredits(input: {
     throw new Error('Sign in first, or provide an email for the test credit grant.');
   }
 
-  const { data, error } = await invokeAuthedFunction<{
+  const data = await invokeEdgeFunction<{
     userId: string;
     amount: number;
     balance: number;
@@ -205,11 +207,13 @@ export async function grantDeveloperCredits(input: {
       description: 'Developer shortcut credit grant',
     },
     {
-      'x-dev-credit-secret': input.secret,
+      authErrorMessage: 'Sign in again before using credits.',
+      headers: {
+        'x-dev-credit-secret': input.secret,
+      },
     },
   );
 
-  if (error) throw await formatFunctionError(error, 'Could not grant developer credits.');
   if (!data) throw new Error('No response from developer credit grant.');
   return data;
 }
@@ -225,61 +229,4 @@ async function getCurrentUser() {
     id: data.user?.id ?? undefined,
     email: data.user?.email ?? undefined,
   };
-}
-
-async function invokeAuthedFunction<T>(
-  functionName: string,
-  body: object,
-  extraHeaders?: Record<string, string>,
-): Promise<{ data: T | null; error: Error | null }> {
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
-
-  if (!token) {
-    throw new Error('Sign in again before using credits.');
-  }
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Supabase URL or anon key is missing.');
-  }
-
-  const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
-    method: 'POST',
-    headers: {
-      apikey: supabaseAnonKey,
-      Authorization: `Bearer ${token}`,
-      'content-type': 'application/json',
-      ...(extraHeaders ?? {}),
-    },
-    body: JSON.stringify(body),
-  });
-
-  const raw = await response.text();
-  const payload = raw ? JSON.parse(raw) : null;
-
-  if (!response.ok) {
-    const message =
-      typeof payload?.error === 'string'
-        ? payload.error
-        : typeof payload?.message === 'string'
-          ? payload.message
-          : `Function ${functionName} failed with HTTP ${response.status}.`;
-    return { data: null, error: new Error(message) };
-  }
-
-  return { data: payload as T, error: null };
-}
-
-async function formatFunctionError(error: unknown, fallback: string) {
-  if (error instanceof FunctionsHttpError && error.context instanceof Response) {
-    const raw = await error.context.clone().text().catch(() => '');
-    try {
-      const parsed = JSON.parse(raw) as { error?: string; message?: string };
-      return new Error(parsed.error || parsed.message || fallback);
-    } catch {
-      return new Error(raw.trim() || fallback);
-    }
-  }
-
-  return error instanceof Error ? error : new Error(fallback);
 }

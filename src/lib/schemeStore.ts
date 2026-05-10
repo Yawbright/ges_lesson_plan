@@ -1,8 +1,7 @@
-import { Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { normalizeSchemeWeek } from '@/lib/schemeWeek';
 import { supabase } from './supabase';
 import { defaultRuntimeSettings, loadRuntimeAppSettings } from './appSettings';
+import { appStorage } from './storage';
 import type { ClassLevel } from '@/types/lessonPlan';
 import type { SchemeOfWork, SchemeWeek } from '@/types/scheme';
 
@@ -151,7 +150,7 @@ export function normalizeTerm(term?: string): string {
 }
 
 async function loadLocalSchemes(): Promise<SchemeOfWork[]> {
-  const raw = await storage.getItem(STORAGE_KEY);
+  const raw = await appStorage.getItem(STORAGE_KEY);
   if (!raw) return [];
 
   try {
@@ -183,7 +182,7 @@ function normalizeScheme(scheme: SchemeOfWork): SchemeOfWork {
 }
 
 async function writeSchemes(schemes: SchemeOfWork[]) {
-  await storage.setItem(STORAGE_KEY, JSON.stringify(schemes));
+  await appStorage.setItem(STORAGE_KEY, JSON.stringify(schemes));
 }
 
 async function getUserId() {
@@ -210,21 +209,3 @@ function addDays(date: Date, days: number) {
 function normalizeText(value?: string): string {
   return (value ?? '').trim().toLowerCase();
 }
-
-const storage = {
-  async getItem(key: string) {
-    if (Platform.OS === 'web') {
-      return typeof window === 'undefined' ? null : window.localStorage.getItem(key);
-    }
-    return AsyncStorage.getItem(key);
-  },
-  async setItem(key: string, value: string) {
-    if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(key, value);
-      }
-      return;
-    }
-    await AsyncStorage.setItem(key, value);
-  },
-};

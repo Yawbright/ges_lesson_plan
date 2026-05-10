@@ -1,5 +1,4 @@
-import { Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { appStorage } from './storage';
 
 const STORAGE_KEY = 'term-start-dates';
 
@@ -27,7 +26,7 @@ export async function saveTermStartDate(input: {
     delete dates[key];
   }
 
-  await storage.setItem(STORAGE_KEY, JSON.stringify(dates));
+  await appStorage.setItem(STORAGE_KEY, JSON.stringify(dates));
 }
 
 export function calculateWeekEnding(termStartDate: string, week: number): string {
@@ -50,7 +49,7 @@ function getTermDateKey(input: { classLevel: string; term: string }) {
 }
 
 async function loadDates(): Promise<TermStartDates> {
-  const raw = await storage.getItem(STORAGE_KEY);
+  const raw = await appStorage.getItem(STORAGE_KEY);
   if (!raw) return {};
 
   try {
@@ -73,22 +72,3 @@ function formatDisplayDate(date: Date) {
     year: 'numeric',
   }).format(date);
 }
-
-const storage = {
-  async getItem(key: string) {
-    if (Platform.OS === 'web') {
-      return typeof window === 'undefined' ? null : window.localStorage.getItem(key);
-    }
-    return AsyncStorage.getItem(key);
-  },
-  async setItem(key: string, value: string) {
-    if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(key, value);
-      }
-      return;
-    }
-    await AsyncStorage.setItem(key, value);
-  },
-};
-

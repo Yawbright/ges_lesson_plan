@@ -1,8 +1,8 @@
 import 'react-native-url-polyfill/auto';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
+import { appStorage } from './storage';
 
 type Extra = { supabaseUrl?: string; supabaseAnonKey?: string };
 
@@ -27,26 +27,9 @@ if (!url || !anonKey) {
   );
 }
 
-const noopStorage = {
-  getItem: async (_key: string) => null,
-  setItem: async (_key: string, _value: string) => {},
-  removeItem: async (_key: string) => {},
-};
-
-const webStorage =
-  typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
-    ? {
-        getItem: async (key: string) => window.localStorage.getItem(key),
-        setItem: async (key: string, value: string) => window.localStorage.setItem(key, value),
-        removeItem: async (key: string) => window.localStorage.removeItem(key),
-      }
-    : noopStorage;
-
-const storage = Platform.OS === 'web' ? webStorage : AsyncStorage;
-
 export const supabase = createClient(url, anonKey, {
   auth: {
-    storage,
+    storage: appStorage,
     autoRefreshToken: Platform.OS !== 'web',
     persistSession: true,
     detectSessionInUrl: false,
