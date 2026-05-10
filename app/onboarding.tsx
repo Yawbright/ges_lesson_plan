@@ -58,6 +58,10 @@ export default function OnboardingScreen() {
     }
   }
 
+  function skipSetup() {
+    router.replace('/(tabs)/generate');
+  }
+
   function addClassSize() {
     if (!classToAdd || !classSizeToAdd.trim()) {
       Alert.alert('Class size required', 'Select a class and enter its class size.');
@@ -82,7 +86,9 @@ export default function OnboardingScreen() {
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
       <Text style={styles.heading}>Complete Teacher Setup</Text>
-      <Text style={styles.sub}>These details will appear on your generated lesson plans.</Text>
+      <Text style={styles.sub}>
+        These details will appear on your generated lesson plans. You can skip this for now and complete it later from Profile.
+      </Text>
       <View style={styles.card}>
         <Field label="Teacher Full Name" value={teacherName} onChangeText={setTeacherName} />
         <Field label="Name of School" value={schoolName} onChangeText={setSchoolName} />
@@ -134,7 +140,10 @@ export default function OnboardingScreen() {
           </View>
         ) : null}
 
-        <Button title="Finish setup" onPress={finish} loading={saving} />
+        <View style={styles.actionStack}>
+          <Button title="Finish setup" onPress={finish} loading={saving} />
+          <Button title="Skip for now" variant="ghost" onPress={skipSetup} disabled={saving} />
+        </View>
       </View>
     </ScrollView>
   );
@@ -172,6 +181,7 @@ const styles = StyleSheet.create({
   meta: { color: colors.textMuted, marginTop: 3 },
   row: { flexDirection: 'row', gap: 10, marginTop: 12 },
   classList: { marginBottom: 14, borderTopWidth: 1, borderTopColor: colors.border },
+  actionStack: { gap: 8 },
   classRow: {
     flexDirection: 'row',
     alignItems: 'center',
