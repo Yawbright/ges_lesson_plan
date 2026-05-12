@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '@/theme/colors';
 
@@ -25,10 +26,28 @@ const tools = [
 ];
 
 export default function ToolsLauncherScreen() {
+  const [visible, setVisible] = useState(true);
+
+  useFocusEffect(
+    useCallback(() => {
+      setVisible(true);
+    }, []),
+  );
+
+  function closeLauncher() {
+    setVisible(false);
+    requestAnimationFrame(() => router.replace('/(tabs)/library'));
+  }
+
+  function openTool(route: string) {
+    setVisible(false);
+    requestAnimationFrame(() => router.push(route));
+  }
+
   return (
     <View style={styles.screen}>
-      <Modal visible transparent animationType="slide" onRequestClose={() => router.replace('/(tabs)/library')}>
-        <Pressable style={styles.backdrop} onPress={() => router.replace('/(tabs)/library')}>
+      <Modal visible={visible} transparent animationType="slide" onRequestClose={closeLauncher}>
+        <Pressable style={styles.backdrop} onPress={closeLauncher}>
           <Pressable style={styles.sheet}>
             <View style={styles.handle} />
             <View style={styles.headerRow}>
@@ -36,7 +55,7 @@ export default function ToolsLauncherScreen() {
                 <Text style={styles.title}>Tools</Text>
                 <Text style={styles.sub}>Choose what you want to create.</Text>
               </View>
-              <Pressable style={styles.closeButton} onPress={() => router.replace('/(tabs)/library')}>
+              <Pressable style={styles.closeButton} onPress={closeLauncher}>
                 <Ionicons name="close" size={22} color={colors.primary} />
               </Pressable>
             </View>
@@ -44,7 +63,7 @@ export default function ToolsLauncherScreen() {
               <Pressable
                 key={tool.title}
                 style={({ pressed }) => [styles.toolRow, pressed && styles.pressed]}
-                onPress={() => router.push(tool.route)}
+                onPress={() => openTool(tool.route)}
               >
                 <View style={styles.iconBox}>
                   <Ionicons name={tool.icon} size={22} color={colors.primary} />
