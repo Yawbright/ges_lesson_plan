@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/theme/colors';
 
 type Props = {
@@ -42,7 +43,7 @@ export function DatePickerField({ label, value, onChange, placeholder = 'Select 
         <Text style={[styles.triggerText, !selectedDate && styles.placeholder]}>
           {selectedDate ? formatDisplayDate(selectedDate) : placeholder}
         </Text>
-        <Text style={styles.calendarIcon}>Cal</Text>
+        <Ionicons name="calendar-outline" size={20} color={colors.primary} style={styles.calendarIcon} />
       </Pressable>
 
       <Modal transparent animationType="fade" visible={open} onRequestClose={() => setOpen(false)}>
@@ -172,7 +173,7 @@ const styles = StyleSheet.create({
   },
   triggerText: { fontSize: 16, color: colors.text, flex: 1 },
   placeholder: { color: colors.textMuted },
-  calendarIcon: { color: colors.primary, fontSize: 18, marginLeft: 10 },
+  calendarIcon: { marginLeft: 10 },
   pressed: { opacity: 0.82 },
   overlay: {
     flex: 1,

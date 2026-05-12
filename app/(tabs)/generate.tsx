@@ -487,7 +487,6 @@ export default function GenerateScreen() {
           label="Notes (optional)"
           value={notes}
           onChangeText={setNotes}
-          placeholder="e.g. include a practical activity or group exercise"
           multiline
           numberOfLines={3}
           style={{ minHeight: 80, textAlignVertical: 'top' }}

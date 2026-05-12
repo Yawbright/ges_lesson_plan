@@ -247,16 +247,21 @@ export function EmailPasswordAuthForm({
             autoComplete="new-password"
           />
           {mode === 'signup' ? (
-            <Field
-              label="Referral / invitation code"
-              value={invitationCode}
-              onChangeText={(value) => {
-                setInvitationCode(value.trim().toUpperCase());
-                setFieldError(null);
-              }}
-              placeholder="e.g. KHERKHELLY"
-              autoCapitalize="characters"
-            />
+            <>
+              <Field
+                label="Referral / invitation code"
+                value={invitationCode}
+                onChangeText={(value) => {
+                  setInvitationCode(value.trim().toUpperCase());
+                  setFieldError(null);
+                }}
+                placeholder="8-character code, e.g. A1B2C3D4"
+                autoCapitalize="characters"
+              />
+              <Text style={styles.invitationNotice}>
+                Registration is strictly by invitation. Contact your referrer for a referral code.
+              </Text>
+            </>
           ) : null}
         </>
       ) : null}
@@ -357,6 +362,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: -6,
     marginBottom: 12,
+  },
+  invitationNotice: {
+    color: colors.textMuted,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: -8,
+    marginBottom: 14,
   },
   infoNote: {
     backgroundColor: '#EEF5EF',
