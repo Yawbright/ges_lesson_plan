@@ -87,7 +87,7 @@ export default function TeachingNotesToolScreen() {
     setSelectedPlan(plan);
     const planVersions = plan.id ? await loadTeachingNotesForLesson(plan.id) : [];
     setVersions(planVersions);
-    setActiveNotes(planVersions[0] ?? null);
+    setActiveNotes(null);
   }
 
   async function handleGenerate() {

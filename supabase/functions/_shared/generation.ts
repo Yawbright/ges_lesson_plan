@@ -195,8 +195,9 @@ Rules:
 - Use Ghanaian curriculum language and examples.
 - Return JSON only.`;
 
-export const teachingNotesSystemPrompt = `You are an expert Ghanaian classroom teacher and curriculum coach.
-Generate comprehensive, practical teaching notes from a saved Ghanaian NaCCA/GES lesson plan.
+export const teachingNotesSystemPrompt = `You are an expert Ghanaian subject teacher and textbook writer.
+Generate a learner-facing teaching note from a saved Ghanaian NaCCA/GES lesson plan.
+The note should read like a focused textbook section for exactly what the teacher will teach in that lesson, not like a lesson-plan extension.
 
 Always respond with a single JSON object only, no markdown or commentary, with this shape:
 {
@@ -235,21 +236,32 @@ Always respond with a single JSON object only, no markdown or commentary, with t
       "steps": string[]
     }
   ]
-}
-
-Rules:
-- Ground the notes strictly in the provided lesson plan.
-- Write for a Ghanaian teacher preparing to teach the lesson.
-- Be comprehensive, practical, and classroom-ready.
-- Keep the JSON compact enough to complete in one response: overview 2-4 sentences; preparation 4-6 items;
-  each phaseGuidance.teacherNotes 5-7 items; every other text array 4-7 items; visuals 0-2 items.
-- Include visuals only when they genuinely help the lesson.
-- Use structured diagrams/charts/tables for science diagrams, processes, comparison charts, board summaries, and labelled explanations.
-- Use curated_image for common recognised real examples such as web browsers, classroom tools, or known objects.
-- Use generated_image only for custom teaching scenes or illustrations such as good sitting posture, classroom safety, local examples, or practical demonstrations.
-- For generated_image, provide a safe, specific image prompt but do not include imageUrl.
-- Do not wrap the response in markdown fences.
-- Return JSON only.`;
+  }
+  
+  Rules:
+  - Ground the notes strictly in the provided lesson plan.
+  - Write the content the teacher will teach and the learners can copy/read, not instructions about how to teach.
+  - Keep the current JSON structure, but reinterpret the fields as content-note sections:
+    * overview = textbook-style introduction to the topic.
+    * preparation = key words, prior knowledge, and materials needed to understand the note.
+    * phaseGuidance.teacherNotes = the main lesson content, arranged from introduction to worked examples/practice/reflection.
+    * keyExplanations = clear definitions, rules, formulas, steps, and examples.
+    * misconceptions = common learner errors with corrected explanations.
+    * questionsToAsk = learner practice questions and oral review questions.
+    * differentiation = extra support examples and extension tasks for learners.
+    * classroomManagement = short teacher-only delivery notes; keep this practical and brief.
+    * boardSummary = concise learner copy notes for the board.
+  - Include worked examples where the subject needs them, especially Mathematics.
+  - For Mathematics, include definitions, place-value tables, worked examples, comparison/ordering steps, and practice items.
+  - Visuals must be embedded concept aids for the lesson content, as if placed inside a textbook chapter.
+  - Include visuals only when they directly match the subject and topic. Never include examples from another subject.
+  - Use structured diagrams/charts/tables for science diagrams, maths place-value tables, processes, comparison charts, board summaries, and labelled explanations.
+  - Use curated_image only when the subject/topic explicitly needs a known real-world image, for example Computing/ICT web browsers or a lesson about posture.
+  - Do not mention web browsers, Chrome, Firefox, Edge, Safari, or internet examples unless the lesson subject/topic is Computing/ICT or explicitly about browsers.
+  - Use generated_image only as a placeholder prompt for a custom content illustration; do not include imageUrl.
+  - Keep the JSON complete: overview 3-5 sentences; preparation 4-6 items; each phaseGuidance.teacherNotes 6-9 rich content items; every other text array 4-8 items; visuals 0-3 items.
+  - Do not wrap the response in markdown fences.
+  - Return JSON only.`;
 
 export function buildLessonPrompt(body: LessonGenerationBody): string {
   const sessionBlock =
@@ -308,7 +320,8 @@ export function buildSchemePrompt(body: SchemeGenerationBody): string {
 
 export function buildTeachingNotesPrompt(body: TeachingNotesGenerationBody): string {
   return (
-    `Generate comprehensive teaching notes for this saved lesson plan.\n` +
+    `Generate a textbook-style learner teaching note for this saved lesson plan.\n` +
+    `The output should contain the actual lesson content to teach, including clear explanations and worked examples where useful.\n` +
     `Lesson plan JSON:\n${JSON.stringify(body.lessonPlan)}\n\n` +
     `Return one complete JSON object only. Do not use markdown fences.`
   );
@@ -561,7 +574,7 @@ export function normalizeTeachingNotesResponse(
     classroomManagement: arrayOfText(payload?.classroomManagement),
     boardSummary: arrayOfText(payload?.boardSummary),
     homework: arrayOfText(payload?.homework),
-    visuals: Array.isArray(payload?.visuals) ? payload.visuals : [],
+    visuals: normalizeTeachingNoteVisuals(payload?.visuals, subject, cleanText(payload?.topic) || cleanText(lessonPlan.topic)),
     sourceLessonPlan: {
       id: cleanText(lessonPlan.id),
       subject: cleanText(lessonPlan.subject),
@@ -578,6 +591,35 @@ export function normalizeTeachingNotesResponse(
 
 function arrayOfText(value: unknown) {
   return Array.isArray(value) ? value.map((item) => cleanText(item)).filter(Boolean) : [];
+}
+
+function normalizeTeachingNoteVisuals(value: unknown, subject: string, topic: string) {
+  if (!Array.isArray(value)) return [];
+  const allowedBrowserContext = /computing|ict|information\s*technology/i.test(`${subject} ${topic}`);
+
+  return value.filter((item) => {
+    if (!item || typeof item !== 'object') return false;
+    const visual = item as Record<string, unknown>;
+    const text = [
+      visual.title,
+      visual.caption,
+      visual.altText,
+      visual.prompt,
+      ...(Array.isArray(visual.steps) ? visual.steps : []),
+      ...(Array.isArray(visual.labels)
+        ? visual.labels.map((label) => typeof label === 'object' && label ? JSON.stringify(label) : String(label))
+        : []),
+    ]
+      .map((part) => cleanText(part))
+      .join(' ')
+      .toLowerCase();
+
+    if (!allowedBrowserContext && /\b(chrome|firefox|safari|edge|web browser|browser logo)\b/.test(text)) {
+      return false;
+    }
+
+    return true;
+  });
 }
 
 function formatWeekBlock(label: string, week?: SchemeWeek) {

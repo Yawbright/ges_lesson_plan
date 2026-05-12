@@ -236,7 +236,7 @@ function enrichTeachingNotesVisuals(notes: TeachingNotes, plan: LessonPlan): Tea
     notes.overview,
     ...(notes.keyExplanations ?? []),
   ].join(' ');
-  const curated = findCuratedTeachingVisuals(context);
+  const curated = findCuratedTeachingVisuals(plan.subject, context);
   const existingIds = new Set((notes.visuals ?? []).map((visual) => visual.id));
   const nextCurated = curated.filter((visual) => !existingIds.has(visual.id));
 

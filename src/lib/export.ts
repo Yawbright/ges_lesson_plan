@@ -241,6 +241,7 @@ function buildTeachingNotesContent(notes: TeachingNotes) {
     </section>
     ${notes.overview ? notesSection('Overview', `<p>${escapeHtml(notes.overview)}</p>`) : ''}
     ${notesListSection('Teacher Preparation', notes.preparation)}
+    ${notes.visuals?.length ? notesSection('Content Diagrams and Examples', notes.visuals.map(buildVisualHtml).join('')) : ''}
     ${notesSection('Teaching Guide', notes.phaseGuidance.map((phase) => `
       <div class="phase-note">
         <h3>Phase ${phase.phase}: ${escapeHtml(phase.title)}</h3>
@@ -254,7 +255,6 @@ function buildTeachingNotesContent(notes: TeachingNotes) {
     ${notesListSection('Classroom Management', notes.classroomManagement)}
     ${notesListSection('Board Summary', notes.boardSummary)}
     ${notesListSection('Homework / Follow-up', notes.homework ?? [])}
-    ${notes.visuals?.length ? notesSection('Visual Aids', notes.visuals.map(buildVisualHtml).join('')) : ''}
   `;
 }
 

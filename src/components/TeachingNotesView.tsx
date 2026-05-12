@@ -16,6 +16,7 @@ export function TeachingNotesView({ notes }: { notes: TeachingNotes }) {
 
       <Section title="Overview" text={notes.overview} />
       <ListSection title="Teacher Preparation" items={notes.preparation} />
+      <VisualSection visuals={notes.visuals ?? []} />
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Teaching Guide</Text>
         {notes.phaseGuidance.map((phase) => (
@@ -34,14 +35,6 @@ export function TeachingNotesView({ notes }: { notes: TeachingNotes }) {
       <ListSection title="Classroom Management" items={notes.classroomManagement} />
       <ListSection title="Board Summary" items={notes.boardSummary} />
       <ListSection title="Homework / Follow-up" items={notes.homework ?? []} />
-      {notes.visuals?.length ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Visual Aids</Text>
-          {notes.visuals.map((visual) => (
-            <VisualBlock key={visual.id} visual={visual} />
-          ))}
-        </View>
-      ) : null}
     </ScrollView>
   );
 }
@@ -62,6 +55,18 @@ function ListSection({ title, items }: { title: string; items: string[] }) {
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
       {items.map((item, index) => <Bullet key={index} text={item} />)}
+    </View>
+  );
+}
+
+function VisualSection({ visuals }: { visuals: TeachingNoteVisual[] }) {
+  if (!visuals.length) return null;
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>Content Diagrams and Examples</Text>
+      {visuals.map((visual) => (
+        <VisualBlock key={visual.id} visual={visual} />
+      ))}
     </View>
   );
 }

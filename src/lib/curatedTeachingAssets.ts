@@ -1,12 +1,14 @@
 import type { TeachingNoteVisual } from '@/types/teachingNotes';
 
 type CuratedAsset = {
+  subjects: string[];
   keywords: string[];
   visual: TeachingNoteVisual;
 };
 
 const browserAssets: CuratedAsset[] = [
   {
+    subjects: ['computing', 'ict', 'information technology'],
     keywords: ['browser', 'web browser', 'chrome', 'firefox', 'edge', 'internet'],
     visual: {
       id: 'curated-web-browsers',
@@ -29,9 +31,11 @@ const browserAssets: CuratedAsset[] = [
 
 export const curatedTeachingAssets = [...browserAssets];
 
-export function findCuratedTeachingVisuals(text: string): TeachingNoteVisual[] {
+export function findCuratedTeachingVisuals(subject: string, text: string): TeachingNoteVisual[] {
+  const normalizedSubject = subject.toLowerCase();
   const normalized = text.toLowerCase();
   const matches = curatedTeachingAssets.filter((asset) =>
+    asset.subjects.some((candidate) => normalizedSubject.includes(candidate)) &&
     asset.keywords.some((keyword) => normalized.includes(keyword)),
   );
   return matches.map((asset) => ({ ...asset.visual }));
