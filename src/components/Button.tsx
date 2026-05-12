@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
   ghost: { backgroundColor: 'transparent' },
   disabled: { opacity: 0.5 },
   pressed: { opacity: 0.85 },
-  text: { fontSize: 15, fontWeight: '800' },
+  text: { fontSize: 15, fontWeight: '600' },
   primaryText: { color: '#fff' },
   dangerText: { color: '#fff' },
   secondaryText: { color: colors.primaryDark },

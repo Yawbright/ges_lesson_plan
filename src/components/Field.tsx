@@ -24,7 +24,7 @@ const styles = StyleSheet.create({
   wrap: { marginBottom: 16 },
   label: {
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '600',
     color: colors.text,
     marginBottom: 6,
   },

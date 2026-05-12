@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 6,
   },
-  title: { fontSize: 23, fontWeight: '900', color: colors.primaryDark },
+  title: { fontSize: 23, fontWeight: '700', color: colors.primaryDark },
   sub: { color: colors.textMuted, marginTop: 2 },
   closeButton: {
     width: 40,
@@ -147,6 +147,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  toolTitle: { fontSize: 15, fontWeight: '900', color: colors.text, marginBottom: 3 },
+  toolTitle: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 3 },
   toolDescription: { color: colors.textMuted, lineHeight: 18 },
 });

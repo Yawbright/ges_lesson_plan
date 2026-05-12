@@ -6,6 +6,7 @@ import {
   GestureResponderEvent,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -205,7 +206,12 @@ function LibraryHeader({
         </View>
       </View>
 
-      <View style={styles.tabBar}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.tabBar}
+        contentContainerStyle={styles.tabBarContent}
+      >
         {tabs.map((tab) => {
           const active = tab.key === activeTab;
           return (
@@ -222,7 +228,7 @@ function LibraryHeader({
             </Pressable>
           );
         })}
-      </View>
+      </ScrollView>
 
       <View style={styles.filtersPanel}>
         <View style={styles.searchBox}>
@@ -507,7 +513,7 @@ const styles = StyleSheet.create({
     gap: 14,
     marginBottom: 16,
   },
-  heading: { fontSize: 24, fontWeight: '900', color: colors.primaryDark, marginBottom: 5 },
+  heading: { fontSize: 24, fontWeight: '700', color: colors.primaryDark, marginBottom: 5 },
   sub: { color: colors.textMuted, lineHeight: 20, maxWidth: 520 },
   fileCountPill: {
     minWidth: 64,
@@ -517,15 +523,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryDark,
     alignItems: 'center',
   },
-  fileCountValue: { color: '#fff', fontSize: 18, fontWeight: '900' },
-  fileCountLabel: { color: '#DCE9E4', fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
+  fileCountValue: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  fileCountLabel: { color: '#DCE9E4', fontSize: 11, fontWeight: '600', textTransform: 'uppercase' },
   tabBar: {
-    flexDirection: 'row',
-    gap: 8,
     marginBottom: 12,
   },
+  tabBarContent: {
+    gap: 8,
+    paddingRight: 4,
+  },
   tabButton: {
-    flex: 1,
+    minWidth: 138,
     minHeight: 48,
     borderRadius: 8,
     borderWidth: 1,
@@ -538,7 +546,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   tabButtonActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  tabText: { color: colors.primaryDark, fontSize: 14, fontWeight: '900' },
+  tabText: { color: colors.primaryDark, fontSize: 14, fontWeight: '600' },
   tabTextActive: { color: '#fff' },
   tabCount: {
     minWidth: 24,
@@ -550,7 +558,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceMuted,
     color: colors.textMuted,
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   tabCountActive: { backgroundColor: 'rgba(255,255,255,0.2)', color: '#fff' },
   filtersPanel: {
@@ -574,7 +582,7 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, minHeight: 42, color: colors.text, fontSize: 15 },
   sortRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  resultsText: { color: colors.textMuted, fontWeight: '800' },
+  resultsText: { color: colors.textMuted, fontWeight: '600' },
   sortSegment: {
     flexDirection: 'row',
     borderWidth: 1,
@@ -585,7 +593,7 @@ const styles = StyleSheet.create({
   },
   sortButton: { paddingHorizontal: 14, paddingVertical: 8 },
   sortButtonActive: { backgroundColor: colors.primarySoft },
-  sortButtonText: { color: colors.textMuted, fontWeight: '900', fontSize: 13 },
+  sortButtonText: { color: colors.textMuted, fontWeight: '600', fontSize: 13 },
   sortButtonTextActive: { color: colors.primaryDark },
   card: {
     backgroundColor: colors.surface,
@@ -608,9 +616,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cardBody: { flex: 1, minWidth: 0 },
-  cardTitle: { fontSize: 15, fontWeight: '900', color: colors.text, marginBottom: 3 },
+  cardTitle: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 3 },
   cardSub: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
-  cardMeta: { color: colors.primaryDark, fontSize: 12, fontWeight: '800', marginTop: 6 },
+  cardMeta: { color: colors.primaryDark, fontSize: 12, fontWeight: '600', marginTop: 6 },
   cardActions: { flexDirection: 'row', gap: 6 },
   actionIcon: {
     width: 36,
@@ -641,7 +649,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 10,
   },
-  emptyTitle: { color: colors.text, fontWeight: '900', fontSize: 16, marginBottom: 4 },
+  emptyTitle: { color: colors.text, fontWeight: '700', fontSize: 16, marginBottom: 4 },
   emptyText: { color: colors.textMuted, lineHeight: 20, textAlign: 'center' },
   pressed: { opacity: 0.84 },
 });

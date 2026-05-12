@@ -265,9 +265,9 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   label: { color: '#DDEBE5', fontSize: 13, fontWeight: '700', textTransform: 'uppercase' },
-  balance: { color: '#fff', fontSize: 46, fontWeight: '800', marginTop: 4 },
+  balance: { color: '#fff', fontSize: 46, fontWeight: '700', marginTop: 4 },
   balanceNote: { color: '#EAF2EE', marginTop: 6, lineHeight: 19 },
-  sectionTitle: { fontSize: 18, fontWeight: '900', color: colors.primaryDark, marginBottom: 12 },
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: colors.primaryDark, marginBottom: 12 },
   packages: { gap: 10, marginBottom: 14 },
   packageCard: {
     backgroundColor: colors.surface,
@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   packageCardActive: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-  packageTitle: { fontSize: 16, color: colors.text, fontWeight: '900' },
+  packageTitle: { fontSize: 16, color: colors.text, fontWeight: '700' },
   packageHeader: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
   packageBadge: {
     color: colors.primary,
@@ -289,13 +289,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   priceLine: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 3 },
   packageMeta: { color: colors.textMuted, marginTop: 3 },
   originalPrice: { color: colors.textMuted, textDecorationLine: 'line-through', marginTop: 3 },
   bonusText: { color: colors.primary, marginTop: 4, fontSize: 12, fontWeight: '700' },
-  packageCredits: { fontSize: 22, color: colors.primary, fontWeight: '800' },
+  packageCredits: { fontSize: 22, color: colors.primary, fontWeight: '700' },
   pendingPanel: {
     backgroundColor: colors.surface,
     borderWidth: 1,
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
     marginBottom: 22,
     gap: 10,
   },
-  pendingTitle: { color: colors.text, fontWeight: '900' },
+  pendingTitle: { color: colors.text, fontWeight: '700' },
   pendingText: { color: colors.textMuted, lineHeight: 19 },
   statusPanel: {
     backgroundColor: colors.surface,
@@ -330,7 +330,7 @@ const styles = StyleSheet.create({
   },
   transactionTitle: { color: colors.text, fontWeight: '700' },
   transactionMeta: { color: colors.textMuted, fontSize: 12, marginTop: 3 },
-  transactionAmount: { color: colors.primary, fontSize: 18, fontWeight: '800' },
+  transactionAmount: { color: colors.primary, fontSize: 18, fontWeight: '700' },
   transactionDebit: { color: colors.danger },
   receiptRow: {
     backgroundColor: colors.surface,
@@ -342,6 +342,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
-  copyText: { color: colors.primary, fontWeight: '800' },
+  copyText: { color: colors.primary, fontWeight: '600' },
   emptyText: { color: colors.textMuted, lineHeight: 20 },
 });

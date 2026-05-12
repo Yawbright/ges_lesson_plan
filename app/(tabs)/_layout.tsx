@@ -30,7 +30,7 @@ export default function TabsLayout() {
         },
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: '800',
+          fontWeight: '600',
           lineHeight: 13,
         },
       }}
@@ -154,6 +154,6 @@ const styles = StyleSheet.create({
   headerBrandText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '700',
   },
 });

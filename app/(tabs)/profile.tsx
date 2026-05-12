@@ -409,7 +409,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     marginBottom: 4,
   },
-  headerTitle: { color: '#fff', fontSize: 18, fontWeight: '900' },
+  headerTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
   section: {
     backgroundColor: colors.surface,
     borderRadius: 8,
@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionHeader: { marginBottom: 14 },
-  sectionTitle: { fontSize: 17, fontWeight: '900', color: colors.text },
+  sectionTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
   sectionMeta: { color: colors.textMuted, marginTop: 3, lineHeight: 18 },
   classEntryPanel: {
     borderWidth: 1,
@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceMuted,
     marginBottom: 14,
   },
-  subsectionTitle: { color: colors.text, fontWeight: '900', fontSize: 15, marginBottom: 2 },
+  subsectionTitle: { color: colors.text, fontWeight: '700', fontSize: 15, marginBottom: 2 },
   classEntryRow: {
     flexDirection: Platform.OS === 'web' ? 'row' : 'column',
     gap: 10,
@@ -446,7 +446,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  className: { color: colors.text, fontWeight: '900', fontSize: 15 },
+  className: { color: colors.text, fontWeight: '700', fontSize: 15 },
   classSizeText: { color: colors.textMuted, marginTop: 2 },
   removeButton: { paddingHorizontal: 10, paddingVertical: 8 },
   removeButtonText: { color: colors.danger, fontWeight: '700' },
@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   referralLabel: { color: colors.textMuted, fontSize: 12, textTransform: 'uppercase', fontWeight: '700' },
-  referralCode: { color: colors.primaryDark, fontSize: 28, fontWeight: '900', marginTop: 3 },
+  referralCode: { color: colors.primaryDark, fontSize: 28, fontWeight: '700', marginTop: 3 },
   referralLink: { color: colors.textMuted, marginTop: 4, lineHeight: 18 },
   referralError: { color: colors.danger, marginTop: 8, lineHeight: 18 },
   actionRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
@@ -473,7 +473,7 @@ const styles = StyleSheet.create({
     padding: 10,
     alignItems: 'center',
   },
-  statValue: { color: colors.primary, fontSize: 18, fontWeight: '900' },
+  statValue: { color: colors.primary, fontSize: 18, fontWeight: '700' },
   statLabel: { color: colors.textMuted, fontSize: 11, marginTop: 3, textAlign: 'center' },
   referralList: { borderTopWidth: 1, borderTopColor: colors.border },
   referralRow: {
@@ -499,13 +499,13 @@ const styles = StyleSheet.create({
   developerLabel: {
     color: colors.textMuted,
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '600',
     textTransform: 'uppercase',
   },
   developerName: {
     color: colors.primaryDark,
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '700',
     marginTop: 4,
   },
   developerContact: {
