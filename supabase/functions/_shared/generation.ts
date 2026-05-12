@@ -256,8 +256,8 @@ Always respond with a single JSON object only, no markdown or commentary, with t
   - Visuals must be embedded concept aids for the lesson content, as if placed inside a textbook chapter.
   - Include visuals only when they directly match the subject and topic. Never include examples from another subject.
   - Use structured diagrams/charts/tables for science diagrams, maths place-value tables, processes, comparison charts, board summaries, and labelled explanations.
-  - Use curated_image only when the subject/topic explicitly needs a known real-world image, for example Computing/ICT web browsers or a lesson about posture.
-  - Do not mention web browsers, Chrome, Firefox, Edge, Safari, or internet examples unless the lesson subject/topic is Computing/ICT or explicitly about browsers.
+  - Use curated_image only when the subject/topic explicitly needs a known real-world image, object, person, place, or tool.
+  - Do not invent unrelated image examples. Every visual must be directly named by, or strongly implied by, the lesson topic and activities.
   - Use generated_image only as a placeholder prompt for a custom content illustration; do not include imageUrl.
   - Keep the JSON complete: overview 3-5 sentences; preparation 4-6 items; each phaseGuidance.teacherNotes 6-9 rich content items; every other text array 4-8 items; visuals 0-3 items.
   - Do not wrap the response in markdown fences.
@@ -574,7 +574,7 @@ export function normalizeTeachingNotesResponse(
     classroomManagement: arrayOfText(payload?.classroomManagement),
     boardSummary: arrayOfText(payload?.boardSummary),
     homework: arrayOfText(payload?.homework),
-    visuals: normalizeTeachingNoteVisuals(payload?.visuals, subject, cleanText(payload?.topic) || cleanText(lessonPlan.topic)),
+    visuals: Array.isArray(payload?.visuals) ? payload.visuals : [],
     sourceLessonPlan: {
       id: cleanText(lessonPlan.id),
       subject: cleanText(lessonPlan.subject),
@@ -591,35 +591,6 @@ export function normalizeTeachingNotesResponse(
 
 function arrayOfText(value: unknown) {
   return Array.isArray(value) ? value.map((item) => cleanText(item)).filter(Boolean) : [];
-}
-
-function normalizeTeachingNoteVisuals(value: unknown, subject: string, topic: string) {
-  if (!Array.isArray(value)) return [];
-  const allowedBrowserContext = /computing|ict|information\s*technology/i.test(`${subject} ${topic}`);
-
-  return value.filter((item) => {
-    if (!item || typeof item !== 'object') return false;
-    const visual = item as Record<string, unknown>;
-    const text = [
-      visual.title,
-      visual.caption,
-      visual.altText,
-      visual.prompt,
-      ...(Array.isArray(visual.steps) ? visual.steps : []),
-      ...(Array.isArray(visual.labels)
-        ? visual.labels.map((label) => typeof label === 'object' && label ? JSON.stringify(label) : String(label))
-        : []),
-    ]
-      .map((part) => cleanText(part))
-      .join(' ')
-      .toLowerCase();
-
-    if (!allowedBrowserContext && /\b(chrome|firefox|safari|edge|web browser|browser logo)\b/.test(text)) {
-      return false;
-    }
-
-    return true;
-  });
 }
 
 function formatWeekBlock(label: string, week?: SchemeWeek) {

@@ -1,6 +1,5 @@
 import { invokeEdgeFunction } from './edgeFunctions';
 import { buildFallbackLessonPlan } from './fallbackLessonPlan';
-import { findCuratedTeachingVisuals } from './curatedTeachingAssets';
 import { getExplicitCurriculumYearWeeks, getExplicitSchemeOfWork } from './curriculum';
 import { buildSchemeContext, findMatchingScheme } from './schemeStore';
 import type { LessonPlan, LessonPlanPromptInput, LocalLanguageSupport } from '@/types/lessonPlan';
@@ -148,14 +147,14 @@ export async function generateTeachingNotes(plan: LessonPlan): Promise<TeachingN
 
   if (useLocalAi) {
     try {
-      return enrichTeachingNotesVisuals(await postLocal<TeachingNotes>('/generate-teaching-notes', requestBody), plan);
+      return await postLocal<TeachingNotes>('/generate-teaching-notes', requestBody);
     } catch {
-      return enrichTeachingNotesVisuals(buildFallbackTeachingNotes(plan), plan);
+      return buildFallbackTeachingNotes(plan);
     }
   }
 
   const data = await invokeEdgeFunctionJson<TeachingNotes>('generate-teaching-notes', requestBody);
-  return enrichTeachingNotesVisuals(validateTeachingNotes(data), plan);
+  return validateTeachingNotes(data);
 }
 
 export async function translateLessonPlanSupport(
@@ -225,24 +224,6 @@ function validateTeachingNotes(notes: TeachingNotes): TeachingNotes {
   }
 
   return notes;
-}
-
-function enrichTeachingNotesVisuals(notes: TeachingNotes, plan: LessonPlan): TeachingNotes {
-  const context = [
-    plan.subject,
-    plan.topic,
-    plan.strand,
-    plan.subStrand,
-    notes.overview,
-    ...(notes.keyExplanations ?? []),
-  ].join(' ');
-  const curated = findCuratedTeachingVisuals(plan.subject, context);
-  const existingIds = new Set((notes.visuals ?? []).map((visual) => visual.id));
-  const nextCurated = curated.filter((visual) => !existingIds.has(visual.id));
-
-  return nextCurated.length
-    ? { ...notes, visuals: [...(notes.visuals ?? []), ...nextCurated] }
-    : notes;
 }
 
 function buildFallbackTeachingNotes(plan: LessonPlan): TeachingNotes {
