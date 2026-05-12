@@ -152,6 +152,4 @@ export interface LessonPlanPromptInput {
   classSize?: string;
   /** Optional id of a stored Scheme of Learning to ground generation */
   schemeOfLearningId?: string;
-  /** Optional Ghanaian language for bilingual classroom support, e.g. Twi, Ga, Dangme */
-  localLanguage?: string;
 }

@@ -30,14 +30,14 @@ export default function LibraryScreen() {
   const [schemes, setSchemes] = useState<SchemeOfWork[]>([]);
 
   const refresh = useCallback(async () => {
-    const [savedLessonWorks, savedNotes, savedSchemes] = await Promise.all([
+    const [lessonResult, notesResult, schemeResult] = await Promise.allSettled([
       loadLessonWorks(),
       loadTeachingNotes(),
       loadSchemes(),
     ]);
-    setLessonWorks(savedLessonWorks);
-    setNotes(savedNotes);
-    setSchemes(savedSchemes);
+    setLessonWorks(lessonResult.status === 'fulfilled' ? lessonResult.value : []);
+    setNotes(notesResult.status === 'fulfilled' ? notesResult.value : []);
+    setSchemes(schemeResult.status === 'fulfilled' ? schemeResult.value : []);
   }, []);
 
   useEffect(() => {

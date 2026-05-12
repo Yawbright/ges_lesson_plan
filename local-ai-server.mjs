@@ -99,7 +99,6 @@ Do not switch to a different weekly topic just because it is a new session.\n`
             ? `- Lesson in week: ${body.sessionIndex} of ${body.sessionsPerWeek}\n`
             : '') +
           (body.term ? `- Term: ${body.term}\n` : '') +
-          (body.localLanguage ? `- Local language support requested: ${body.localLanguage}\n` : '') +
           (body.notes ? `- Additional notes: ${body.notes}\n` : '') +
           sessionBlock +
           schemeContextBlock +
@@ -143,6 +142,31 @@ Do not switch to a different weekly topic just because it is a new session.\n`
           numberOfWeeks: body.numberOfWeeks ?? 12,
         })
       );
+    } catch (error) {
+      writeJson(res, 500, { error: getErrorMessage(error) });
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && req.url === '/translate-lesson-support') {
+    const body = await readJsonBody(req, res);
+    if (!body) return;
+
+    if (!body.lessonPlan || !body.localLanguage) {
+      writeJson(res, 400, { error: 'lessonPlan and localLanguage are required' });
+      return;
+    }
+
+    try {
+      const prompt = buildLessonSupportTranslationPrompt(body);
+      const support = process.env.GEMINI_API_KEY
+        ? await callGeminiJson(lessonSupportTranslationSystemPrompt, prompt)
+        : await callAnthropicJson({
+            system: lessonSupportTranslationSystemPrompt,
+            user: prompt,
+            maxTokens: 2500,
+          });
+      writeJson(res, 200, normalizeLocalLanguageSupport(support, body.localLanguage));
     } catch (error) {
       writeJson(res, 500, { error: getErrorMessage(error) });
     }
@@ -332,15 +356,7 @@ Always respond with a single JSON object only, no markdown or commentary, with t
       "rows": [{ "label": string, "value": string }],
       "caption": string
     }
-  ],
-  "localLanguageSupport": {
-    "language": string,
-    "reviewNote": string,
-    "vocabulary": [{ "english": string, "local": string, "pronunciation": string }],
-    "classroomExpressions": [{ "english": string, "local": string }],
-    "activityPrompts": [{ "english": string, "local": string }],
-    "assessmentPrompts": [{ "english": string, "local": string }]
-  }
+  ]
 }
 
 Rules:
@@ -359,9 +375,25 @@ Rules:
 - Include at most one visual aid when it genuinely supports a classroom activity. If no visual is useful, return "visualAids": [].
 - Visual aids must be compact and renderable from structured data only; do not return image URLs, markdown, SVG, or base64.
 - For labelled_diagram use labels; for flowchart/timeline use steps; for bar_chart use data; for comparison_table use rows.
-- If localLanguage is provided, include localLanguageSupport with short teacher-reviewable support in that language: 4-6 key vocabulary items, 2-4 classroom expressions, 1-3 activity prompts, and 1-3 assessment prompts.
-- If localLanguage is not provided, return localLanguageSupport as null or omit it.
-- Do not translate the whole lesson plan. Keep English as the main plan and provide side-by-side support only.
+- Return JSON only.`;
+
+const lessonSupportTranslationSystemPrompt = `You translate Ghanaian classroom lesson support into local languages.
+Return a single JSON object only, no markdown or commentary, with this shape:
+{
+  "language": string,
+  "reviewNote": string,
+  "vocabulary": [{ "english": string, "local": string, "pronunciation": string }],
+  "classroomExpressions": [{ "english": string, "local": string }],
+  "activityPrompts": [{ "english": string, "local": string }],
+  "assessmentPrompts": [{ "english": string, "local": string }]
+}
+
+Rules:
+- Keep English as the source text and provide side-by-side local language support only.
+- Do not translate the full lesson plan.
+- Produce 4-6 vocabulary items, 2-4 classroom expressions, 1-3 activity prompts, and 1-3 assessment prompts.
+- Prefer natural classroom language over literal wording.
+- Use Ghanaian classroom context.
 - Add a reviewNote reminding the teacher to review spelling, dialect, and tone before classroom use.
 - Return JSON only.`;
 
@@ -497,8 +529,78 @@ function normalizeLessonPlanResponse(payload, body) {
       cleanText(payload?.references) ||
       (selectedWeek?.topic ? `Scheme topic: ${selectedWeek.topic}` : ''),
     visualAids: normalizeVisualAids(payload?.visualAids),
-    localLanguageSupport: normalizeLocalLanguageSupport(payload?.localLanguageSupport, body?.localLanguage),
   };
+}
+
+function buildLessonSupportTranslationPrompt(body) {
+  const plan = body.lessonPlan || {};
+  const phases = Array.isArray(plan.phases) ? plan.phases : [];
+  const phaseText = phases
+    .map((phase) => {
+      const activities = Array.isArray(phase.activities) ? phase.activities.join(' | ') : '';
+      const assessment = Array.isArray(phase.assessment) ? phase.assessment.join(' | ') : '';
+      return `Phase ${phase.phase || ''} ${phase.title || ''}: ${activities}${assessment ? ` Assessment: ${assessment}` : ''}`;
+    })
+    .join('\n');
+
+  return `Create local language classroom support for this English lesson plan.
+- Target local language: ${body.localLanguage}
+- Subject: ${cleanText(plan.subject)}
+- Class Level: ${cleanText(plan.classLevel)}
+- Topic: ${cleanText(plan.topic)}
+- Strand: ${cleanText(plan.strand)}
+- Sub-strand: ${cleanText(plan.subStrand)}
+- Performance indicator: ${cleanText(plan.performanceIndicator)}
+- Core lesson activities:
+${phaseText}
+
+Return the JSON object only.`;
+}
+
+async function callGeminiJson(system, user) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
+  const geminiModel = process.env.GEMINI_TRANSLATION_MODEL || 'gemini-2.5-flash';
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent`,
+    {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: `${system}\n\n${user}` }],
+          },
+        ],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          temperature: 0.2,
+        },
+      }),
+    }
+  );
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(`Gemini API error ${response.status}: ${JSON.stringify(payload).slice(0, 500)}`);
+  }
+
+  const text = payload?.candidates?.[0]?.content?.parts
+    ?.map((part) => part?.text || '')
+    .join('')
+    .trim();
+  if (!text) throw new Error('Gemini returned an empty translation response');
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    const cleaned = text.replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
+    return JSON.parse(cleaned);
+  }
 }
 
 function normalizeLocalLanguageSupport(value, requestedLanguage) {

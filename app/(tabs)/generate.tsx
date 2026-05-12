@@ -28,7 +28,6 @@ import {
   getDefaultSubjectForClassLevel,
   getSubjectOptionsForClassLevel,
   getWeekOptions,
-  LOCAL_LANGUAGE_OPTIONS,
   LESSONS_PER_WEEK_OPTIONS,
   TERM_OPTIONS,
 } from '@/lib/options';
@@ -53,7 +52,6 @@ export default function GenerateScreen() {
   const [term, setTerm] = useState('Term 1');
   const [sessionsPerWeekInput, setSessionsPerWeekInput] = useState('3');
   const [sessionIndex, setSessionIndex] = useState<LessonSelection>(1);
-  const [localLanguage, setLocalLanguage] = useState('');
   const [termStartDate, setTermStartDate] = useState('');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
@@ -249,7 +247,6 @@ export default function GenerateScreen() {
             schoolName: teacherProfile.schoolName || undefined,
             schoolDistrict: teacherProfile.schoolDistrict || undefined,
             classSize,
-            localLanguage: localLanguage || undefined,
           },
           selectedScheme,
         );
@@ -448,14 +445,6 @@ export default function GenerateScreen() {
           value={sessionsPerWeekInput}
           options={LESSONS_PER_WEEK_OPTIONS}
           onChange={setSessionsPerWeekInput}
-        />
-
-        <SelectField
-          label="Local language support"
-          value={localLanguage}
-          options={LOCAL_LANGUAGE_OPTIONS}
-          onChange={setLocalLanguage}
-          helperText="Adds teacher-reviewable vocabulary and classroom prompts, not a full replacement translation."
         />
 
         <View style={styles.lessonStripWrap}>

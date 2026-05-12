@@ -37,8 +37,12 @@ export interface LessonGenerationBody {
   schoolName?: string;
   schoolDistrict?: string;
   classSize?: string;
-  localLanguage?: string;
   schemeContext?: SchemeContext;
+}
+
+export interface LessonSupportTranslationBody {
+  lessonPlan: Record<string, unknown>;
+  localLanguage: string;
 }
 
 export interface SchemeGenerationBody {
@@ -116,15 +120,7 @@ Always respond with a single JSON object only, no markdown or commentary, with t
       "rows": [{ "label": string, "value": string }],
       "caption": string
     }
-  ],
-  "localLanguageSupport": {
-    "language": string,
-    "reviewNote": string,
-    "vocabulary": [{ "english": string, "local": string, "pronunciation": string }],
-    "classroomExpressions": [{ "english": string, "local": string }],
-    "activityPrompts": [{ "english": string, "local": string }],
-    "assessmentPrompts": [{ "english": string, "local": string }]
-  }
+  ]
 }
 
 Rules:
@@ -145,9 +141,25 @@ Rules:
 - Include at most one visual aid when it genuinely supports a classroom activity. If no visual is useful, return "visualAids": [].
 - Visual aids must be compact and renderable from structured data only; do not return image URLs, markdown, SVG, or base64.
 - For labelled_diagram use labels; for flowchart/timeline use steps; for bar_chart use data; for comparison_table use rows.
-- If localLanguage is provided, include localLanguageSupport with short teacher-reviewable support in that language: 4-6 key vocabulary items, 2-4 classroom expressions, 1-3 activity prompts, and 1-3 assessment prompts.
-- If localLanguage is not provided, return localLanguageSupport as null or omit it.
-- Do not translate the whole lesson plan. Keep English as the main plan and provide side-by-side support only.
+- Return JSON only.`;
+
+export const lessonSupportTranslationSystemPrompt = `You translate Ghanaian classroom lesson support into local languages.
+Return a single JSON object only, no markdown or commentary, with this shape:
+{
+  "language": string,
+  "reviewNote": string,
+  "vocabulary": [{ "english": string, "local": string, "pronunciation": string }],
+  "classroomExpressions": [{ "english": string, "local": string }],
+  "activityPrompts": [{ "english": string, "local": string }],
+  "assessmentPrompts": [{ "english": string, "local": string }]
+}
+
+Rules:
+- Keep English as the source text and provide side-by-side local language support only.
+- Do not translate the full lesson plan.
+- Produce 4-6 vocabulary items, 2-4 classroom expressions, 1-3 activity prompts, and 1-3 assessment prompts.
+- Prefer natural classroom language over literal wording.
+- Use Ghanaian classroom context.
 - Add a reviewNote reminding the teacher to review spelling, dialect, and tone before classroom use.
 - Return JSON only.`;
 
@@ -270,7 +282,6 @@ scheme context explicitly does so.\n`
     (body.weekEnding ? `- Week ending: ${body.weekEnding}\n` : '') +
     (body.duration ? `- Lesson duration: ${body.duration}\n` : '- Lesson duration: 60 mins\n') +
     (body.classSize ? `- Class size: ${body.classSize}\n` : '') +
-    (body.localLanguage ? `- Local language support requested: ${body.localLanguage}\n` : '') +
     (body.notes ? `- Additional notes: ${body.notes}\n` : '') +
     sessionBlock +
     schemeContextBlock +
@@ -349,11 +360,42 @@ export function normalizeLessonPlanResponse(
       cleanText(payload?.references) ||
       (selectedWeek?.topic ? `Scheme topic: ${selectedWeek.topic}` : ''),
     visualAids: normalizeVisualAids(payload?.visualAids),
-    localLanguageSupport: normalizeLocalLanguageSupport(payload?.localLanguageSupport, body?.localLanguage),
     teacherName: cleanText(body?.teacherName),
     schoolName: cleanText(body?.schoolName),
     schoolDistrict: cleanText(body?.schoolDistrict),
   };
+}
+
+export function buildLessonSupportTranslationPrompt(body: LessonSupportTranslationBody) {
+  const plan = body.lessonPlan;
+  const phases = Array.isArray(plan?.phases) ? plan.phases as Record<string, unknown>[] : [];
+  const phaseText = phases
+    .map((phase) => {
+      const activities = Array.isArray(phase.activities) ? phase.activities.join(' | ') : '';
+      const assessment = Array.isArray(phase.assessment) ? phase.assessment.join(' | ') : '';
+      return `Phase ${phase.phase || ''} ${phase.title || ''}: ${activities}${assessment ? ` Assessment: ${assessment}` : ''}`;
+    })
+    .join('\n');
+
+  return `Create local language classroom support for this English lesson plan.
+- Target local language: ${body.localLanguage}
+- Subject: ${cleanText(plan?.subject)}
+- Class Level: ${cleanText(plan?.classLevel)}
+- Topic: ${cleanText(plan?.topic)}
+- Strand: ${cleanText(plan?.strand)}
+- Sub-strand: ${cleanText(plan?.subStrand)}
+- Performance indicator: ${cleanText(plan?.performanceIndicator)}
+- Core lesson activities:
+${phaseText}
+
+Return the JSON object only.`;
+}
+
+export function normalizeLessonSupportTranslationResponse(
+  payload: Record<string, unknown>,
+  body: LessonSupportTranslationBody,
+) {
+  return normalizeLocalLanguageSupport(payload, body.localLanguage);
 }
 
 function normalizeLocalLanguageSupport(value: unknown, requestedLanguage?: string) {

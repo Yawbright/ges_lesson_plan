@@ -3,7 +3,7 @@ import { buildFallbackLessonPlan } from './fallbackLessonPlan';
 import { findCuratedTeachingVisuals } from './curatedTeachingAssets';
 import { getExplicitCurriculumYearWeeks, getExplicitSchemeOfWork } from './curriculum';
 import { buildSchemeContext, findMatchingScheme } from './schemeStore';
-import type { LessonPlan, LessonPlanPromptInput } from '@/types/lessonPlan';
+import type { LessonPlan, LessonPlanPromptInput, LocalLanguageSupport } from '@/types/lessonPlan';
 import type { SchemeGenerationInput, SchemeOfWork } from '@/types/scheme';
 import type { TeachingNotes } from '@/types/teachingNotes';
 
@@ -156,6 +156,19 @@ export async function generateTeachingNotes(plan: LessonPlan): Promise<TeachingN
 
   const data = await invokeEdgeFunctionJson<TeachingNotes>('generate-teaching-notes', requestBody);
   return enrichTeachingNotesVisuals(validateTeachingNotes(data), plan);
+}
+
+export async function translateLessonPlanSupport(
+  plan: LessonPlan,
+  localLanguage: string,
+): Promise<LocalLanguageSupport> {
+  const requestBody = { lessonPlan: plan, localLanguage };
+
+  if (useLocalAi) {
+    return postLocal<LocalLanguageSupport>('/translate-lesson-support', requestBody);
+  }
+
+  return invokeEdgeFunctionJson<LocalLanguageSupport>('translate-lesson-support', requestBody);
 }
 
 async function postLocal<T>(path: string, body: unknown): Promise<T> {

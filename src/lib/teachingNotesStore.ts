@@ -44,11 +44,19 @@ export async function loadTeachingNotes(): Promise<TeachingNotes[]> {
       .eq('user_id', userId)
       .gt('expires_at', new Date().toISOString())
       .order('created_at', { ascending: false });
-    if (error) throw error;
+    if (error) {
+      if (isMissingTableError(error)) return [];
+      throw error;
+    }
     return (data ?? []).map((item) => normalizeTeachingNotes(item.payload as TeachingNotes));
   }
 
   return loadLocalTeachingNotes();
+}
+
+function isMissingTableError(error: { code?: string; message?: string }) {
+  const message = (error.message ?? '').toLowerCase();
+  return error.code === '42P01' || message.includes('saved_teaching_notes');
 }
 
 export async function loadTeachingNotesForLesson(lessonPlanId: string): Promise<TeachingNotes[]> {

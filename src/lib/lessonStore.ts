@@ -18,6 +18,12 @@ export async function saveLessonPlanBundle(plans: LessonPlan[]): Promise<LessonP
   return normalized;
 }
 
+export async function saveLessonPlanWork(work: SavedLessonWork): Promise<SavedLessonWork> {
+  const normalized = normalizeLessonWork(work);
+  await saveLessonWork(normalized);
+  return normalized;
+}
+
 async function saveLessonWork(work: SavedLessonWork): Promise<void> {
   const normalized = normalizeLessonWork(work);
   const userId = await getUserId();

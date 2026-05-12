@@ -53,7 +53,9 @@ create policy "owners manage saved teaching notes"
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
-create or replace function public.admin_overview_metrics(p_admin_user_id uuid)
+drop function if exists public.admin_overview_metrics(uuid);
+
+create function public.admin_overview_metrics(p_admin_user_id uuid)
 returns table (
   total_users bigint,
   completed_profiles bigint,
