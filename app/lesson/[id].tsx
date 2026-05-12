@@ -36,43 +36,49 @@ export default function LessonDetailScreen() {
     );
   }
 
+  const canTranslate = isGhanaianLanguageSubject(plan.subject);
+
   return (
     <View style={styles.container}>
       <LessonPlanTable plan={plan} />
       <View style={styles.actions}>
         <Button title="Teaching Notes" variant="secondary" onPress={() => router.push(`/tools/teaching-notes?lessonPlanId=${encodeURIComponent(plan.id ?? '')}`)} />
-        <SelectField
-          label="Translate lesson plan"
-          value={localLanguage}
-          options={LOCAL_LANGUAGE_OPTIONS}
-          onChange={setLocalLanguage}
-          helperText="Creates a new AI-draft copy of this lesson plan in the selected Ghanaian language."
-        />
-        <Button
-          title="Create translated copy"
-          variant="secondary"
-          loading={translating}
-          onPress={async () => {
-            if (!localLanguage) {
-              Alert.alert('Choose language', 'Select a local language first.');
-              return;
-            }
-            setTranslating(true);
-            try {
-              const translated = await translateLessonPlan(plan, localLanguage);
-              const saved = await saveLessonPlan(translated);
-              setPlan(saved);
-              showToast({ message: 'Translated lesson plan saved.' });
-              if (saved.id) {
-                router.replace(`/lesson/${encodeURIComponent(saved.id)}`);
-              }
-            } catch (err) {
-              Alert.alert('Translation failed', err instanceof Error ? err.message : 'Could not translate lesson plan.');
-            } finally {
-              setTranslating(false);
-            }
-          }}
-        />
+        {canTranslate ? (
+          <>
+            <SelectField
+              label="Translate lesson plan"
+              value={localLanguage}
+              options={LOCAL_LANGUAGE_OPTIONS}
+              onChange={setLocalLanguage}
+              helperText="Creates a new AI-draft copy of this lesson plan in the selected Ghanaian language."
+            />
+            <Button
+              title="Create translated copy"
+              variant="secondary"
+              loading={translating}
+              onPress={async () => {
+                if (!localLanguage) {
+                  Alert.alert('Choose language', 'Select a local language first.');
+                  return;
+                }
+                setTranslating(true);
+                try {
+                  const translated = await translateLessonPlan(plan, localLanguage);
+                  const saved = await saveLessonPlan(translated);
+                  setPlan(saved);
+                  showToast({ message: 'Translated lesson plan saved.' });
+                  if (saved.id) {
+                    router.replace(`/lesson/${encodeURIComponent(saved.id)}`);
+                  }
+                } catch (err) {
+                  Alert.alert('Translation failed', err instanceof Error ? err.message : 'Could not translate lesson plan.');
+                } finally {
+                  setTranslating(false);
+                }
+              }}
+            />
+          </>
+        ) : null}
         <Button title="Save as PDF" onPress={() => exportLessonPlanPdf(plan)} />
         <Button title="Share" variant="secondary" onPress={() => shareLessonPlan(plan)} />
         <Button
@@ -92,6 +98,10 @@ export default function LessonDetailScreen() {
       </View>
     </View>
   );
+}
+
+function isGhanaianLanguageSubject(subject?: string) {
+  return subject?.trim().toLowerCase() === 'ghanaian language';
 }
 
 function confirmRemoval(title: string, message: string): Promise<boolean> {

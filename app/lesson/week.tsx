@@ -63,51 +63,61 @@ export default function LessonWeekDetailScreen() {
     );
   }
 
+  const canTranslate = plans.every((plan) => isGhanaianLanguageSubject(plan.subject));
+
   return (
     <View style={styles.container}>
       <LessonPlanStack plans={plans} />
       <View style={styles.actions}>
         <Button title="Back" variant="secondary" onPress={() => router.back()} />
-        <SelectField
-          label="Translate week plan"
-          value={localLanguage}
-          options={LOCAL_LANGUAGE_OPTIONS}
-          onChange={setLocalLanguage}
-          helperText="Creates a new AI-draft week bundle in the selected Ghanaian language."
-        />
-        <Button
-          title="Create translated copy"
-          variant="secondary"
-          loading={translating}
-          onPress={async () => {
-            if (!localLanguage) {
-              Alert.alert('Choose language', 'Select a local language first.');
-              return;
-            }
-            setTranslating(true);
-            try {
-              const translatedPlans = await Promise.all(
-                plans.map((plan) => translateLessonPlan(plan, localLanguage)),
-              );
-              const savedBundle = await saveLessonPlanBundle(translatedPlans);
-              setBundle(savedBundle);
-              setPlans(savedBundle.plans);
-              if (savedBundle.id) {
-                router.replace(`/lesson/week?bundleId=${encodeURIComponent(savedBundle.id)}`);
-              }
-              showToast({ message: 'Translated week plan saved.' });
-            } catch (err) {
-              Alert.alert('Translation failed', err instanceof Error ? err.message : 'Could not translate week plan.');
-            } finally {
-              setTranslating(false);
-            }
-          }}
-        />
+        {canTranslate ? (
+          <>
+            <SelectField
+              label="Translate week plan"
+              value={localLanguage}
+              options={LOCAL_LANGUAGE_OPTIONS}
+              onChange={setLocalLanguage}
+              helperText="Creates a new AI-draft week bundle in the selected Ghanaian language."
+            />
+            <Button
+              title="Create translated copy"
+              variant="secondary"
+              loading={translating}
+              onPress={async () => {
+                if (!localLanguage) {
+                  Alert.alert('Choose language', 'Select a local language first.');
+                  return;
+                }
+                setTranslating(true);
+                try {
+                  const translatedPlans = await Promise.all(
+                    plans.map((plan) => translateLessonPlan(plan, localLanguage)),
+                  );
+                  const savedBundle = await saveLessonPlanBundle(translatedPlans);
+                  setBundle(savedBundle);
+                  setPlans(savedBundle.plans);
+                  if (savedBundle.id) {
+                    router.replace(`/lesson/week?bundleId=${encodeURIComponent(savedBundle.id)}`);
+                  }
+                  showToast({ message: 'Translated week plan saved.' });
+                } catch (err) {
+                  Alert.alert('Translation failed', err instanceof Error ? err.message : 'Could not translate week plan.');
+                } finally {
+                  setTranslating(false);
+                }
+              }}
+            />
+          </>
+        ) : null}
         <Button title="Share" variant="secondary" onPress={() => shareLessonPlans(plans)} />
         <Button title="Save as PDF" onPress={() => exportLessonPlansPdf(plans)} />
       </View>
     </View>
   );
+}
+
+function isGhanaianLanguageSubject(subject?: string) {
+  return subject?.trim().toLowerCase() === 'ghanaian language';
 }
 
 const styles = StyleSheet.create({
