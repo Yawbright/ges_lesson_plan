@@ -241,11 +241,14 @@ Rules:
 - Ground the notes strictly in the provided lesson plan.
 - Write for a Ghanaian teacher preparing to teach the lesson.
 - Be comprehensive, practical, and classroom-ready.
+- Keep the JSON compact enough to complete in one response: overview 2-4 sentences; preparation 4-6 items;
+  each phaseGuidance.teacherNotes 5-7 items; every other text array 4-7 items; visuals 0-2 items.
 - Include visuals only when they genuinely help the lesson.
 - Use structured diagrams/charts/tables for science diagrams, processes, comparison charts, board summaries, and labelled explanations.
 - Use curated_image for common recognised real examples such as web browsers, classroom tools, or known objects.
 - Use generated_image only for custom teaching scenes or illustrations such as good sitting posture, classroom safety, local examples, or practical demonstrations.
 - For generated_image, provide a safe, specific image prompt but do not include imageUrl.
+- Do not wrap the response in markdown fences.
 - Return JSON only.`;
 
 export function buildLessonPrompt(body: LessonGenerationBody): string {
@@ -307,7 +310,7 @@ export function buildTeachingNotesPrompt(body: TeachingNotesGenerationBody): str
   return (
     `Generate comprehensive teaching notes for this saved lesson plan.\n` +
     `Lesson plan JSON:\n${JSON.stringify(body.lessonPlan)}\n\n` +
-    `Return the JSON object only.`
+    `Return one complete JSON object only. Do not use markdown fences.`
   );
 }
 

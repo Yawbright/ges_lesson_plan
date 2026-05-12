@@ -48,18 +48,35 @@ export async function callClaudeJson<T = unknown>(opts: ClaudeJsonOptions): Prom
     throw new Error('Unexpected Claude response shape');
   }
 
-  // Strip optional ```json fences before parsing.
-  const cleaned = text
-    .trim()
-    .replace(/^```(?:json)?/i, '')
-    .replace(/```$/i, '')
-    .trim();
+  if (payload?.stop_reason === 'max_tokens') {
+    throw new Error(
+      `Claude response was cut off before valid JSON was complete. Increase maxTokens or reduce the requested output. Raw text: ${text.slice(0, 300)}`,
+    );
+  }
+
+  const cleaned = extractJsonText(text);
 
   try {
     return JSON.parse(cleaned) as T;
   } catch {
     throw new Error(`Claude did not return valid JSON. Raw text: ${text.slice(0, 300)}`);
   }
+}
+
+function extractJsonText(text: string) {
+  const trimmed = text
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim();
+
+  const firstBrace = trimmed.indexOf('{');
+  const lastBrace = trimmed.lastIndexOf('}');
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    return trimmed.slice(firstBrace, lastBrace + 1);
+  }
+
+  return trimmed;
 }
 
 export const corsHeaders = {

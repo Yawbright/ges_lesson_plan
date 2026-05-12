@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
     const rawNotes = await callClaudeJson<Record<string, unknown>>({
       system: teachingNotesSystemPrompt,
       user: buildTeachingNotesPrompt(body),
-      maxTokens: 7000,
+      maxTokens: 12000,
     });
     const normalized = normalizeTeachingNotesResponse(rawNotes, body);
 
