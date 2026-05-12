@@ -3,6 +3,7 @@ import { Alert, Platform, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '@/components/Button';
 import { LessonPlanTable } from '@/components/LessonPlanTable';
+import { PreviewActionButton, PreviewActions, PreviewHeader } from '@/components/PreviewChrome';
 import { SelectField } from '@/components/SelectField';
 import { useToast } from '@/components/ToastProvider';
 import { translateLessonPlan } from '@/lib/ai';
@@ -40,11 +41,14 @@ export default function LessonDetailScreen() {
 
   return (
     <View style={styles.container}>
+      <PreviewHeader
+        title="Lesson Plan"
+        onBack={() => router.back()}
+        onShare={() => shareLessonPlan(plan)}
+      />
       <LessonPlanTable plan={plan} />
-      <View style={styles.actions}>
-        <Button title="Teaching Notes" variant="secondary" onPress={() => router.push(`/tools/teaching-notes?lessonPlanId=${encodeURIComponent(plan.id ?? '')}`)} />
-        {canTranslate ? (
-          <>
+      {canTranslate ? (
+        <View style={styles.translatePanel}>
             <SelectField
               label="Translate lesson plan"
               value={localLanguage}
@@ -77,11 +81,12 @@ export default function LessonDetailScreen() {
                 }
               }}
             />
-          </>
-        ) : null}
-        <Button title="Save as PDF" onPress={() => exportLessonPlanPdf(plan)} />
-        <Button title="Share" variant="secondary" onPress={() => shareLessonPlan(plan)} />
-        <Button
+        </View>
+      ) : null}
+      <PreviewActions>
+        <PreviewActionButton title="Save as PDF" onPress={() => exportLessonPlanPdf(plan)} />
+        <PreviewActionButton title="Teaching Notes" variant="secondary" onPress={() => router.push(`/tools/teaching-notes?lessonPlanId=${encodeURIComponent(plan.id ?? '')}`)} />
+        <PreviewActionButton
           title="Delete"
           variant="danger"
           onPress={async () => {
@@ -95,7 +100,7 @@ export default function LessonDetailScreen() {
             router.back();
           }}
         />
-      </View>
+      </PreviewActions>
     </View>
   );
 }
@@ -119,11 +124,10 @@ function confirmRemoval(title: string, message: string): Promise<boolean> {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  actions: {
+  translatePanel: {
     padding: 16,
     borderTopWidth: 1,
     borderTopColor: colors.border,
     backgroundColor: colors.surface,
-    gap: 10,
   },
 });

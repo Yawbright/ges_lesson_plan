@@ -68,15 +68,19 @@ export default function RootLayout() {
             />
             <Stack.Screen
               name="teaching-note/[id]"
-              options={{ title: 'Teaching Notes' }}
+              options={{ headerShown: false }}
             />
             <Stack.Screen
               name="lesson/[id]"
-              options={{ title: 'Lesson Plan' }}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="lesson/week"
+              options={{ headerShown: false }}
             />
             <Stack.Screen
               name="scheme/[id]"
-              options={{ title: 'Scheme' }}
+              options={{ headerShown: false }}
             />
             <Stack.Screen name="admin" options={{ title: 'Admin' }} />
             <Stack.Screen name="onboarding" options={{ title: 'Teacher Setup', headerShown: false }} />

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Platform, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '@/components/Button';
+import { PreviewActionButton, PreviewActions, PreviewHeader } from '@/components/PreviewChrome';
 import { TeachingNotesView } from '@/components/TeachingNotesView';
 import { useToast } from '@/components/ToastProvider';
 import { deleteTeachingNotes, getTeachingNotesById } from '@/lib/teachingNotesStore';
@@ -32,10 +33,15 @@ export default function TeachingNoteDetailScreen() {
 
   return (
     <View style={styles.container}>
+      <PreviewHeader
+        title="Teaching Notes"
+        onBack={() => router.back()}
+        onShare={() => exportTeachingNotesPdf(notes)}
+      />
       <TeachingNotesView notes={notes} />
-      <View style={styles.actions}>
-        <Button title="Save Notes as PDF" onPress={() => exportTeachingNotesPdf(notes)} />
-        <Button
+      <PreviewActions>
+        <PreviewActionButton title="Save as PDF" onPress={() => exportTeachingNotesPdf(notes)} />
+        <PreviewActionButton
           title="Delete"
           variant="danger"
           onPress={async () => {
@@ -46,7 +52,7 @@ export default function TeachingNoteDetailScreen() {
             router.back();
           }}
         />
-      </View>
+      </PreviewActions>
     </View>
   );
 }
@@ -66,11 +72,4 @@ function confirmRemoval(title: string, message: string): Promise<boolean> {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  actions: {
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.surface,
-    gap: 10,
-  },
 });

@@ -3,6 +3,7 @@ import { Alert, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '@/components/Button';
 import { LessonPlanStack } from '@/components/LessonPlanTable';
+import { PreviewActionButton, PreviewActions, PreviewHeader } from '@/components/PreviewChrome';
 import { SelectField } from '@/components/SelectField';
 import { useToast } from '@/components/ToastProvider';
 import { translateLessonPlan } from '@/lib/ai';
@@ -67,11 +68,14 @@ export default function LessonWeekDetailScreen() {
 
   return (
     <View style={styles.container}>
+      <PreviewHeader
+        title={`Week Plan (${plans.length})`}
+        onBack={() => router.back()}
+        onShare={() => shareLessonPlans(plans)}
+      />
       <LessonPlanStack plans={plans} />
-      <View style={styles.actions}>
-        <Button title="Back" variant="secondary" onPress={() => router.back()} />
-        {canTranslate ? (
-          <>
+      {canTranslate ? (
+        <View style={styles.translatePanel}>
             <SelectField
               label="Translate week plan"
               value={localLanguage}
@@ -107,11 +111,11 @@ export default function LessonWeekDetailScreen() {
                 }
               }}
             />
-          </>
-        ) : null}
-        <Button title="Share" variant="secondary" onPress={() => shareLessonPlans(plans)} />
-        <Button title="Save as PDF" onPress={() => exportLessonPlansPdf(plans)} />
-      </View>
+        </View>
+      ) : null}
+      <PreviewActions>
+        <PreviewActionButton title="Save as PDF" onPress={() => exportLessonPlansPdf(plans)} />
+      </PreviewActions>
     </View>
   );
 }
@@ -122,11 +126,10 @@ function isGhanaianLanguageSubject(subject?: string) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  actions: {
+  translatePanel: {
     padding: 16,
     borderTopWidth: 1,
     borderTopColor: colors.border,
     backgroundColor: colors.surface,
-    gap: 10,
   },
 });

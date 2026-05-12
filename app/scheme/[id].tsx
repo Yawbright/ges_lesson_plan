@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Platform, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '@/components/Button';
+import { PreviewActionButton, PreviewActions, PreviewHeader } from '@/components/PreviewChrome';
 import { SchemeTable } from '@/components/SchemeTable';
 import { useToast } from '@/components/ToastProvider';
 import { exportSchemePdf, shareScheme } from '@/lib/export';
@@ -33,11 +34,15 @@ export default function SchemeDetailScreen() {
 
   return (
     <View style={styles.container}>
+      <PreviewHeader
+        title="Scheme"
+        onBack={() => router.back()}
+        onShare={() => shareScheme(scheme)}
+      />
       <SchemeTable scheme={scheme} />
-      <View style={styles.actions}>
-        <Button title="Save as PDF" onPress={() => exportSchemePdf(scheme)} />
-        <Button title="Share" variant="secondary" onPress={() => shareScheme(scheme)} />
-        <Button
+      <PreviewActions>
+        <PreviewActionButton title="Save as PDF" onPress={() => exportSchemePdf(scheme)} />
+        <PreviewActionButton
           title="Delete"
           variant="danger"
           onPress={async () => {
@@ -51,7 +56,7 @@ export default function SchemeDetailScreen() {
             router.back();
           }}
         />
-      </View>
+      </PreviewActions>
     </View>
   );
 }
@@ -71,11 +76,4 @@ function confirmRemoval(title: string, message: string): Promise<boolean> {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  actions: {
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.surface,
-    gap: 10,
-  },
 });

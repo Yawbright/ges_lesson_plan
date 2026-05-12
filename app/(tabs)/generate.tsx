@@ -9,13 +9,13 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { Field } from '@/components/Field';
 import { Button } from '@/components/Button';
 import { CreditUsagePreview } from '@/components/CreditUsagePreview';
 import { DatePickerField } from '@/components/DatePickerField';
 import { LessonPlanStack, LessonPlanTable } from '@/components/LessonPlanTable';
+import { PreviewActionButton, PreviewActions, PreviewHeader } from '@/components/PreviewChrome';
 import { SelectField } from '@/components/SelectField';
 import { useToast } from '@/components/ToastProvider';
 import { formatAiActionError, generateLessonPlan, isInsufficientCreditsError } from '@/lib/ai';
@@ -342,36 +342,26 @@ export default function GenerateScreen() {
     };
     return (
       <View style={styles.previewContainer}>
-        <View style={styles.previewHeader}>
-          <View style={styles.previewIconGroup}>
-            <PreviewIconButton
-              icon="arrow-back"
-              label="Back"
-              onPress={() => {
-                setGeneratedPlans([]);
-                setSavedPlanIds([]);
-                setSavedBundleId(null);
-              }}
-            />
-            <PreviewIconButton icon="share-social-outline" label="Share" onPress={shareGeneratedPlans} />
-          </View>
-          <Text style={styles.previewHeaderTitle}>
-            {singlePlan ? 'Lesson Plan' : `Week Plan (${generatedPlans.length})`}
-          </Text>
-          <View style={styles.previewHeaderSpacer} />
-        </View>
+        <PreviewHeader
+          title={singlePlan ? 'Lesson Plan' : `Week Plan (${generatedPlans.length})`}
+          onBack={() => {
+            setGeneratedPlans([]);
+            setSavedPlanIds([]);
+            setSavedBundleId(null);
+          }}
+          onShare={shareGeneratedPlans}
+        />
         {singlePlan ? <LessonPlanTable plan={singlePlan} /> : <LessonPlanStack plans={generatedPlans} />}
-        <View style={styles.previewActions}>
-          <Button title="Save as PDF" onPress={saveGeneratedPlansAsPdf} style={styles.previewActionButton} />
+        <PreviewActions>
+          <PreviewActionButton title="Save as PDF" onPress={saveGeneratedPlansAsPdf} />
           {hasSavedFullView ? (
-            <Button
+            <PreviewActionButton
               title="Open full view"
               variant="secondary"
               onPress={openFullView}
-              style={styles.previewActionButton}
             />
           ) : null}
-        </View>
+        </PreviewActions>
       </View>
     );
   }
@@ -554,76 +544,8 @@ export default function GenerateScreen() {
   );
 }
 
-function PreviewIconButton({
-  icon,
-  label,
-  onPress,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      onPress={onPress}
-      style={({ pressed }) => [styles.previewIconButton, pressed && styles.previewIconButtonPressed]}
-    >
-      <Ionicons name={icon} size={20} color="#fff" />
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   previewContainer: { flex: 1, backgroundColor: colors.bg },
-  previewHeader: {
-    minHeight: 52,
-    backgroundColor: colors.primary,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
-  },
-  previewIconGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    minWidth: 88,
-  },
-  previewIconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.16)',
-  },
-  previewIconButtonPressed: {
-    opacity: 0.82,
-  },
-  previewHeaderTitle: {
-    flex: 1,
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  previewHeaderSpacer: {
-    minWidth: 88,
-  },
-  previewActions: {
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.surface,
-    gap: 10,
-    flexDirection: Platform.OS === 'web' ? 'row' : 'column',
-  },
-  previewActionButton: {
-    flex: Platform.OS === 'web' ? 1 : undefined,
-  },
   content: { padding: 20, paddingBottom: 60 },
   heading: { fontSize: 22, fontWeight: '800', color: colors.primaryDark, marginBottom: 6 },
   sub: { color: colors.textMuted, marginBottom: 20, lineHeight: 20 },
