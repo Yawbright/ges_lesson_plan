@@ -50,7 +50,7 @@ export default function Entry() {
     return <Redirect href="/onboarding" />;
   }
 
-  return <Redirect href={session ? '/(tabs)/generate' : '/(auth)/sign-in'} />;
+  return <Redirect href={session ? '/(tabs)/tools' : '/(auth)/sign-in'} />;
 }
 
 const styles = StyleSheet.create({

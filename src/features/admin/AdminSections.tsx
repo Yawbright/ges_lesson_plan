@@ -144,6 +144,7 @@ export function Overview({ dashboard, openUser }: { dashboard: AdminDashboard; o
         <Metric title="Credits Sold" value={String(overview.creditsSold)} />
         <Metric title="Credits Used" value={String(overview.creditsUsed)} />
         <Metric title="Outstanding Credits" value={String(overview.outstandingCredits)} />
+        <Metric title="Teaching Notes" value={String(overview.teachingNotesGenerated)} />
         <Metric title="Users" value={String(overview.totalUsers)} />
         <Metric title="Completed Profiles" value={String(overview.completedProfiles)} />
         <Metric title="Errors" value={String(overview.errors)} tone="danger" />
@@ -285,6 +286,7 @@ export function UsageSection(props: {
     'lesson_generation',
     'scheme_generation',
     'scheme_parsing',
+    'teaching_notes_generation',
   ]);
   return (
     <Panel title="Usage History">
@@ -593,6 +595,12 @@ export function SettingsSection(props: {
               label="Custom scheme analysis"
               value={props.appSettings.parsingCost}
               onChangeText={(value) => props.setAppSettings({ parsingCost: cleanWholeNumber(value) })}
+              keyboardType="number-pad"
+            />
+            <Field
+              label="Teaching notes generation"
+              value={props.appSettings.teachingNotesCost}
+              onChangeText={(value) => props.setAppSettings({ teachingNotesCost: cleanWholeNumber(value) })}
               keyboardType="number-pad"
             />
           </View>

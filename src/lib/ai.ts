@@ -1,9 +1,11 @@
 import { invokeEdgeFunction } from './edgeFunctions';
 import { buildFallbackLessonPlan } from './fallbackLessonPlan';
+import { findCuratedTeachingVisuals } from './curatedTeachingAssets';
 import { getExplicitCurriculumYearWeeks, getExplicitSchemeOfWork } from './curriculum';
 import { buildSchemeContext, findMatchingScheme } from './schemeStore';
 import type { LessonPlan, LessonPlanPromptInput } from '@/types/lessonPlan';
 import type { SchemeGenerationInput, SchemeOfWork } from '@/types/scheme';
+import type { TeachingNotes } from '@/types/teachingNotes';
 
 export interface ParsedUploadedSchemeResult {
   scheme: SchemeOfWork;
@@ -141,6 +143,21 @@ export async function parseUploadedScheme(input: {
   return invokeEdgeFunctionJson<ParsedUploadedSchemeResult>('parse-uploaded-scheme', requestBody);
 }
 
+export async function generateTeachingNotes(plan: LessonPlan): Promise<TeachingNotes> {
+  const requestBody = { lessonPlan: plan };
+
+  if (useLocalAi) {
+    try {
+      return enrichTeachingNotesVisuals(await postLocal<TeachingNotes>('/generate-teaching-notes', requestBody), plan);
+    } catch {
+      return enrichTeachingNotesVisuals(buildFallbackTeachingNotes(plan), plan);
+    }
+  }
+
+  const data = await invokeEdgeFunctionJson<TeachingNotes>('generate-teaching-notes', requestBody);
+  return enrichTeachingNotesVisuals(validateTeachingNotes(data), plan);
+}
+
 async function postLocal<T>(path: string, body: unknown): Promise<T> {
   return postJson<T>(localAiBaseUrl, path, body);
 }
@@ -183,6 +200,81 @@ function validateLessonPlan(plan: LessonPlan): LessonPlan {
   }
 
   return plan;
+}
+
+function validateTeachingNotes(notes: TeachingNotes): TeachingNotes {
+  if (!notes || typeof notes !== 'object') {
+    throw new Error('Teaching notes generation returned an invalid response.');
+  }
+
+  if (!notes.lessonPlanId || !notes.overview || !Array.isArray(notes.phaseGuidance)) {
+    throw new Error('Teaching notes generation returned incomplete notes. Please try again.');
+  }
+
+  return notes;
+}
+
+function enrichTeachingNotesVisuals(notes: TeachingNotes, plan: LessonPlan): TeachingNotes {
+  const context = [
+    plan.subject,
+    plan.topic,
+    plan.strand,
+    plan.subStrand,
+    notes.overview,
+    ...(notes.keyExplanations ?? []),
+  ].join(' ');
+  const curated = findCuratedTeachingVisuals(context);
+  const existingIds = new Set((notes.visuals ?? []).map((visual) => visual.id));
+  const nextCurated = curated.filter((visual) => !existingIds.has(visual.id));
+
+  return nextCurated.length
+    ? { ...notes, visuals: [...(notes.visuals ?? []), ...nextCurated] }
+    : notes;
+}
+
+function buildFallbackTeachingNotes(plan: LessonPlan): TeachingNotes {
+  const phaseGuidance = plan.phases.map((phase) => ({
+    phase: phase.phase,
+    title: phase.title,
+    teacherNotes: [
+      `Use the planned ${phase.title.toLowerCase()} activities as the classroom sequence.`,
+      ...phase.activities.map((activity) => `Explain and model: ${activity}`),
+    ],
+  }));
+
+  return {
+    lessonPlanId: plan.id ?? `${plan.subject}-${plan.classLevel}-${plan.week}`,
+    title: `Teaching Notes: ${plan.subject} ${plan.classLevel} Week ${plan.week}`,
+    subject: plan.subject,
+    classLevel: plan.classLevel,
+    week: plan.week,
+    lessonNumber: plan.lessonNumber,
+    topic: plan.topic,
+    overview: `These notes support the lesson on ${plan.topic || plan.subject}. Use them to explain the key ideas clearly and guide learners through the planned activities.`,
+    preparation: [
+      'Review the lesson plan phases before class.',
+      'Prepare the listed resources and any simple local examples learners can recognise.',
+      'Write the topic, performance indicator, and key vocabulary on the board.',
+    ],
+    phaseGuidance,
+    keyExplanations: [plan.performanceIndicator || `Learners should understand the main idea in ${plan.topic || plan.subject}.`],
+    misconceptions: ['Some learners may memorise terms without explaining them in their own words. Ask them to give examples.'],
+    questionsToAsk: plan.phases.flatMap((phase) => phase.assessment ?? []).slice(0, 6),
+    differentiation: [
+      'Support struggling learners with paired discussion and concrete examples.',
+      'Ask fast learners to explain their reasoning or create an extra example.',
+    ],
+    classroomManagement: [
+      'Keep instructions short before group work.',
+      'Move around the classroom to listen, prompt, and correct gently.',
+    ],
+    boardSummary: [
+      plan.topic ? `Topic: ${plan.topic}` : `Subject: ${plan.subject}`,
+      plan.performanceIndicator || 'Main learning point from the lesson.',
+    ],
+    homework: ['Ask learners to revise the board summary and answer one related question at home.'],
+    visuals: [],
+  };
 }
 
 function getErrorMessage(err: unknown): string {

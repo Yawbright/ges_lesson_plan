@@ -11,6 +11,7 @@ import {
 } from '@/lib/schemeWeek';
 import type { LessonPlan } from '@/types/lessonPlan';
 import type { SchemeOfWork } from '@/types/scheme';
+import type { TeachingNoteVisual, TeachingNotes } from '@/types/teachingNotes';
 
 export async function exportLessonPlanPdf(plan: LessonPlan) {
   const html = pageHtml(buildLessonPlanContent(plan), 'lesson');
@@ -62,6 +63,12 @@ export async function exportLessonPlansPdf(plans: LessonPlan[]) {
 export async function exportSchemePdf(scheme: SchemeOfWork) {
   const html = buildSchemeHtml(scheme);
   const fileName = `${slugify(scheme.subject)}-${scheme.classLevel}-${slugify(scheme.term)}-scheme.pdf`;
+  await exportHtmlAsPdf(html, fileName);
+}
+
+export async function exportTeachingNotesPdf(notes: TeachingNotes) {
+  const html = pageHtml(buildTeachingNotesContent(notes), 'notes');
+  const fileName = `${slugify(notes.subject)}-${notes.classLevel}-week-${notes.week}-teaching-notes-v${notes.versionNumber ?? 1}.pdf`;
   await exportHtmlAsPdf(html, fileName);
 }
 
@@ -191,6 +198,8 @@ function buildLessonPlanContent(plan: LessonPlan) {
       ${rows}
     </table>
 
+    ${buildVisualAidHtml(plan)}
+    ${buildLocalLanguageHtml(plan)}
     ${buildTeacherDetailsHtml(plan)}
   `;
 }
@@ -224,7 +233,65 @@ function buildSchemeHtml(scheme: SchemeOfWork) {
   `, 'scheme');
 }
 
-function pageHtml(content: string, documentType: 'lesson' | 'scheme') {
+function buildTeachingNotesContent(notes: TeachingNotes) {
+  return `
+    <section class="notes-title">
+      <h1>${escapeHtml(notes.title)}</h1>
+      <h2>${escapeHtml(`${notes.subject} - ${notes.classLevel} - Week ${notes.week}${notes.lessonNumber ? ` - Lesson ${notes.lessonNumber}` : ''}${notes.versionNumber ? ` - Version ${notes.versionNumber}` : ''}`)}</h2>
+    </section>
+    ${notes.overview ? notesSection('Overview', `<p>${escapeHtml(notes.overview)}</p>`) : ''}
+    ${notesListSection('Teacher Preparation', notes.preparation)}
+    ${notesSection('Teaching Guide', notes.phaseGuidance.map((phase) => `
+      <div class="phase-note">
+        <h3>Phase ${phase.phase}: ${escapeHtml(phase.title)}</h3>
+        ${listHtml(phase.teacherNotes)}
+      </div>
+    `).join(''))}
+    ${notesListSection('Key Explanations', notes.keyExplanations)}
+    ${notesListSection('Likely Misconceptions', notes.misconceptions)}
+    ${notesListSection('Questions to Ask', notes.questionsToAsk)}
+    ${notesListSection('Differentiation', notes.differentiation)}
+    ${notesListSection('Classroom Management', notes.classroomManagement)}
+    ${notesListSection('Board Summary', notes.boardSummary)}
+    ${notesListSection('Homework / Follow-up', notes.homework ?? [])}
+    ${notes.visuals?.length ? notesSection('Visual Aids', notes.visuals.map(buildVisualHtml).join('')) : ''}
+  `;
+}
+
+function notesSection(title: string, content: string) {
+  return `<section class="notes-section"><h3>${escapeHtml(title)}</h3>${content}</section>`;
+}
+
+function notesListSection(title: string, items: string[]) {
+  return items.length ? notesSection(title, listHtml(items)) : '';
+}
+
+function listHtml(items: string[]) {
+  return `<ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`;
+}
+
+function buildVisualHtml(visual: TeachingNoteVisual) {
+  const rows = visual.rows?.length
+    ? `<table class="visual-table">${visual.rows
+        .map((row, rowIndex) => `<tr class="${rowIndex === 0 ? 'head' : ''}">${row
+          .map((cell) => `<td>${escapeHtml(cell)}</td>`)
+          .join('')}</tr>`)
+        .join('')}</table>`
+    : '';
+  const structuredItems = visual.steps ?? visual.labels?.map((item) => item.label) ?? (visual.prompt ? [visual.prompt] : []);
+  return `
+    <div class="visual-block">
+      <h4>${escapeHtml(visual.title)}</h4>
+      ${visual.imageUrl ? `<img class="visual-image" src="${escapeHtml(visual.imageUrl)}" alt="${escapeHtml(visual.altText ?? visual.title)}" />` : ''}
+      ${structuredItems.length ? `<ol>${structuredItems.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ol>` : ''}
+      ${rows}
+      ${visual.caption ? `<p class="caption">${escapeHtml(visual.caption)}</p>` : ''}
+      ${visual.attribution ? `<p class="attribution">${escapeHtml(visual.attribution)}</p>` : ''}
+    </div>
+  `;
+}
+
+function pageHtml(content: string, documentType: 'lesson' | 'scheme' | 'notes') {
   const lessonStyles =
     documentType === 'lesson'
       ? `
@@ -245,10 +312,38 @@ function pageHtml(content: string, documentType: 'lesson' | 'scheme') {
         .phase-cell small { font-size: 10px; }
         .activity-cell { font-size: 16px; }
         .activity-cell div { margin-bottom: 1px; line-height: 1.24; }
-        .resource-cell { font-size: 12px; line-height: 1.2; }
+        .resource-cell { font-size: 13px; line-height: 1.2; }
         .assessment { margin-top: 5px; padding-top: 5px; border-top-color: #e2e2dc; }
         .assessment strong { font-size: 11px; }
         .teacher-details { border-color: #e2e2dc; padding: 5px; margin-top: 6px; font-size: 12px; line-height: 1.24; }
+        .visual-aid { border: 1px solid #e2e2dc; border-radius: 6px; padding: 7px; margin-top: 7px; break-inside: avoid; page-break-inside: avoid; }
+        .visual-kicker { color: #0F4C3A; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+        .visual-title { font-size: 14px; font-weight: 700; margin-top: 2px; }
+        .visual-purpose, .visual-activity, .visual-caption { font-size: 12px; line-height: 1.25; margin-top: 3px; }
+        .visual-activity, .visual-caption { color: #6B6B6B; font-size: 11px; }
+        .visual-figure { margin-top: 6px; }
+        .bar-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+        .bar-label { width: 90px; font-size: 11px; }
+        .bar-track { flex: 1; height: 10px; background: #F4F1EA; border-radius: 4px; overflow: hidden; }
+        .bar-fill { height: 10px; background: #0F4C3A; }
+        .bar-value { width: 28px; font-size: 11px; text-align: right; color: #6B6B6B; }
+        .step-list { display: grid; gap: 4px; }
+        .step-item { display: flex; gap: 6px; align-items: flex-start; font-size: 12px; line-height: 1.25; }
+        .step-index { min-width: 16px; height: 16px; border-radius: 8px; background: #0F4C3A; color: #fff; text-align: center; font-size: 10px; font-weight: 700; line-height: 16px; }
+        .label-grid { display: flex; flex-wrap: wrap; gap: 5px; }
+        .label-chip { border: 1px solid #e2e2dc; background: #F4F1EA; border-radius: 5px; padding: 3px 5px; font-size: 11px; }
+        .visual-table { border: 1px solid #e2e2dc; border-collapse: collapse; margin-top: 6px; }
+        .visual-table td { border: 1px solid #e2e2dc; padding: 4px; font-size: 12px; }
+        .visual-table .visual-row-label { color: #0F4C3A; font-weight: 700; width: 35%; }
+        .local-language { border: 1px solid #e2e2dc; border-radius: 6px; padding: 7px; margin-top: 7px; break-inside: avoid; page-break-inside: avoid; }
+        .local-review { color: #6B6B6B; font-size: 11px; line-height: 1.25; margin-top: 3px; }
+        .translation-group { margin-top: 7px; }
+        .translation-group-title { color: #0F4C3A; font-size: 11px; font-weight: 700; margin-bottom: 3px; }
+        .translation-table { border-collapse: collapse; margin-top: 0; }
+        .translation-table td { border: 1px solid #e2e2dc; padding: 4px; font-size: 12px; line-height: 1.2; }
+        .translation-english { color: #6B6B6B; width: 45%; }
+        .translation-local { font-weight: 700; }
+        .translation-pronunciation { display: block; color: #6B6B6B; font-size: 10px; font-weight: 400; margin-top: 1px; }
       `
       : '';
 
@@ -282,10 +377,33 @@ function pageHtml(content: string, documentType: 'lesson' | 'scheme') {
         .assessment { margin-top: 8px; padding-top: 8px; border-top: 1px solid #d8d8d2; }
         .teacher-details { border: 1px solid #d8d8d2; border-radius: 6px; padding: 8px; margin-top: 8px; font-size: 12px; line-height: 1.45; }
         ${lessonStyles}
+        ${documentType === 'notes' ? notesStyles() : ''}
       </style>
     </head>
     <body>${content}</body>
   </html>`;
+}
+
+function notesStyles() {
+  return `
+    body { padding: 20px; }
+    .notes-title { margin-bottom: 14px; }
+    .notes-title h1 { font-size: 20px; color: #0F4C3A; }
+    .notes-title h2 { font-size: 13px; color: #555; }
+    .notes-section { border: 1px solid #d8d8d2; border-radius: 6px; padding: 10px; margin-bottom: 10px; break-inside: avoid; }
+    .notes-section h3 { color: #0F4C3A; font-size: 14px; margin-bottom: 6px; }
+    .notes-section p, .notes-section li { font-size: 12px; line-height: 1.45; }
+    .phase-note { border-top: 1px solid #e2e2dc; padding-top: 6px; margin-top: 6px; }
+    .phase-note h3 { font-size: 12px; }
+    .visual-block { background: #F4F1EA; border: 1px solid #d8d8d2; border-radius: 6px; padding: 8px; margin-top: 8px; break-inside: avoid; }
+    .visual-block h4 { margin: 0 0 6px; color: #1a1a1a; font-size: 13px; }
+    .visual-image { max-width: 100%; max-height: 240px; object-fit: contain; display: block; margin: 6px auto; background: #fff; }
+    .visual-table { margin-top: 6px; }
+    .visual-table td { font-size: 11px; }
+    .visual-table .head td { background: #edf3f0; font-weight: 700; }
+    .caption { margin-top: 6px; }
+    .attribution { color: #666; font-size: 10px; }
+  `;
 }
 
 function escapeHtml(value: string) {
@@ -329,6 +447,96 @@ function buildTeacherDetailsHtml(plan: LessonPlan) {
   ].filter(Boolean);
 
   return rows.length ? `<section class="teacher-details">${rows.join('')}</section>` : '';
+}
+
+function buildVisualAidHtml(plan: LessonPlan) {
+  const visualAid = plan.visualAids?.[0];
+  if (!visualAid?.title) return '';
+
+  return `<section class="visual-aid">
+    <div class="visual-kicker">Visual Aid${visualAid.phase ? ` - Phase ${visualAid.phase}` : ''}</div>
+    <div class="visual-title">${escapeHtml(visualAid.title)}</div>
+    ${visualAid.purpose ? `<div class="visual-purpose">${escapeHtml(visualAid.purpose)}</div>` : ''}
+    ${visualAid.activityLink ? `<div class="visual-activity">${escapeHtml(visualAid.activityLink)}</div>` : ''}
+    ${buildVisualFigureHtml(visualAid)}
+    ${visualAid.caption ? `<div class="visual-caption">${escapeHtml(visualAid.caption)}</div>` : ''}
+  </section>`;
+}
+
+function buildVisualFigureHtml(visualAid: NonNullable<LessonPlan['visualAids']>[number]) {
+  if (visualAid.type === 'bar_chart' && visualAid.data?.length) {
+    const maxValue = Math.max(...visualAid.data.map((item) => item.value), 1);
+    return `<div class="visual-figure">${visualAid.data
+      .slice(0, 5)
+      .map((item) => {
+        const width = Math.max(8, Math.round((item.value / maxValue) * 100));
+        return `<div class="bar-row"><div class="bar-label">${escapeHtml(item.label)}</div><div class="bar-track"><div class="bar-fill" style="width:${width}%"></div></div><div class="bar-value">${item.value}</div></div>`;
+      })
+      .join('')}</div>`;
+  }
+
+  if ((visualAid.type === 'flowchart' || visualAid.type === 'timeline') && visualAid.steps?.length) {
+    return `<div class="visual-figure step-list">${visualAid.steps
+      .slice(0, 6)
+      .map((step, index) => `<div class="step-item"><span class="step-index">${index + 1}</span><span>${escapeHtml(step)}</span></div>`)
+      .join('')}</div>`;
+  }
+
+  if (visualAid.type === 'comparison_table' && visualAid.rows?.length) {
+    return `<table class="visual-table">${visualAid.rows
+      .slice(0, 5)
+      .map((row) => `<tr><td class="visual-row-label">${escapeHtml(row.label)}</td><td>${escapeHtml(row.value)}</td></tr>`)
+      .join('')}</table>`;
+  }
+
+  const labels = visualAid.labels?.length ? visualAid.labels : visualAid.steps;
+  if (!labels?.length) return '';
+  return `<div class="visual-figure label-grid">${labels
+    .slice(0, 6)
+    .map((label) => `<span class="label-chip">${escapeHtml(label)}</span>`)
+    .join('')}</div>`;
+}
+
+function buildLocalLanguageHtml(plan: LessonPlan) {
+  const support = plan.localLanguageSupport;
+  if (!support?.language) return '';
+  const sections = [
+    buildTranslationSection('Key Vocabulary', support.vocabulary, true),
+    buildTranslationSection('Classroom Expressions', support.classroomExpressions),
+    buildTranslationSection('Activity Prompts', support.activityPrompts),
+    buildTranslationSection('Assessment Prompts', support.assessmentPrompts),
+  ].filter(Boolean);
+  if (!sections.length) return '';
+
+  return `<section class="local-language">
+    <div class="visual-kicker">Local Language Support</div>
+    <div class="visual-title">${escapeHtml(support.language)}</div>
+    <div class="local-review">${escapeHtml(support.reviewNote || 'AI-assisted draft. Teacher should review before classroom use.')}</div>
+    ${sections.join('')}
+  </section>`;
+}
+
+function buildTranslationSection(
+  title: string,
+  items?: { english: string; local: string; pronunciation?: string }[],
+  showPronunciation = false,
+) {
+  if (!items?.length) return '';
+  return `<div class="translation-group">
+    <div class="translation-group-title">${escapeHtml(title)}</div>
+    <table class="translation-table">${items
+      .map(
+        (item) => `<tr>
+          <td class="translation-english">${escapeHtml(item.english)}</td>
+          <td class="translation-local">${escapeHtml(item.local)}${
+            showPronunciation && item.pronunciation
+              ? `<span class="translation-pronunciation">${escapeHtml(item.pronunciation)}</span>`
+              : ''
+          }</td>
+        </tr>`,
+      )
+      .join('')}</table>
+  </div>`;
 }
 
 function buildLessonTitle(plan: LessonPlan) {

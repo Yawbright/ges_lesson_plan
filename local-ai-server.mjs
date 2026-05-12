@@ -99,6 +99,7 @@ Do not switch to a different weekly topic just because it is a new session.\n`
             ? `- Lesson in week: ${body.sessionIndex} of ${body.sessionsPerWeek}\n`
             : '') +
           (body.term ? `- Term: ${body.term}\n` : '') +
+          (body.localLanguage ? `- Local language support requested: ${body.localLanguage}\n` : '') +
           (body.notes ? `- Additional notes: ${body.notes}\n` : '') +
           sessionBlock +
           schemeContextBlock +
@@ -317,7 +318,29 @@ Always respond with a single JSON object only, no markdown or commentary, with t
       "activities": string[],
       "resources": string[]
     }
-  ]
+  ],
+  "visualAids": [
+    {
+      "type": "labelled_diagram" | "bar_chart" | "flowchart" | "timeline" | "comparison_table",
+      "title": string,
+      "purpose": string,
+      "phase": 1 | 2 | 3,
+      "activityLink": string,
+      "labels": string[],
+      "steps": string[],
+      "data": [{ "label": string, "value": number }],
+      "rows": [{ "label": string, "value": string }],
+      "caption": string
+    }
+  ],
+  "localLanguageSupport": {
+    "language": string,
+    "reviewNote": string,
+    "vocabulary": [{ "english": string, "local": string, "pronunciation": string }],
+    "classroomExpressions": [{ "english": string, "local": string }],
+    "activityPrompts": [{ "english": string, "local": string }],
+    "assessmentPrompts": [{ "english": string, "local": string }]
+  }
 }
 
 Rules:
@@ -333,6 +356,13 @@ Rules:
 - Use culturally relevant Ghanaian examples.
 - Make activities age-appropriate.
 - Phase 2 must include exactly 3 assessment questions.
+- Include at most one visual aid when it genuinely supports a classroom activity. If no visual is useful, return "visualAids": [].
+- Visual aids must be compact and renderable from structured data only; do not return image URLs, markdown, SVG, or base64.
+- For labelled_diagram use labels; for flowchart/timeline use steps; for bar_chart use data; for comparison_table use rows.
+- If localLanguage is provided, include localLanguageSupport with short teacher-reviewable support in that language: 4-6 key vocabulary items, 2-4 classroom expressions, 1-3 activity prompts, and 1-3 assessment prompts.
+- If localLanguage is not provided, return localLanguageSupport as null or omit it.
+- Do not translate the whole lesson plan. Keep English as the main plan and provide side-by-side support only.
+- Add a reviewNote reminding the teacher to review spelling, dialect, and tone before classroom use.
 - Return JSON only.`;
 
 const schemeSystemPrompt = `You are an expert Ghanaian curriculum planner.
@@ -466,5 +496,98 @@ function normalizeLessonPlanResponse(payload, body) {
     references:
       cleanText(payload?.references) ||
       (selectedWeek?.topic ? `Scheme topic: ${selectedWeek.topic}` : ''),
+    visualAids: normalizeVisualAids(payload?.visualAids),
+    localLanguageSupport: normalizeLocalLanguageSupport(payload?.localLanguageSupport, body?.localLanguage),
   };
+}
+
+function normalizeLocalLanguageSupport(value, requestedLanguage) {
+  const language = cleanText(requestedLanguage);
+  if (!language || !value || typeof value !== 'object') return undefined;
+
+  return {
+    language,
+    reviewNote:
+      cleanText(value?.reviewNote) ||
+      'AI-assisted local language draft. Teacher should review spelling, dialect, and tone before classroom use.',
+    vocabulary: cleanTranslationPairs(value?.vocabulary, 6, true),
+    classroomExpressions: cleanTranslationPairs(value?.classroomExpressions, 4),
+    activityPrompts: cleanTranslationPairs(value?.activityPrompts, 3),
+    assessmentPrompts: cleanTranslationPairs(value?.assessmentPrompts, 3),
+  };
+}
+
+function cleanTranslationPairs(value, limit, includePronunciation = false) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      const english = cleanText(item?.english);
+      const local = cleanText(item?.local);
+      if (!english || !local) return null;
+      return includePronunciation
+        ? { english, local, pronunciation: cleanText(item?.pronunciation) || undefined }
+        : { english, local };
+    })
+    .filter(Boolean)
+    .slice(0, limit);
+}
+
+function normalizeVisualAids(value) {
+  if (!Array.isArray(value)) return [];
+  const allowedTypes = new Set(['labelled_diagram', 'bar_chart', 'flowchart', 'timeline', 'comparison_table']);
+
+  return value
+    .slice(0, 1)
+    .map((item) => {
+      const type = cleanText(item?.type);
+      const title = cleanText(item?.title);
+      if (!allowedTypes.has(type) || !title) return null;
+      const phase = Number(item?.phase);
+
+      return {
+        type,
+        title,
+        purpose: cleanText(item?.purpose),
+        phase: phase === 1 || phase === 2 || phase === 3 ? phase : undefined,
+        activityLink: cleanText(item?.activityLink),
+        labels: cleanStringList(item?.labels, 6),
+        steps: cleanStringList(item?.steps, 6),
+        data: cleanChartData(item?.data),
+        rows: cleanVisualRows(item?.rows),
+        caption: cleanText(item?.caption),
+      };
+    })
+    .filter(Boolean);
+}
+
+function cleanStringList(value, limit) {
+  return Array.isArray(value)
+    ? value.map((item) => cleanText(item)).filter(Boolean).slice(0, limit)
+    : [];
+}
+
+function cleanChartData(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      const label = cleanText(item?.label);
+      const numericValue = Number(item?.value);
+      if (!label || !Number.isFinite(numericValue)) return null;
+      return { label, value: numericValue };
+    })
+    .filter(Boolean)
+    .slice(0, 5);
+}
+
+function cleanVisualRows(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      const label = cleanText(item?.label);
+      const rowValue = cleanText(item?.value);
+      if (!label || !rowValue) return null;
+      return { label, value: rowValue };
+    })
+    .filter(Boolean)
+    .slice(0, 5);
 }

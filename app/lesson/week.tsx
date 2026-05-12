@@ -4,12 +4,12 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '@/components/Button';
 import { LessonPlanStack } from '@/components/LessonPlanTable';
 import { exportLessonPlansPdf, shareLessonPlans } from '@/lib/export';
-import { getLessonPlanById } from '@/lib/lessonStore';
+import { getLessonPlanBundleById, getLessonPlanById } from '@/lib/lessonStore';
 import { colors } from '@/theme/colors';
 import type { LessonPlan } from '@/types/lessonPlan';
 
 export default function LessonWeekDetailScreen() {
-  const { ids } = useLocalSearchParams<{ ids?: string }>();
+  const { bundleId, ids } = useLocalSearchParams<{ bundleId?: string; ids?: string }>();
   const [plans, setPlans] = useState<LessonPlan[]>([]);
   const lessonIds = useMemo(
     () => (ids ?? '').split(',').map((id) => id.trim()).filter(Boolean),
@@ -20,6 +20,11 @@ export default function LessonWeekDetailScreen() {
     let active = true;
 
     async function load() {
+      if (bundleId) {
+        const bundle = await getLessonPlanBundleById(bundleId);
+        if (active) setPlans(bundle?.plans ?? []);
+        return;
+      }
       if (!lessonIds.length) return;
       const results = await Promise.all(lessonIds.map((id) => getLessonPlanById(id)));
       if (active) {
@@ -31,7 +36,7 @@ export default function LessonWeekDetailScreen() {
     return () => {
       active = false;
     };
-  }, [lessonIds]);
+  }, [bundleId, lessonIds]);
 
   if (!plans.length) {
     return (

@@ -2,53 +2,47 @@ import { useEffect, useState } from 'react';
 import { Alert, Platform, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '@/components/Button';
-import { LessonPlanTable } from '@/components/LessonPlanTable';
+import { TeachingNotesView } from '@/components/TeachingNotesView';
 import { useToast } from '@/components/ToastProvider';
-import { exportLessonPlanPdf, shareLessonPlan } from '@/lib/export';
-import { deleteLessonPlan, getLessonPlanById } from '@/lib/lessonStore';
+import { deleteTeachingNotes, getTeachingNotesById } from '@/lib/teachingNotesStore';
+import { exportTeachingNotesPdf } from '@/lib/export';
 import { colors } from '@/theme/colors';
-import type { LessonPlan } from '@/types/lessonPlan';
+import type { TeachingNotes } from '@/types/teachingNotes';
 
-export default function LessonDetailScreen() {
-  const { showToast } = useToast();
+export default function TeachingNoteDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [plan, setPlan] = useState<LessonPlan | null>(null);
+  const { showToast } = useToast();
+  const [notes, setNotes] = useState<TeachingNotes | null>(null);
 
   useEffect(() => {
     async function load() {
       if (!id) return;
-      const result = await getLessonPlanById(id);
-      setPlan(result);
+      setNotes(await getTeachingNotesById(id));
     }
     load();
   }, [id]);
 
-  if (!plan) {
+  if (!notes) {
     return (
       <View style={styles.container}>
-        <Button title="Lesson not found" variant="secondary" onPress={() => Alert.alert('Missing lesson', 'This saved lesson plan could not be found locally.')} />
+        <Button title="Teaching notes not found" variant="secondary" onPress={() => router.back()} />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <LessonPlanTable plan={plan} />
+      <TeachingNotesView notes={notes} />
       <View style={styles.actions}>
-        <Button title="Teaching Notes" variant="secondary" onPress={() => router.push(`/tools/teaching-notes?lessonPlanId=${encodeURIComponent(plan.id ?? '')}`)} />
-        <Button title="Save as PDF" onPress={() => exportLessonPlanPdf(plan)} />
-        <Button title="Share" variant="secondary" onPress={() => shareLessonPlan(plan)} />
+        <Button title="Save Notes as PDF" onPress={() => exportTeachingNotesPdf(notes)} />
         <Button
           title="Delete"
           variant="danger"
           onPress={async () => {
-            const confirmed = await confirmRemoval(
-              'Delete lesson plan',
-              `Delete ${plan.subject} ${plan.classLevel} Week ${plan.week}?`
-            );
-            if (!confirmed || !plan.id) return;
-            await deleteLessonPlan(plan.id);
-            showToast({ message: 'Lesson plan deleted.' });
+            const confirmed = await confirmRemoval('Delete teaching notes', `Delete ${notes.title}?`);
+            if (!confirmed || !notes.id) return;
+            await deleteTeachingNotes(notes.id);
+            showToast({ message: 'Teaching notes deleted.' });
             router.back();
           }}
         />

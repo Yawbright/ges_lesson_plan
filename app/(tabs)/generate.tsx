@@ -21,13 +21,14 @@ import { useToast } from '@/components/ToastProvider';
 import { formatAiActionError, generateLessonPlan, isInsufficientCreditsError } from '@/lib/ai';
 import { loadCreditBalance } from '@/lib/credits';
 import { exportLessonPlanPdf, exportLessonPlansPdf, shareLessonPlan, shareLessonPlans } from '@/lib/export';
-import { saveLessonPlan } from '@/lib/lessonStore';
+import { saveLessonPlan, saveLessonPlanBundle } from '@/lib/lessonStore';
 import { logAppError } from '@/lib/logger';
 import {
   CLASS_LEVEL_OPTIONS,
   getDefaultSubjectForClassLevel,
   getSubjectOptionsForClassLevel,
   getWeekOptions,
+  LOCAL_LANGUAGE_OPTIONS,
   LESSONS_PER_WEEK_OPTIONS,
   TERM_OPTIONS,
 } from '@/lib/options';
@@ -52,6 +53,7 @@ export default function GenerateScreen() {
   const [term, setTerm] = useState('Term 1');
   const [sessionsPerWeekInput, setSessionsPerWeekInput] = useState('3');
   const [sessionIndex, setSessionIndex] = useState<LessonSelection>(1);
+  const [localLanguage, setLocalLanguage] = useState('');
   const [termStartDate, setTermStartDate] = useState('');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
@@ -61,6 +63,7 @@ export default function GenerateScreen() {
   const [matchingSchemes, setMatchingSchemes] = useState<SchemeOfWork[]>([]);
   const [selectedSchemeId, setSelectedSchemeId] = useState<string | null>(null);
   const [savedPlanIds, setSavedPlanIds] = useState<string[]>([]);
+  const [savedBundleId, setSavedBundleId] = useState<string | null>(null);
 
   const subjectOptions = useMemo(
     () => getSubjectOptionsForClassLevel(classLevel),
@@ -228,6 +231,7 @@ export default function GenerateScreen() {
       const classSize = teacherProfile.classSizes?.[classLevel]?.trim() ?? '';
       const generated: LessonPlan[] = [];
       const savedIds: string[] = [];
+      let bundleId: string | null = null;
 
       for (const lessonNumber of selectedLessonNumbers) {
         const result = await generateLessonPlan(
@@ -245,6 +249,7 @@ export default function GenerateScreen() {
             schoolName: teacherProfile.schoolName || undefined,
             schoolDistrict: teacherProfile.schoolDistrict || undefined,
             classSize,
+            localLanguage: localLanguage || undefined,
           },
           selectedScheme,
         );
@@ -257,12 +262,20 @@ export default function GenerateScreen() {
           schoolName: teacherProfile.schoolName || undefined,
           schoolDistrict: teacherProfile.schoolDistrict || undefined,
         };
-        const saved = await saveLessonPlan(enrichedResult);
         generated.push(enrichedResult);
-        if (saved.id) savedIds.push(saved.id);
+        if (sessionIndex !== 'all') {
+          const saved = await saveLessonPlan(enrichedResult);
+          if (saved.id) savedIds.push(saved.id);
+        }
+      }
+
+      if (sessionIndex === 'all') {
+        const savedBundle = await saveLessonPlanBundle(generated);
+        bundleId = savedBundle.id ?? null;
       }
 
       setSavedPlanIds(savedIds);
+      setSavedBundleId(bundleId);
       setGeneratedPlans(generated);
       loadCreditBalance().then(setCreditBalance).catch(() => undefined);
       const usedFallback = generated.some(
@@ -302,7 +315,7 @@ export default function GenerateScreen() {
 
   if (generatedPlans.length) {
     const singlePlan = generatedPlans.length === 1 ? generatedPlans[0] : null;
-    const hasSavedFullView = singlePlan ? Boolean(savedPlanIds[0]) : savedPlanIds.length === generatedPlans.length;
+    const hasSavedFullView = singlePlan ? Boolean(savedPlanIds[0]) : Boolean(savedBundleId);
     const shareGeneratedPlans = () => {
       if (singlePlan) {
         shareLessonPlan(singlePlan);
@@ -324,6 +337,10 @@ export default function GenerateScreen() {
       }
       if (savedPlanIds.length) {
         router.push(`/lesson/week?ids=${encodeURIComponent(savedPlanIds.join(','))}`);
+        return;
+      }
+      if (savedBundleId) {
+        router.push(`/lesson/week?bundleId=${encodeURIComponent(savedBundleId)}`);
       }
     };
     return (
@@ -336,6 +353,7 @@ export default function GenerateScreen() {
               onPress={() => {
                 setGeneratedPlans([]);
                 setSavedPlanIds([]);
+                setSavedBundleId(null);
               }}
             />
             <PreviewIconButton icon="share-social-outline" label="Share" onPress={shareGeneratedPlans} />
@@ -430,6 +448,14 @@ export default function GenerateScreen() {
           value={sessionsPerWeekInput}
           options={LESSONS_PER_WEEK_OPTIONS}
           onChange={setSessionsPerWeekInput}
+        />
+
+        <SelectField
+          label="Local language support"
+          value={localLanguage}
+          options={LOCAL_LANGUAGE_OPTIONS}
+          onChange={setLocalLanguage}
+          helperText="Adds teacher-reviewable vocabulary and classroom prompts, not a full replacement translation."
         />
 
         <View style={styles.lessonStripWrap}>

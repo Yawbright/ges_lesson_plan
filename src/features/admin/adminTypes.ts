@@ -26,6 +26,7 @@ export type AppSettingsDraft = {
   lessonCost: string;
   schemeCost: string;
   parsingCost: string;
+  teachingNotesCost: string;
   retentionDays: string;
   purchasingEnabled: boolean;
   paystackMode: string;

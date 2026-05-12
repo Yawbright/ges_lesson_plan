@@ -1,6 +1,10 @@
 import { createServiceClient, getAuthenticatedUser, HttpError } from './supabase.ts';
 
-export type CreditKind = 'lesson_generation' | 'scheme_generation' | 'scheme_parsing';
+export type CreditKind =
+  | 'lesson_generation'
+  | 'scheme_generation'
+  | 'scheme_parsing'
+  | 'teaching_notes_generation';
 
 export async function getFeatureCreditCost(kind: CreditKind, fallback = 1) {
   const service = createServiceClient();

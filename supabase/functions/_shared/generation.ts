@@ -37,6 +37,7 @@ export interface LessonGenerationBody {
   schoolName?: string;
   schoolDistrict?: string;
   classSize?: string;
+  localLanguage?: string;
   schemeContext?: SchemeContext;
 }
 
@@ -47,6 +48,10 @@ export interface SchemeGenerationBody {
   academicYear?: string;
   numberOfWeeks?: number;
   notes?: string;
+}
+
+export interface TeachingNotesGenerationBody {
+  lessonPlan: Record<string, unknown>;
 }
 
 export const lessonPlanSystemPrompt = `You are an expert curriculum designer for the Ghanaian Basic and Senior High
@@ -97,7 +102,29 @@ Always respond with a single JSON object only, no markdown or commentary, with t
       "activities": string[],
       "resources": string[]
     }
-  ]
+  ],
+  "visualAids": [
+    {
+      "type": "labelled_diagram" | "bar_chart" | "flowchart" | "timeline" | "comparison_table",
+      "title": string,
+      "purpose": string,
+      "phase": 1 | 2 | 3,
+      "activityLink": string,
+      "labels": string[],
+      "steps": string[],
+      "data": [{ "label": string, "value": number }],
+      "rows": [{ "label": string, "value": string }],
+      "caption": string
+    }
+  ],
+  "localLanguageSupport": {
+    "language": string,
+    "reviewNote": string,
+    "vocabulary": [{ "english": string, "local": string, "pronunciation": string }],
+    "classroomExpressions": [{ "english": string, "local": string }],
+    "activityPrompts": [{ "english": string, "local": string }],
+    "assessmentPrompts": [{ "english": string, "local": string }]
+  }
 }
 
 Rules:
@@ -115,6 +142,13 @@ Rules:
 - Use culturally relevant Ghanaian examples.
 - Make activities age-appropriate.
 - Phase 2 must include exactly 3 assessment questions.
+- Include at most one visual aid when it genuinely supports a classroom activity. If no visual is useful, return "visualAids": [].
+- Visual aids must be compact and renderable from structured data only; do not return image URLs, markdown, SVG, or base64.
+- For labelled_diagram use labels; for flowchart/timeline use steps; for bar_chart use data; for comparison_table use rows.
+- If localLanguage is provided, include localLanguageSupport with short teacher-reviewable support in that language: 4-6 key vocabulary items, 2-4 classroom expressions, 1-3 activity prompts, and 1-3 assessment prompts.
+- If localLanguage is not provided, return localLanguageSupport as null or omit it.
+- Do not translate the whole lesson plan. Keep English as the main plan and provide side-by-side support only.
+- Add a reviewNote reminding the teacher to review spelling, dialect, and tone before classroom use.
 - Return JSON only.`;
 
 export const schemeSystemPrompt = `You are an expert Ghanaian curriculum planner.
@@ -147,6 +181,59 @@ Rules:
 - Sequence the weeks logically across the term rather than repeating the same strand.
 - For each week, provide a clear topic, strand, sub-strand, content standard, and indicator that fit the term position.
 - Use Ghanaian curriculum language and examples.
+- Return JSON only.`;
+
+export const teachingNotesSystemPrompt = `You are an expert Ghanaian classroom teacher and curriculum coach.
+Generate comprehensive, practical teaching notes from a saved Ghanaian NaCCA/GES lesson plan.
+
+Always respond with a single JSON object only, no markdown or commentary, with this shape:
+{
+  "lessonPlanId": string,
+  "title": string,
+  "subject": string,
+  "classLevel": string,
+  "week": number,
+  "lessonNumber": string,
+  "topic": string,
+  "overview": string,
+  "preparation": string[],
+  "phaseGuidance": [
+    { "phase": 1, "title": "STARTER", "teacherNotes": string[] },
+    { "phase": 2, "title": "NEW LEARNING", "teacherNotes": string[] },
+    { "phase": 3, "title": "REFLECTION", "teacherNotes": string[] }
+  ],
+  "keyExplanations": string[],
+  "misconceptions": string[],
+  "questionsToAsk": string[],
+  "differentiation": string[],
+  "classroomManagement": string[],
+  "boardSummary": string[],
+  "homework": string[],
+  "visuals": [
+    {
+      "id": string,
+      "kind": "diagram" | "chart" | "process" | "table" | "board_sketch" | "curated_image" | "generated_image",
+      "source": "structured" | "curated" | "generated",
+      "title": string,
+      "caption": string,
+      "altText": string,
+      "prompt": string,
+      "labels": [{ "label": string, "description": string }],
+      "rows": string[][],
+      "steps": string[]
+    }
+  ]
+}
+
+Rules:
+- Ground the notes strictly in the provided lesson plan.
+- Write for a Ghanaian teacher preparing to teach the lesson.
+- Be comprehensive, practical, and classroom-ready.
+- Include visuals only when they genuinely help the lesson.
+- Use structured diagrams/charts/tables for science diagrams, processes, comparison charts, board summaries, and labelled explanations.
+- Use curated_image for common recognised real examples such as web browsers, classroom tools, or known objects.
+- Use generated_image only for custom teaching scenes or illustrations such as good sitting posture, classroom safety, local examples, or practical demonstrations.
+- For generated_image, provide a safe, specific image prompt but do not include imageUrl.
 - Return JSON only.`;
 
 export function buildLessonPrompt(body: LessonGenerationBody): string {
@@ -183,6 +270,7 @@ scheme context explicitly does so.\n`
     (body.weekEnding ? `- Week ending: ${body.weekEnding}\n` : '') +
     (body.duration ? `- Lesson duration: ${body.duration}\n` : '- Lesson duration: 60 mins\n') +
     (body.classSize ? `- Class size: ${body.classSize}\n` : '') +
+    (body.localLanguage ? `- Local language support requested: ${body.localLanguage}\n` : '') +
     (body.notes ? `- Additional notes: ${body.notes}\n` : '') +
     sessionBlock +
     schemeContextBlock +
@@ -201,6 +289,14 @@ export function buildSchemePrompt(body: SchemeGenerationBody): string {
     (body.academicYear ? `- Academic Year: ${body.academicYear}\n` : '') +
     (body.notes ? `- Notes: ${body.notes}\n` : '') +
     `\nReturn the JSON object only.`
+  );
+}
+
+export function buildTeachingNotesPrompt(body: TeachingNotesGenerationBody): string {
+  return (
+    `Generate comprehensive teaching notes for this saved lesson plan.\n` +
+    `Lesson plan JSON:\n${JSON.stringify(body.lessonPlan)}\n\n` +
+    `Return the JSON object only.`
   );
 }
 
@@ -252,10 +348,108 @@ export function normalizeLessonPlanResponse(
     references:
       cleanText(payload?.references) ||
       (selectedWeek?.topic ? `Scheme topic: ${selectedWeek.topic}` : ''),
+    visualAids: normalizeVisualAids(payload?.visualAids),
+    localLanguageSupport: normalizeLocalLanguageSupport(payload?.localLanguageSupport, body?.localLanguage),
     teacherName: cleanText(body?.teacherName),
     schoolName: cleanText(body?.schoolName),
     schoolDistrict: cleanText(body?.schoolDistrict),
   };
+}
+
+function normalizeLocalLanguageSupport(value: unknown, requestedLanguage?: string) {
+  const language = cleanText(requestedLanguage);
+  if (!language || !value || typeof value !== 'object') return undefined;
+  const support = value as Record<string, unknown>;
+
+  return {
+    language,
+    reviewNote:
+      cleanText(support?.reviewNote) ||
+      'AI-assisted local language draft. Teacher should review spelling, dialect, and tone before classroom use.',
+    vocabulary: cleanTranslationPairs(support?.vocabulary, 6, true),
+    classroomExpressions: cleanTranslationPairs(support?.classroomExpressions, 4),
+    activityPrompts: cleanTranslationPairs(support?.activityPrompts, 3),
+    assessmentPrompts: cleanTranslationPairs(support?.assessmentPrompts, 3),
+  };
+}
+
+function cleanTranslationPairs(value: unknown, limit: number, includePronunciation = false) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      const row = item as Record<string, unknown>;
+      const english = cleanText(row?.english);
+      const local = cleanText(row?.local);
+      if (!english || !local) return null;
+      return includePronunciation
+        ? { english, local, pronunciation: cleanText(row?.pronunciation) || undefined }
+        : { english, local };
+    })
+    .filter(Boolean)
+    .slice(0, limit);
+}
+
+function normalizeVisualAids(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  const allowedTypes = new Set(['labelled_diagram', 'bar_chart', 'flowchart', 'timeline', 'comparison_table']);
+
+  return value
+    .slice(0, 1)
+    .map((item) => {
+      const visual = item as Record<string, unknown>;
+      const type = cleanText(visual?.type);
+      const title = cleanText(visual?.title);
+      if (!allowedTypes.has(type) || !title) return null;
+      const phase = Number(visual?.phase);
+
+      return {
+        type,
+        title,
+        purpose: cleanText(visual?.purpose),
+        phase: phase === 1 || phase === 2 || phase === 3 ? phase : undefined,
+        activityLink: cleanText(visual?.activityLink),
+        labels: cleanStringList(visual?.labels, 6),
+        steps: cleanStringList(visual?.steps, 6),
+        data: cleanChartData(visual?.data),
+        rows: cleanVisualRows(visual?.rows),
+        caption: cleanText(visual?.caption),
+      };
+    })
+    .filter(Boolean);
+}
+
+function cleanStringList(value: unknown, limit: number) {
+  return Array.isArray(value)
+    ? value.map((item) => cleanText(item)).filter(Boolean).slice(0, limit)
+    : [];
+}
+
+function cleanChartData(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      const row = item as Record<string, unknown>;
+      const label = cleanText(row?.label);
+      const numericValue = Number(row?.value);
+      if (!label || !Number.isFinite(numericValue)) return null;
+      return { label, value: numericValue };
+    })
+    .filter(Boolean)
+    .slice(0, 5);
+}
+
+function cleanVisualRows(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      const row = item as Record<string, unknown>;
+      const label = cleanText(row?.label);
+      const rowValue = cleanText(row?.value);
+      if (!label || !rowValue) return null;
+      return { label, value: rowValue };
+    })
+    .filter(Boolean)
+    .slice(0, 5);
 }
 
 export function normalizeSchemeResponse(
@@ -292,6 +486,53 @@ export function normalizeSchemeResponse(
     weeks: normalizedWeeks,
     createdAt: new Date().toISOString(),
   };
+}
+
+export function normalizeTeachingNotesResponse(
+  payload: Record<string, unknown>,
+  body: TeachingNotesGenerationBody,
+) {
+  const lessonPlan = body.lessonPlan ?? {};
+  const subject = cleanText(payload?.subject) || cleanText(lessonPlan.subject);
+  const classLevel = cleanText(payload?.classLevel) || cleanText(lessonPlan.classLevel);
+  const week = Number(payload?.week) || Number(lessonPlan.week) || 1;
+  const lessonPlanId = cleanText(payload?.lessonPlanId) || cleanText(lessonPlan.id) || `${subject}-${classLevel}-${week}`;
+
+  return {
+    ...payload,
+    lessonPlanId,
+    title: cleanText(payload?.title) || `Teaching Notes: ${subject} ${classLevel} Week ${week}`,
+    subject,
+    classLevel,
+    week,
+    lessonNumber: cleanText(payload?.lessonNumber) || cleanText(lessonPlan.lessonNumber),
+    topic: cleanText(payload?.topic) || cleanText(lessonPlan.topic),
+    preparation: arrayOfText(payload?.preparation),
+    phaseGuidance: Array.isArray(payload?.phaseGuidance) ? payload.phaseGuidance : [],
+    keyExplanations: arrayOfText(payload?.keyExplanations),
+    misconceptions: arrayOfText(payload?.misconceptions),
+    questionsToAsk: arrayOfText(payload?.questionsToAsk),
+    differentiation: arrayOfText(payload?.differentiation),
+    classroomManagement: arrayOfText(payload?.classroomManagement),
+    boardSummary: arrayOfText(payload?.boardSummary),
+    homework: arrayOfText(payload?.homework),
+    visuals: Array.isArray(payload?.visuals) ? payload.visuals : [],
+    sourceLessonPlan: {
+      id: cleanText(lessonPlan.id),
+      subject: cleanText(lessonPlan.subject),
+      classLevel: cleanText(lessonPlan.classLevel),
+      week: Number(lessonPlan.week) || week,
+      lessonNumber: cleanText(lessonPlan.lessonNumber),
+      topic: cleanText(lessonPlan.topic),
+      strand: cleanText(lessonPlan.strand),
+      subStrand: cleanText(lessonPlan.subStrand),
+    },
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function arrayOfText(value: unknown) {
+  return Array.isArray(value) ? value.map((item) => cleanText(item)).filter(Boolean) : [];
 }
 
 function formatWeekBlock(label: string, week?: SchemeWeek) {

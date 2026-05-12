@@ -28,6 +28,19 @@ export const LESSONS_PER_WEEK_OPTIONS: SelectOption[] = [1, 2, 3, 4].map((value)
   value: String(value),
 }));
 
+export const LOCAL_LANGUAGE_OPTIONS: SelectOption[] = [
+  { label: 'None', value: '' },
+  { label: 'Twi / Akan', value: 'Twi / Akan' },
+  { label: 'Fante', value: 'Fante' },
+  { label: 'Ewe', value: 'Ewe' },
+  { label: 'Ga', value: 'Ga' },
+  { label: 'Dangme', value: 'Dangme' },
+  { label: 'Dagbani', value: 'Dagbani' },
+  { label: 'Nzema', value: 'Nzema' },
+  { label: 'Gonja', value: 'Gonja' },
+  { label: 'Kasem', value: 'Kasem' },
+];
+
 const PRIMARY_LOWER_SUBJECTS = [
   'Mathematics',
   'Science',

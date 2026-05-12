@@ -2,7 +2,12 @@ import type { OverviewMetrics, OverviewMetricsRow, ServiceClient } from './types
 import { countRows } from './shared.ts';
 import { loadPurchases, loadTransactions } from './reports.ts';
 
-const GENERATION_KINDS = new Set(['lesson_generation', 'scheme_generation', 'scheme_parsing']);
+const GENERATION_KINDS = new Set([
+  'lesson_generation',
+  'scheme_generation',
+  'scheme_parsing',
+  'teaching_notes_generation',
+]);
 
 export async function loadOverviewMetrics(service: ServiceClient, adminUserId: string): Promise<OverviewMetrics> {
   const { data, error } = await service.rpc('admin_overview_metrics', {
@@ -62,6 +67,7 @@ export async function loadOverviewMetrics(service: ServiceClient, adminUserId: s
     lessonPlansGenerated: generationDebits.filter((item) => item.kind === 'lesson_generation').length,
     schemesGenerated: generationDebits.filter((item) => item.kind === 'scheme_generation').length,
     customSchemesAnalyzed: generationDebits.filter((item) => item.kind === 'scheme_parsing').length,
+    teachingNotesGenerated: generationDebits.filter((item) => item.kind === 'teaching_notes_generation').length,
     errors,
     referralRewardsThisMonth,
   };
@@ -85,6 +91,7 @@ export function emptyOverviewMetrics(): OverviewMetrics {
     lessonPlansGenerated: 0,
     schemesGenerated: 0,
     customSchemesAnalyzed: 0,
+    teachingNotesGenerated: 0,
     errors: 0,
     referralRewardsThisMonth: 0,
   };
@@ -108,6 +115,7 @@ function overviewFromRow(row: OverviewMetricsRow): OverviewMetrics {
     lessonPlansGenerated: Number(row.lesson_plans_generated ?? 0),
     schemesGenerated: Number(row.schemes_generated ?? 0),
     customSchemesAnalyzed: Number(row.custom_schemes_analyzed ?? 0),
+    teachingNotesGenerated: Number(row.teaching_notes_generated ?? 0),
     errors: Number(row.errors ?? 0),
     referralRewardsThisMonth: Number(row.referral_rewards_this_month ?? 0),
   };

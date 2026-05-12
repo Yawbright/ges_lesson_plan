@@ -33,13 +33,17 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen
-        name="generate"
+        name="tools"
         options={{
-          title: 'Generate',
+          title: 'Tools',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="sparkles-outline" size={Math.min(size, 19)} color={color} />
+            <Ionicons name="grid-outline" size={Math.min(size, 19)} color={color} />
           ),
         }}
+      />
+      <Tabs.Screen
+        name="generate"
+        options={{ href: null }}
       />
       <Tabs.Screen
         name="library"
@@ -52,12 +56,7 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="schemes"
-        options={{
-          title: 'Schemes',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="document-text-outline" size={Math.min(size, 19)} color={color} />
-          ),
-        }}
+        options={{ href: null }}
       />
       <Tabs.Screen
         name="credits"

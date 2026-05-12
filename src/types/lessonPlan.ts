@@ -30,6 +30,35 @@ export interface LessonPhase {
   assessment?: string[];
 }
 
+export type LessonVisualAidType =
+  | 'labelled_diagram'
+  | 'bar_chart'
+  | 'flowchart'
+  | 'timeline'
+  | 'comparison_table';
+
+export interface LessonVisualAid {
+  type: LessonVisualAidType;
+  title: string;
+  purpose?: string;
+  phase?: 1 | 2 | 3;
+  activityLink?: string;
+  labels?: string[];
+  steps?: string[];
+  data?: { label: string; value: number }[];
+  rows?: { label: string; value: string }[];
+  caption?: string;
+}
+
+export interface LocalLanguageSupport {
+  language: string;
+  reviewNote?: string;
+  vocabulary?: { english: string; local: string; pronunciation?: string }[];
+  classroomExpressions?: { english: string; local: string }[];
+  activityPrompts?: { english: string; local: string }[];
+  assessmentPrompts?: { english: string; local: string }[];
+}
+
 /**
  * Full lesson plan matching the official Ghanaian template.
  *
@@ -73,6 +102,8 @@ export interface LessonPlan {
 
   // ── 3-phase lesson table ─────────────────────────────────────────────────
   phases: LessonPhase[];
+  visualAids?: LessonVisualAid[];
+  localLanguageSupport?: LocalLanguageSupport;
 
   // ── Meta ─────────────────────────────────────────────────────────────────
   week: number;
@@ -81,6 +112,23 @@ export interface LessonPlan {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export interface LessonPlanBundle {
+  kind: 'bundle';
+  id?: string;
+  title: string;
+  subject: string;
+  classLevel: ClassLevel;
+  termTitle: string;
+  week: number;
+  weekTitle: string;
+  lessonCount: number;
+  plans: LessonPlan[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type SavedLessonWork = LessonPlan | LessonPlanBundle;
 
 /** Inputs the user provides on the Generate screen. */
 export interface LessonPlanPromptInput {
@@ -104,4 +152,6 @@ export interface LessonPlanPromptInput {
   classSize?: string;
   /** Optional id of a stored Scheme of Learning to ground generation */
   schemeOfLearningId?: string;
+  /** Optional Ghanaian language for bilingual classroom support, e.g. Twi, Ga, Dangme */
+  localLanguage?: string;
 }

@@ -38,6 +38,7 @@ The latest admin migrations include:
 
 - `0015_admin_overview_metrics.sql`: moves admin dashboard totals into one SQL aggregate RPC.
 - `0016_admin_performance_indexes.sql`: adds indexes for admin report pagination and dashboard metrics.
+- `0017_teaching_notes.sql`: adds saved teaching-note versions, the teaching-notes credit kind, and updated admin metrics.
 
 Set production function secrets:
 
@@ -55,6 +56,7 @@ Deploy all Edge Functions:
 
 ```powershell
 npx supabase functions deploy generate-lesson-plan
+npx supabase functions deploy generate-teaching-notes
 npx supabase functions deploy generate-scheme
 npx supabase functions deploy initialize-credit-purchase
 npx supabase functions deploy verify-credit-purchase
@@ -72,8 +74,15 @@ Admin dashboard notes:
 
 - `admin-tools` is the only admin API Edge Function.
 - The overview cards use `admin_overview_metrics`, so run `npx supabase db push` before deploying or testing the latest admin dashboard.
+- Teaching notes use the `teaching_notes_generation` feature credit cost, which defaults to 1 credit and can be edited in Admin > Settings.
 - Users, payments, referrals, usage, credits, and logs use server-side pagination. Use the in-app Load more buttons for older records.
 - For local Edge Function validation, install Deno and run `deno check supabase/functions/admin-tools/index.ts` after dependencies can be fetched.
+
+Teaching notes image notes:
+
+- `ANTHROPIC_API_KEY` is required for teaching-note generation.
+- For now, Claude produces comprehensive notes, structured diagrams/charts/tables, curated-image suggestions, and image prompts/placeholders.
+- Real AI image file generation is intentionally disabled for v1 and can be activated later with a dedicated image provider.
 
 Invitation-only signup notes:
 

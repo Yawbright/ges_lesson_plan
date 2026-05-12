@@ -64,6 +64,23 @@ export function buildFallbackLessonPlan(
       sessionIndex,
       sessionsPerWeek,
     }),
+    visualAids: [
+      {
+        type: 'flowchart',
+        title: `${topic} learning flow`,
+        purpose: `Supports learners to follow the main ideas in ${topic}.`,
+        phase: 2,
+        activityLink: `Use during the guided practice activity on ${topic}.`,
+        steps: [
+          'Recall what learners already know',
+          'Observe or discuss the classroom example',
+          'Identify the key idea',
+          'Practise with a partner',
+          'Share and correct responses',
+        ],
+        caption: 'Teacher may copy this flow on the board before group work.',
+      },
+    ],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };

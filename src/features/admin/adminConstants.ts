@@ -32,6 +32,7 @@ export const creditKindOptions = [
   { label: 'Lesson generation', value: 'lesson_generation' },
   { label: 'Scheme generation', value: 'scheme_generation' },
   { label: 'Scheme parsing', value: 'scheme_parsing' },
+  { label: 'Teaching notes generation', value: 'teaching_notes_generation' },
   { label: 'Starter', value: 'starter' },
 ];
 
@@ -40,6 +41,7 @@ export const usageKindOptions = [
   { label: 'Lesson generation', value: 'lesson_generation' },
   { label: 'Scheme generation', value: 'scheme_generation' },
   { label: 'Custom scheme analysis', value: 'scheme_parsing' },
+  { label: 'Teaching notes generation', value: 'teaching_notes_generation' },
 ];
 
 export const referralStatusOptions = [

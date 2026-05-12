@@ -105,6 +105,7 @@ export type AdminOverview = {
   lessonPlansGenerated: number;
   schemesGenerated: number;
   customSchemesAnalyzed: number;
+  teachingNotesGenerated: number;
   errors: number;
   referralRewardsThisMonth: number;
 };

@@ -3,15 +3,18 @@ import { Alert, GestureResponderEvent, Platform, Pressable, SectionList, StyleSh
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useToast } from '@/components/ToastProvider';
-import { exportLessonPlanPdf, exportSchemePdf, shareLessonPlan, shareScheme } from '@/lib/export';
-import { deleteLessonPlan, loadLessonPlans } from '@/lib/lessonStore';
+import { exportLessonPlanPdf, exportLessonPlansPdf, exportSchemePdf, exportTeachingNotesPdf, shareLessonPlan, shareLessonPlans, shareScheme } from '@/lib/export';
+import { deleteLessonPlan, loadLessonWorks } from '@/lib/lessonStore';
 import { deleteScheme, loadSchemes } from '@/lib/schemeStore';
+import { deleteTeachingNotes, loadTeachingNotes } from '@/lib/teachingNotesStore';
 import { colors } from '@/theme/colors';
-import type { LessonPlan } from '@/types/lessonPlan';
+import type { LessonPlanBundle, SavedLessonWork } from '@/types/lessonPlan';
 import type { SchemeOfWork } from '@/types/scheme';
+import type { TeachingNotes } from '@/types/teachingNotes';
 
 type LibraryItem =
-  | { kind: 'lesson'; plan: LessonPlan }
+  | { kind: 'lesson'; work: SavedLessonWork }
+  | { kind: 'notes'; notes: TeachingNotes }
   | { kind: 'scheme'; scheme: SchemeOfWork };
 
 type LibrarySection = {
@@ -22,15 +25,18 @@ type LibrarySection = {
 
 export default function LibraryScreen() {
   const { showToast } = useToast();
-  const [plans, setPlans] = useState<LessonPlan[]>([]);
+  const [lessonWorks, setLessonWorks] = useState<SavedLessonWork[]>([]);
+  const [notes, setNotes] = useState<TeachingNotes[]>([]);
   const [schemes, setSchemes] = useState<SchemeOfWork[]>([]);
 
   const refresh = useCallback(async () => {
-    const [lessonPlans, savedSchemes] = await Promise.all([
-      loadLessonPlans(),
+    const [savedLessonWorks, savedNotes, savedSchemes] = await Promise.all([
+      loadLessonWorks(),
+      loadTeachingNotes(),
       loadSchemes(),
     ]);
-    setPlans(lessonPlans);
+    setLessonWorks(savedLessonWorks);
+    setNotes(savedNotes);
     setSchemes(savedSchemes);
   }, []);
 
@@ -44,13 +50,13 @@ export default function LibraryScreen() {
     }, [refresh])
   );
 
-  async function confirmDeleteLesson(plan: LessonPlan) {
+  async function confirmDeleteLesson(work: SavedLessonWork) {
     const confirmed = await confirmRemoval(
       'Delete lesson plan',
-      `Delete ${plan.subject} ${plan.classLevel} Week ${plan.week}?`
+      `Delete ${work.subject} ${work.classLevel} Week ${work.week}?`
     );
-    if (!confirmed || !plan.id) return;
-    await deleteLessonPlan(plan.id);
+    if (!confirmed || !work.id) return;
+    await deleteLessonPlan(work.id);
     await refresh();
     showToast({ message: 'Lesson plan deleted.' });
   }
@@ -66,20 +72,36 @@ export default function LibraryScreen() {
     showToast({ message: 'Scheme deleted.' });
   }
 
+  async function confirmDeleteNotes(item: TeachingNotes) {
+    const confirmed = await confirmRemoval(
+      'Delete teaching notes',
+      `Delete ${item.title}?`
+    );
+    if (!confirmed || !item.id) return;
+    await deleteTeachingNotes(item.id);
+    await refresh();
+    showToast({ message: 'Teaching notes deleted.' });
+  }
+
   const sections = useMemo<LibrarySection[]>(
     () => [
       {
         title: 'Saved Lesson Plans',
-        emptyText: 'No lesson plans yet. Generate your first lesson plan from the Generate tab.',
-        data: plans.map((plan) => ({ kind: 'lesson', plan })),
+        emptyText: 'No lesson plans yet. Generate your first lesson plan from the Tools tab.',
+        data: lessonWorks.map((work) => ({ kind: 'lesson', work })),
+      },
+      {
+        title: 'Saved Teaching Notes',
+        emptyText: 'No teaching notes yet. Generate them from the Tools tab.',
+        data: notes.map((item) => ({ kind: 'notes', notes: item })),
       },
       {
         title: 'Saved Schemes',
-        emptyText: 'No saved schemes yet. Generate a scheme from the Schemes tab.',
+        emptyText: 'No saved schemes yet. Generate a scheme from the Tools tab.',
         data: schemes.map((scheme) => ({ kind: 'scheme', scheme })),
       },
     ],
-    [plans, schemes],
+    [lessonWorks, notes, schemes],
   );
 
   return (
@@ -89,7 +111,9 @@ export default function LibraryScreen() {
       sections={sections}
       keyExtractor={(item) =>
         item.kind === 'lesson'
-          ? `lesson-${item.plan.id ?? `${item.plan.subject}-${item.plan.week}`}`
+          ? `lesson-${item.work.id ?? `${item.work.subject}-${item.work.week}`}`
+          : item.kind === 'notes'
+            ? `notes-${item.notes.id ?? `${item.notes.subject}-${item.notes.week}`}`
           : `scheme-${item.scheme.id ?? `${item.scheme.subject}-${item.scheme.term}`}`
       }
       ListHeaderComponent={LibraryHeader}
@@ -99,7 +123,9 @@ export default function LibraryScreen() {
       }
       renderItem={({ item }) =>
         item.kind === 'lesson' ? (
-          <LessonCard plan={item.plan} onDelete={() => confirmDeleteLesson(item.plan)} />
+          <LessonCard work={item.work} onDelete={() => confirmDeleteLesson(item.work)} />
+        ) : item.kind === 'notes' ? (
+          <TeachingNotesCard notes={item.notes} onDelete={() => confirmDeleteNotes(item.notes)} />
         ) : (
           <SchemeCard scheme={item.scheme} onDelete={() => confirmDeleteScheme(item.scheme)} />
         )
@@ -124,21 +150,56 @@ function LibraryHeader() {
   );
 }
 
-function LessonCard({ plan, onDelete }: { plan: LessonPlan; onDelete: () => void }) {
+function LessonCard({ work, onDelete }: { work: SavedLessonWork; onDelete: () => void }) {
+  const isBundle = isLessonBundle(work);
+  const title = `${work.subject} - ${work.classLevel} - Week ${work.week}`;
+  const subtitle = isBundle ? `${work.lessonCount} lessons | ${work.termTitle}` : work.termTitle;
+
   return (
     <Pressable
       style={styles.card}
-      onPress={() => router.push(`/lesson/${plan.id}`)}
+      onPress={() => {
+        if (isBundle && work.id) {
+          router.push(`/lesson/week?bundleId=${encodeURIComponent(work.id)}`);
+          return;
+        }
+        router.push(`/lesson/${work.id}`);
+      }}
+    >
+      <View style={{ flex: 1 }}>
+        <Text style={styles.cardTitle}>{title}</Text>
+        <Text style={styles.cardSub}>{subtitle}</Text>
+      </View>
+      <CardActions
+        onShare={() => (isBundle ? shareLessonPlans(work.plans) : shareLessonPlan(work))}
+        onPdf={() => (isBundle ? exportLessonPlansPdf(work.plans) : exportLessonPlanPdf(work))}
+        onDelete={onDelete}
+      />
+    </Pressable>
+  );
+}
+
+function isLessonBundle(work: SavedLessonWork): work is LessonPlanBundle {
+  return (work as LessonPlanBundle).kind === 'bundle';
+}
+
+function TeachingNotesCard({ notes, onDelete }: { notes: TeachingNotes; onDelete: () => void }) {
+  return (
+    <Pressable
+      style={styles.card}
+      onPress={() => router.push(`/teaching-note/${notes.id}`)}
     >
       <View style={{ flex: 1 }}>
         <Text style={styles.cardTitle}>
-          {plan.subject} - {plan.classLevel} - Week {plan.week}
+          {notes.subject} - {notes.classLevel} - Week {notes.week}
         </Text>
-        <Text style={styles.cardSub}>{plan.termTitle}</Text>
+        <Text style={styles.cardSub}>
+          Teaching notes v{notes.versionNumber ?? 1} | {notes.topic || notes.title}
+        </Text>
       </View>
       <CardActions
-        onShare={() => shareLessonPlan(plan)}
-        onPdf={() => exportLessonPlanPdf(plan)}
+        onShare={() => exportTeachingNotesPdf(notes)}
+        onPdf={() => exportTeachingNotesPdf(notes)}
         onDelete={onDelete}
       />
     </Pressable>

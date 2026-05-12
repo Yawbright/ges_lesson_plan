@@ -55,6 +55,22 @@ export default function RootLayout() {
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen
+              name="tools/lesson-plan"
+              options={{ title: 'Lesson Plan Tool' }}
+            />
+            <Stack.Screen
+              name="tools/scheme"
+              options={{ title: 'Scheme Tool' }}
+            />
+            <Stack.Screen
+              name="tools/teaching-notes"
+              options={{ title: 'Teaching Notes' }}
+            />
+            <Stack.Screen
+              name="teaching-note/[id]"
+              options={{ title: 'Teaching Notes' }}
+            />
+            <Stack.Screen
               name="lesson/[id]"
               options={{ title: 'Lesson Plan' }}
             />

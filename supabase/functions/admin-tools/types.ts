@@ -82,6 +82,7 @@ export type OverviewMetrics = {
   lessonPlansGenerated: number;
   schemesGenerated: number;
   customSchemesAnalyzed: number;
+  teachingNotesGenerated: number;
   errors: number;
   referralRewardsThisMonth: number;
 };
@@ -103,6 +104,7 @@ export type OverviewMetricsRow = {
   lesson_plans_generated?: number | string | null;
   schemes_generated?: number | string | null;
   custom_schemes_analyzed?: number | string | null;
+  teaching_notes_generated?: number | string | null;
   errors?: number | string | null;
   referral_rewards_this_month?: number | string | null;
 };

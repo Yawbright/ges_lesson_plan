@@ -251,6 +251,7 @@ export default function AdminScreen() {
           lesson_generation: toWhole(appSettingsDraft.lessonCost),
           scheme_generation: toWhole(appSettingsDraft.schemeCost),
           scheme_parsing: toWhole(appSettingsDraft.parsingCost),
+          teaching_notes_generation: toWhole(appSettingsDraft.teachingNotesCost),
         },
         generated_file_retention: {
           days: Math.max(1, toWhole(appSettingsDraft.retentionDays)),

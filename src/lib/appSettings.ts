@@ -3,7 +3,12 @@ import { supabase } from './supabase';
 export type RuntimeAppSettings = {
   starterCredits: { credits: number; active: boolean };
   referralReward: { credits: number; monthlyLimit: number; active: boolean };
-  featureCreditCosts: { lesson_generation: number; scheme_generation: number; scheme_parsing: number };
+  featureCreditCosts: {
+    lesson_generation: number;
+    scheme_generation: number;
+    scheme_parsing: number;
+    teaching_notes_generation: number;
+  };
   generatedFileRetention: { days: number };
   creditPurchasing: { enabled: boolean };
 };
@@ -11,7 +16,7 @@ export type RuntimeAppSettings = {
 export const defaultRuntimeSettings: RuntimeAppSettings = {
   starterCredits: { credits: 5, active: true },
   referralReward: { credits: 5, monthlyLimit: 5, active: true },
-  featureCreditCosts: { lesson_generation: 1, scheme_generation: 1, scheme_parsing: 1 },
+  featureCreditCosts: { lesson_generation: 1, scheme_generation: 1, scheme_parsing: 1, teaching_notes_generation: 1 },
   generatedFileRetention: { days: 15 },
   creditPurchasing: { enabled: false },
 };
@@ -35,6 +40,7 @@ export async function loadRuntimeAppSettings(): Promise<RuntimeAppSettings> {
       lesson_generation: numberValue(byKey.get('feature_credit_costs')?.lesson_generation, 1),
       scheme_generation: numberValue(byKey.get('feature_credit_costs')?.scheme_generation, 1),
       scheme_parsing: numberValue(byKey.get('feature_credit_costs')?.scheme_parsing, 1),
+      teaching_notes_generation: numberValue(byKey.get('feature_credit_costs')?.teaching_notes_generation, 1),
     },
     generatedFileRetention: {
       days: numberValue(byKey.get('generated_file_retention')?.days, 15),
