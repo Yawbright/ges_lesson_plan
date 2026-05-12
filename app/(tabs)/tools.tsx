@@ -59,6 +59,7 @@ export default function ToolsLauncherScreen() {
                 <Ionicons name="close" size={22} color={colors.primary} />
               </Pressable>
             </View>
+            <View style={styles.toolList}>
             {tools.map((tool) => (
               <Pressable
                 key={tool.title}
@@ -75,6 +76,7 @@ export default function ToolsLauncherScreen() {
                 <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
               </Pressable>
             ))}
+            </View>
           </Pressable>
         </Pressable>
       </Modal>
@@ -91,13 +93,12 @@ const styles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: colors.surface,
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    padding: 18,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    padding: 20,
     paddingBottom: Platform.OS === 'ios' ? 28 : 18,
-    borderWidth: 1,
+    borderTopWidth: 1,
     borderColor: colors.border,
-    gap: 10,
   },
   handle: {
     alignSelf: 'center',
@@ -113,19 +114,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 6,
   },
-  title: { fontSize: 22, fontWeight: '800', color: colors.primaryDark },
+  title: { fontSize: 23, fontWeight: '900', color: colors.primaryDark },
   sub: { color: colors.textMuted, marginTop: 2 },
   closeButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
+  toolList: { gap: 10 },
   toolRow: {
-    minHeight: 82,
+    minHeight: 84,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 8,
@@ -140,10 +143,10 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 8,
-    backgroundColor: '#eef6f2',
+    backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  toolTitle: { fontSize: 15, fontWeight: '800', color: colors.text, marginBottom: 3 },
+  toolTitle: { fontSize: 15, fontWeight: '900', color: colors.text, marginBottom: 3 },
   toolDescription: { color: colors.textMuted, lineHeight: 18 },
 });

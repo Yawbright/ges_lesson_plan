@@ -15,20 +15,23 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelPosition: 'below-icon',
         tabBarStyle: {
-          height: 62,
-          paddingTop: 6,
-          paddingBottom: 6,
+          height: 66,
+          paddingTop: 7,
+          paddingBottom: 7,
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+          borderTopWidth: 1,
         },
         tabBarItemStyle: {
-          paddingVertical: 2,
+          paddingVertical: 3,
         },
         tabBarIconStyle: {
           marginBottom: 1,
         },
         tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: '700',
-          lineHeight: 12,
+          fontSize: 11,
+          fontWeight: '800',
+          lineHeight: 13,
         },
       }}
     >
@@ -147,14 +150,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  headerLogo: {
-    width: 28,
-    height: 28,
-    borderRadius: 6,
-  },
+  headerLogo: { width: 28, height: 28, borderRadius: 7 },
   headerBrandText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '900',
   },
 });

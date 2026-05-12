@@ -1,17 +1,22 @@
-// Ghana-inspired palette: green, gold, red accents on neutral surfaces.
+// Professional Ghana-inspired palette with restrained neutrals.
 export const colors = {
-  primary: '#0F4C3A',
-  primaryDark: '#0A3326',
-  accent: '#F2B233',
+  primary: '#0E5F47',
+  primaryDark: '#063B2D',
+  primarySoft: '#EAF5F0',
+  accent: '#DFA617',
+  accentSoft: '#FFF7DD',
   danger: '#CE1126',
-  bg: '#FAFAF7',
+  dangerSoft: '#FFF1F1',
+  bg: '#F6F7F5',
   surface: '#FFFFFF',
-  border: '#E5E5E0',
-  text: '#1A1A1A',
-  textMuted: '#6B6B6B',
-  tableHeader: '#0F4C3A',
+  surfaceMuted: '#F0F3F1',
+  border: '#DDE3DF',
+  borderStrong: '#C7D0CB',
+  text: '#17211C',
+  textMuted: '#66736C',
+  tableHeader: '#0E5F47',
   tableHeaderText: '#FFFFFF',
-  tableRowAlt: '#F4F1EA',
+  tableRowAlt: '#F1F4F2',
 } as const;
 
 export type Colors = typeof colors;

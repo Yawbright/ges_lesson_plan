@@ -42,9 +42,9 @@ export function Button({
 
 const styles = StyleSheet.create({
   base: {
-    paddingVertical: 14,
+    paddingVertical: 13,
     paddingHorizontal: 20,
-    borderRadius: 10,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 48,
@@ -54,14 +54,14 @@ const styles = StyleSheet.create({
   secondary: {
     backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.primary,
+    borderColor: colors.borderStrong,
   },
   ghost: { backgroundColor: 'transparent' },
   disabled: { opacity: 0.5 },
   pressed: { opacity: 0.85 },
-  text: { fontSize: 16, fontWeight: '600' },
+  text: { fontSize: 15, fontWeight: '800' },
   primaryText: { color: '#fff' },
   dangerText: { color: '#fff' },
-  secondaryText: { color: colors.primary },
+  secondaryText: { color: colors.primaryDark },
   ghostText: { color: colors.primary },
 });

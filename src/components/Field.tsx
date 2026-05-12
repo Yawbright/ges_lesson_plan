@@ -24,14 +24,14 @@ const styles = StyleSheet.create({
   wrap: { marginBottom: 16 },
   label: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '800',
     color: colors.text,
     marginBottom: 6,
   },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 10,
+    borderRadius: 8,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,

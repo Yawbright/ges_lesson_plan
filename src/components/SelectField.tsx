@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useMemo, useState } from 'react';
 import { colors } from '@/theme/colors';
@@ -44,7 +45,7 @@ export function SelectField({
         <Text style={[styles.triggerText, !selectedLabel && styles.placeholder]}>
           {selectedLabel || placeholder}
         </Text>
-        <Text style={styles.chevron}>▼</Text>
+        <Ionicons name="chevron-down" size={17} color={colors.textMuted} />
       </Pressable>
       {helperText ? <Text style={styles.helperText}>{helperText}</Text> : null}
 
@@ -86,14 +87,14 @@ const styles = StyleSheet.create({
   wrap: { marginBottom: 16 },
   label: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '800',
     color: colors.text,
     marginBottom: 6,
   },
   trigger: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 10,
+    borderRadius: 8,
     paddingHorizontal: 14,
     paddingVertical: 12,
     minHeight: 48,
@@ -116,11 +117,7 @@ const styles = StyleSheet.create({
   placeholder: {
     color: colors.textMuted,
   },
-  chevron: {
-    color: colors.textMuted,
-    fontSize: 12,
-    marginLeft: 10,
-  },
+  chevron: { marginLeft: 10 },
   helperText: {
     marginTop: 6,
     fontSize: 12,
@@ -135,7 +132,9 @@ const styles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
     maxHeight: '70%',
     overflow: 'hidden',
   },
@@ -155,13 +154,13 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   optionRow: {
-    borderRadius: 10,
+    borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 12,
     marginTop: 4,
   },
   optionRowActive: {
-    backgroundColor: '#eef6f2',
+    backgroundColor: colors.primarySoft,
   },
   optionRowPressed: {
     opacity: 0.85,

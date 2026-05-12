@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
   label: { color: '#DDEBE5', fontSize: 13, fontWeight: '700', textTransform: 'uppercase' },
   balance: { color: '#fff', fontSize: 46, fontWeight: '800', marginTop: 4 },
   balanceNote: { color: '#EAF2EE', marginTop: 6, lineHeight: 19 },
-  sectionTitle: { fontSize: 18, fontWeight: '800', color: colors.primaryDark, marginBottom: 12 },
+  sectionTitle: { fontSize: 18, fontWeight: '900', color: colors.primaryDark, marginBottom: 12 },
   packages: { gap: 10, marginBottom: 14 },
   packageCard: {
     backgroundColor: colors.surface,
@@ -279,12 +279,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  packageCardActive: { borderColor: colors.primary, backgroundColor: '#F3F8F5' },
-  packageTitle: { fontSize: 16, color: colors.text, fontWeight: '800' },
+  packageCardActive: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
+  packageTitle: { fontSize: 16, color: colors.text, fontWeight: '900' },
   packageHeader: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
   packageBadge: {
     color: colors.primary,
-    backgroundColor: '#EAF4EE',
+    backgroundColor: colors.primarySoft,
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
     marginBottom: 22,
     gap: 10,
   },
-  pendingTitle: { color: colors.text, fontWeight: '800' },
+  pendingTitle: { color: colors.text, fontWeight: '900' },
   pendingText: { color: colors.textMuted, lineHeight: 19 },
   statusPanel: {
     backgroundColor: colors.surface,
