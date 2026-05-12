@@ -225,8 +225,7 @@ function validateTeachingNotes(notes: TeachingNotes): TeachingNotes {
     !notes.lessonPlanId ||
     !notes.overview ||
     !Array.isArray(notes.phaseGuidance) ||
-    !Array.isArray(notes.contentBlocks) ||
-    !notes.contentBlocks.length
+    !notes.phaseGuidance.length
   ) {
     throw new Error('Teaching notes generation returned incomplete notes. Please try again.');
   }

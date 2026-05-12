@@ -11,7 +11,7 @@ import {
 } from '@/lib/schemeWeek';
 import type { LessonPlan } from '@/types/lessonPlan';
 import type { SchemeOfWork } from '@/types/scheme';
-import type { TeachingNoteContentBlock, TeachingNoteImageGridItem, TeachingNotes } from '@/types/teachingNotes';
+import type { TeachingNoteVisual, TeachingNotes } from '@/types/teachingNotes';
 
 export async function exportLessonPlanPdf(plan: LessonPlan) {
   const html = pageHtml(buildLessonPlanContent(plan), 'lesson');
@@ -239,89 +239,56 @@ function buildTeachingNotesContent(notes: TeachingNotes) {
       <h1>${escapeHtml(notes.title)}</h1>
       <h2>${escapeHtml(`${notes.subject} - ${notes.classLevel} - Week ${notes.week}${notes.lessonNumber ? ` - Lesson ${notes.lessonNumber}` : ''}${notes.versionNumber ? ` - Version ${notes.versionNumber}` : ''}`)}</h2>
     </section>
-    <section class="notes-flow">
-      ${(notes.contentBlocks ?? []).map(buildContentBlockHtml).join('')}
-    </section>
+    ${notes.overview ? notesSection('Overview', `<p>${escapeHtml(notes.overview)}</p>`) : ''}
+    ${notesListSection('Teacher Preparation', notes.preparation)}
+    ${notes.visuals?.length ? notesSection('Content Diagrams and Examples', notes.visuals.map(buildVisualHtml).join('')) : ''}
+    ${notesSection('Teaching Guide', notes.phaseGuidance.map((phase) => `
+      <div class="phase-note">
+        <h3>Phase ${phase.phase}: ${escapeHtml(phase.title)}</h3>
+        ${listHtml(phase.teacherNotes)}
+      </div>
+    `).join(''))}
+    ${notesListSection('Key Explanations', notes.keyExplanations)}
+    ${notesListSection('Likely Misconceptions', notes.misconceptions)}
+    ${notesListSection('Questions to Ask', notes.questionsToAsk)}
+    ${notesListSection('Differentiation', notes.differentiation)}
+    ${notesListSection('Classroom Management', notes.classroomManagement)}
+    ${notesListSection('Board Summary', notes.boardSummary)}
+    ${notesListSection('Homework / Follow-up', notes.homework ?? [])}
   `;
+}
+
+function notesSection(title: string, content: string) {
+  return `<section class="notes-section"><h3>${escapeHtml(title)}</h3>${content}</section>`;
+}
+
+function notesListSection(title: string, items: string[]) {
+  return items.length ? notesSection(title, listHtml(items)) : '';
 }
 
 function listHtml(items: string[]) {
   return `<ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`;
 }
 
-function buildContentBlockHtml(block: TeachingNoteContentBlock) {
-  if (block.type === 'heading') {
-    return `<h3 class="block-heading">${escapeHtml(block.title || block.text || '')}</h3>`;
-  }
-
-  if (block.type === 'paragraph') {
-    return `<div class="content-block">${block.title ? `<h4>${escapeHtml(block.title)}</h4>` : ''}<p>${escapeHtml(block.text ?? '')}</p></div>`;
-  }
-
-  if (block.type === 'bullet_list' || block.type === 'practice_questions') {
-    return `<div class="content-block">${block.title ? `<h4>${escapeHtml(block.title)}</h4>` : ''}${listHtml(block.items ?? [])}</div>`;
-  }
-
-  if (block.type === 'worked_example') {
-    return `<div class="content-block worked-example"><h4>${escapeHtml(block.title || 'Worked Example')}</h4>${block.text ? `<p>${escapeHtml(block.text)}</p>` : ''}${orderedHtml(block.steps?.length ? block.steps : block.items ?? [])}</div>`;
-  }
-
-  if (block.type === 'comparison_table') {
-    return `<div class="content-block visual-block"><h4>${escapeHtml(block.title || 'Table')}</h4>${tableHtml(block.rows ?? [])}${captionHtml(block.caption)}</div>`;
-  }
-
-  if (block.type === 'process_steps') {
-    return `<div class="content-block visual-block"><h4>${escapeHtml(block.title || 'Steps')}</h4>${orderedHtml(block.steps?.length ? block.steps : block.items ?? [])}${captionHtml(block.caption)}</div>`;
-  }
-
-  if (block.type === 'labelled_diagram') {
-    return `<div class="content-block visual-block"><h4>${escapeHtml(block.title || 'Labelled Diagram')}</h4>${labelHtml(block.labels ?? [])}${captionHtml(block.caption)}</div>`;
-  }
-
-  if (block.type === 'image_grid') {
-    return `<div class="content-block visual-block"><h4>${escapeHtml(block.title || 'Examples')}</h4>${block.text ? `<p>${escapeHtml(block.text)}</p>` : ''}${imageGridHtml(block.imageItems ?? [])}${captionHtml(block.caption)}</div>`;
-  }
-
-  if (block.type === 'teacher_tip') {
-    return `<div class="content-block teacher-tip"><h4>${escapeHtml(block.title || 'Teacher Tip')}</h4><p>${escapeHtml(block.text ?? '')}</p></div>`;
-  }
-
-  return block.text ? `<div class="content-block"><p>${escapeHtml(block.text)}</p></div>` : '';
-}
-
-function orderedHtml(items: string[]) {
-  return `<ol>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ol>`;
-}
-
-function tableHtml(rows: string[][]) {
-  if (!rows.length) return '';
-  return `<table class="visual-table">${rows
-    .map((row, rowIndex) => `<tr class="${rowIndex === 0 ? 'head' : ''}">${row
-      .map((cell) => `<td>${escapeHtml(cell)}</td>`)
-      .join('')}</tr>`)
-    .join('')}</table>`;
-}
-
-function labelHtml(labels: Array<{ label: string; description?: string }>) {
-  return `<div class="label-grid">${labels
-    .map((item, index) => `<div class="label-chip"><strong>${index + 1}. ${escapeHtml(item.label)}</strong>${item.description ? `<br/>${escapeHtml(item.description)}` : ''}</div>`)
-    .join('')}</div>`;
-}
-
-function imageGridHtml(items: TeachingNoteImageGridItem[]) {
-  return `<div class="image-grid">${items.map((item) => imageTileHtml(item)).join('')}</div>`;
-}
-
-function imageTileHtml(item: TeachingNoteImageGridItem) {
-  return `<div class="image-tile">${
-    item.imageUrl
-      ? `<img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.label)}" />`
-      : `<div class="image-placeholder">${escapeHtml(item.label.slice(0, 2).toUpperCase())}</div>`
-  }<strong>${escapeHtml(item.label)}</strong>${item.description ? `<span>${escapeHtml(item.description)}</span>` : ''}</div>`;
-}
-
-function captionHtml(caption?: string) {
-  return caption ? `<p class="caption">${escapeHtml(caption)}</p>` : '';
+function buildVisualHtml(visual: TeachingNoteVisual) {
+  const rows = visual.rows?.length
+    ? `<table class="visual-table">${visual.rows
+        .map((row, rowIndex) => `<tr class="${rowIndex === 0 ? 'head' : ''}">${row
+          .map((cell) => `<td>${escapeHtml(cell)}</td>`)
+          .join('')}</tr>`)
+        .join('')}</table>`
+    : '';
+  const structuredItems = visual.steps ?? visual.labels?.map((item) => item.label) ?? (visual.prompt ? [visual.prompt] : []);
+  return `
+    <div class="visual-block">
+      <h4>${escapeHtml(visual.title)}</h4>
+      ${visual.imageUrl ? `<img class="visual-image" src="${escapeHtml(visual.imageUrl)}" alt="${escapeHtml(visual.altText ?? visual.title)}" />` : ''}
+      ${structuredItems.length ? `<ol>${structuredItems.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ol>` : ''}
+      ${rows}
+      ${visual.caption ? `<p class="caption">${escapeHtml(visual.caption)}</p>` : ''}
+      ${visual.attribution ? `<p class="attribution">${escapeHtml(visual.attribution)}</p>` : ''}
+    </div>
+  `;
 }
 
 function pageHtml(content: string, documentType: 'lesson' | 'scheme' | 'notes') {
@@ -423,27 +390,22 @@ function notesStyles() {
     .notes-title { margin-bottom: 14px; }
     .notes-title h1 { font-size: 20px; color: #0F4C3A; }
     .notes-title h2 { font-size: 13px; color: #555; }
-    .notes-flow { border: 1px solid #d8d8d2; border-radius: 6px; padding: 12px; }
-    .block-heading { color: #0F4C3A; font-size: 16px; margin: 12px 0 5px; }
-    .content-block { margin-bottom: 10px; break-inside: avoid; page-break-inside: avoid; }
-    .content-block h4 { margin: 0 0 5px; color: #1a1a1a; font-size: 13px; }
-    .content-block p, .content-block li { font-size: 12px; line-height: 1.48; }
-    .content-block ul, .content-block ol { margin-top: 4px; padding-left: 18px; }
-    .worked-example { background: #fffaf0; border: 1px solid #e2d8b8; border-radius: 6px; padding: 8px; }
-    .teacher-tip { background: #fffaf0; border: 1px solid #d9c88f; border-radius: 6px; padding: 8px; }
-    .visual-block { background: #F4F1EA; border: 1px solid #d8d8d2; border-radius: 6px; padding: 8px; }
+    .notes-section { border: 1px solid #d8d8d2; border-radius: 6px; padding: 10px; margin-bottom: 10px; break-inside: avoid; page-break-inside: avoid; }
+    .notes-section h3 { color: #0F4C3A; font-size: 14px; margin-bottom: 6px; }
+    .notes-section p, .notes-section li { font-size: 12px; line-height: 1.48; }
+    .notes-section ul, .notes-section ol { margin-top: 4px; padding-left: 18px; }
+    .notes-section li { margin-bottom: 3px; }
+    .phase-note { border-top: 1px solid #e2e2dc; padding-top: 6px; margin-top: 6px; }
+    .phase-note h3 { font-size: 12px; color: #0F4C3A; }
+    .visual-block { background: #F4F1EA; border: 1px solid #d8d8d2; border-radius: 6px; padding: 8px; margin-top: 8px; break-inside: avoid; page-break-inside: avoid; }
+    .visual-block h4 { margin: 0 0 6px; color: #1a1a1a; font-size: 13px; }
+    .visual-block ol { margin-top: 4px; padding-left: 18px; }
+    .visual-image { max-width: 100%; max-height: 240px; object-fit: contain; display: block; margin: 6px auto; background: #fff; }
     .visual-table { margin-top: 6px; }
     .visual-table td { font-size: 11px; }
     .visual-table .head td { background: #edf3f0; font-weight: 700; }
-    .label-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 6px; }
-    .label-chip { border: 1px solid #d8d8d2; border-radius: 6px; background: #fff; padding: 6px; font-size: 11px; line-height: 1.35; }
-    .image-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
-    .image-tile { border: 1px solid #d8d8d2; border-radius: 6px; background: #fff; padding: 7px; text-align: center; min-height: 92px; }
-    .image-tile img { max-width: 44px; max-height: 44px; object-fit: contain; display: block; margin: 0 auto 4px; }
-    .image-placeholder { width: 44px; height: 44px; border-radius: 10px; background: #edf3f0; color: #0F4C3A; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; margin-bottom: 4px; }
-    .image-tile strong { display: block; font-size: 11px; }
-    .image-tile span { display: block; color: #666; font-size: 10px; line-height: 1.25; margin-top: 2px; }
     .caption { margin-top: 6px; }
+    .attribution { color: #666; font-size: 10px; }
   `;
 }
 

@@ -48,12 +48,12 @@ export default function TeachingNotesToolScreen() {
   }, [refresh]);
 
   useEffect(() => {
-    if (!lessonPlanId || !plans.length || selectedPlan?.id === lessonPlanId) return;
+    if (!lessonPlanId || !plans.length || selectedPlan) return;
     const match = plans.find((plan) => plan.id === lessonPlanId);
     if (match) {
       selectPlan(match);
     }
-  }, [lessonPlanId, plans, selectedPlan?.id]);
+  }, [lessonPlanId, plans, selectedPlan]);
 
   useFocusEffect(
     useCallback(() => {

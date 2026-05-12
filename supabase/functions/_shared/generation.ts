@@ -255,25 +255,10 @@ Always respond with a single JSON object only, no markdown or commentary, with t
   "misconceptions": string[],
   "questionsToAsk": string[],
   "differentiation": string[],
-    "classroomManagement": string[],
-    "boardSummary": string[],
-    "homework": string[],
-    "contentBlocks": [
-      {
-        "id": string,
-        "type": "heading" | "paragraph" | "bullet_list" | "worked_example" | "practice_questions" | "comparison_table" | "process_steps" | "labelled_diagram" | "image_grid" | "teacher_tip",
-        "title": string,
-        "text": string,
-        "items": string[],
-        "rows": string[][],
-        "steps": string[],
-        "labels": [{ "label": string, "description": string }],
-        "imageItems": [{ "label": string, "description": string, "imagePrompt": string, "attribution": string }],
-        "caption": string,
-        "teacherOnly": boolean
-      }
-    ],
-    "visuals": [
+  "classroomManagement": string[],
+  "boardSummary": string[],
+  "homework": string[],
+  "visuals": [
     {
       "id": string,
       "kind": "diagram" | "chart" | "process" | "table" | "board_sketch" | "curated_image" | "generated_image",
@@ -304,17 +289,14 @@ Always respond with a single JSON object only, no markdown or commentary, with t
     * boardSummary = concise learner copy notes for the board.
   - Include worked examples where the subject needs them, especially Mathematics.
   - For Mathematics, include definitions, place-value tables, worked examples, comparison/ordering steps, and practice items.
-  - Visuals must be embedded concept aids for the lesson content, as if placed inside a textbook chapter.
-  - Generate contentBlocks as the primary teaching note body. The app will render these blocks in order.
-  - Put tables, diagrams, image grids, worked examples, and practice questions directly after the paragraph where they are discussed.
-  - Do not put all visuals at the beginning or end.
+  - Visuals are optional supporting aids, not the main content. If a visual is not clearly necessary for this exact lesson, return "visuals": [].
   - Include visuals only when they directly match the subject and topic. Never include examples from another subject.
   - Use structured diagrams/charts/tables for science diagrams, maths place-value tables, processes, comparison charts, board summaries, and labelled explanations.
   - Use curated_image only when the subject/topic explicitly needs a known real-world image, object, person, place, or tool.
   - Do not invent unrelated image examples. Every visual must be directly named by, or strongly implied by, the lesson topic and activities.
   - Use generated_image only as a placeholder prompt for a custom content illustration; do not include imageUrl.
-  - Use image_grid only when the topic naturally calls for examples of real platforms, objects, tools, materials, places, or organisms. Fill imageItems with labels and imagePrompt placeholders; do not hardcode examples unrelated to the lesson.
-  - Keep the JSON complete: overview 3-5 sentences; preparation 4-6 items; contentBlocks 8-14 blocks; each phaseGuidance.teacherNotes 5-7 rich content items; every other text array 4-8 items; visuals 0-2 items.
+  - Do not include examples, tools, brands, objects, platforms, organisms, places, diagrams, charts, or images unless they are directly required by the lesson topic, strand, sub-strand, content standard, indicator, or planned activities.
+  - Keep the JSON complete: overview 3-5 sentences; preparation 4-6 items; each phaseGuidance.teacherNotes 6-9 rich content items; every other text array 4-8 items; visuals 0-2 items.
   - Do not wrap the response in markdown fences.
   - Return JSON only.`;
 
@@ -376,7 +358,7 @@ export function buildSchemePrompt(body: SchemeGenerationBody): string {
 export function buildTeachingNotesPrompt(body: TeachingNotesGenerationBody): string {
   return (
     `Generate a textbook-style learner teaching note for this saved lesson plan.\n` +
-    `The output should contain the actual lesson content to teach, including clear explanations, inline content blocks, visuals, and worked examples where useful.\n` +
+    `The output should contain the actual lesson content to teach, including clear explanations and worked examples where useful.\n` +
     `Lesson plan JSON:\n${JSON.stringify(body.lessonPlan)}\n\n` +
     `Return one complete JSON object only. Do not use markdown fences.`
   );
