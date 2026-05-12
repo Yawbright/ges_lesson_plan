@@ -240,14 +240,14 @@ const styles = StyleSheet.create({
 
   // Cell
   cellWrap: {
-    padding: 6,
+    padding: 5,
     borderRightWidth: StyleSheet.hairlineWidth,
     borderRightColor: colors.border,
     justifyContent: 'flex-start',
   },
   lastCell: { borderRightWidth: 0 },
   cellLabel: { fontSize: 10, fontWeight: '700', color: colors.primary },
-  cellBody: { fontSize: 12, color: colors.text, lineHeight: 17 },
+  cellBody: { fontSize: 13, color: colors.text, lineHeight: 18 },
 
   // Phase table header
   phaseHeaderCell: {
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
   phaseDuration: { fontSize: 10, color: colors.textMuted, marginTop: 3 },
 
   // Activities
-  activityText: { fontSize: 12, color: colors.text, lineHeight: 18, marginBottom: 3 },
+  activityText: { fontSize: 13, color: colors.text, lineHeight: 18, marginBottom: 2 },
 
   // Assessment (embedded in Phase 2)
   assessmentBlock: {
@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   assessmentTitle: { fontSize: 11, fontWeight: '700', color: colors.primary, marginBottom: 4 },
-  assessmentQ: { fontSize: 12, color: colors.text, lineHeight: 17, marginBottom: 2 },
+  assessmentQ: { fontSize: 13, color: colors.text, lineHeight: 18, marginBottom: 2 },
 
   // Resources
   resourceText: { fontSize: 11, color: colors.text, lineHeight: 16, marginBottom: 2 },
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     gap: 3,
   },
-  teacherText: { fontSize: 12, color: colors.text, lineHeight: 17 },
+  teacherText: { fontSize: 13, color: colors.text, lineHeight: 18 },
 });
 
 function buildLessonTitle(plan: LessonPlan) {

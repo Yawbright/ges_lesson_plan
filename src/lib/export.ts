@@ -13,7 +13,7 @@ import type { LessonPlan } from '@/types/lessonPlan';
 import type { SchemeOfWork } from '@/types/scheme';
 
 export async function exportLessonPlanPdf(plan: LessonPlan) {
-  const html = pageHtml(buildLessonPlanContent(plan));
+  const html = pageHtml(buildLessonPlanContent(plan), 'lesson');
   const fileName = `${slugify(plan.subject)}-${plan.classLevel}-week-${plan.week}.pdf`;
   await exportHtmlAsPdf(html, fileName);
 }
@@ -52,6 +52,7 @@ export async function exportLessonPlansPdf(plans: LessonPlan[]) {
     plans
       .map((plan, index) => `<section class="lesson-page${index > 0 ? ' page-break' : ''}">${buildLessonPlanContent(plan)}</section>`)
       .join(''),
+    'lesson',
   );
   const first = plans[0];
   const fileName = `${slugify(first.subject)}-${first.classLevel}-week-${first.week}-all-lessons.pdf`;
@@ -135,7 +136,7 @@ function buildLessonPlanContent(plan: LessonPlan) {
                 : ''
             }
           </td>
-          <td>${(phase.resources ?? []).map((item) => `<div>${escapeHtml(item)}</div>`).join('')}</td>
+          <td class="resource-cell">${(phase.resources ?? []).map((item) => `<div>${escapeHtml(item)}</div>`).join('')}</td>
         </tr>
       `
     )
@@ -220,10 +221,37 @@ function buildSchemeHtml(scheme: SchemeOfWork) {
       <tr><th>Week</th><th>Topic</th><th>Strand</th><th>Sub-strand</th><th>Content Standard</th><th>Indicator</th><th>Resources</th></tr>
       ${rows}
     </table>
-  `);
+  `, 'scheme');
 }
 
-function pageHtml(content: string) {
+function pageHtml(content: string, documentType: 'lesson' | 'scheme') {
+  const lessonStyles =
+    documentType === 'lesson'
+      ? `
+        body { padding: 18px; }
+        h1 { font-size: 18px; }
+        h2 { font-size: 15px; margin-bottom: 10px; }
+        table { margin-top: 7px; }
+        th, td { border-color: #e2e2dc; padding: 4px; font-size: 12px; line-height: 1.2; }
+        th { font-size: 10px; }
+        .lesson-title { margin-bottom: 4px; }
+        .info-table, .phase-table { margin-top: 6px; }
+        .info-table td { line-height: 1.18; }
+        .label { font-size: 10px; }
+        .phase-head th { font-size: 10px; padding: 4px; }
+        .phase-cell { font-size: 12px; line-height: 1.18; }
+        .phase-cell strong { font-size: 10px; }
+        .phase-cell span { font-size: 11px; }
+        .phase-cell small { font-size: 10px; }
+        .activity-cell { font-size: 16px; }
+        .activity-cell div { margin-bottom: 1px; line-height: 1.24; }
+        .resource-cell { font-size: 12px; line-height: 1.2; }
+        .assessment { margin-top: 5px; padding-top: 5px; border-top-color: #e2e2dc; }
+        .assessment strong { font-size: 11px; }
+        .teacher-details { border-color: #e2e2dc; padding: 5px; margin-top: 6px; font-size: 12px; line-height: 1.24; }
+      `
+      : '';
+
   return `<!DOCTYPE html>
   <html>
     <head>
@@ -253,6 +281,7 @@ function pageHtml(content: string) {
         .activity-cell div { margin-bottom: 3px; line-height: 1.45; }
         .assessment { margin-top: 8px; padding-top: 8px; border-top: 1px solid #d8d8d2; }
         .teacher-details { border: 1px solid #d8d8d2; border-radius: 6px; padding: 8px; margin-top: 8px; font-size: 12px; line-height: 1.45; }
+        ${lessonStyles}
       </style>
     </head>
     <body>${content}</body>
