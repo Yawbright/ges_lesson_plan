@@ -126,6 +126,7 @@ export function emptyAppSettingsDraft(): AppSettingsDraft {
     purchasingEnabled: false,
     paystackMode: 'live',
     parserBackend: 'active',
+    translationProvider: 'anthropic',
   };
 }
 
@@ -138,6 +139,7 @@ export function settingsToDraft(settings: AdminSetting[]): AppSettingsDraft {
   const purchasing = byKey.get('credit_purchasing') ?? {};
   const paystack = byKey.get('paystack_mode') ?? {};
   const parser = byKey.get('parser_backend') ?? {};
+  const translation = byKey.get('translation_provider') ?? {};
 
   return {
     starterCredits: String(numberSetting(starter.credits, 5)),
@@ -153,6 +155,7 @@ export function settingsToDraft(settings: AdminSetting[]): AppSettingsDraft {
     purchasingEnabled: booleanSetting(purchasing.enabled, false),
     paystackMode: String(paystack.mode ?? 'live'),
     parserBackend: String(parser.provider ?? 'active'),
+    translationProvider: String(translation.provider ?? 'anthropic'),
   };
 }
 

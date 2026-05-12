@@ -104,6 +104,10 @@ export interface LessonPlan {
   phases: LessonPhase[];
   visualAids?: LessonVisualAid[];
   localLanguageSupport?: LocalLanguageSupport;
+  translationLanguage?: string;
+  translatedFrom?: string;
+  sourceLessonPlanId?: string;
+  translationStatus?: 'ai_draft' | 'reviewed' | string;
 
   // ── Meta ─────────────────────────────────────────────────────────────────
   week: number;

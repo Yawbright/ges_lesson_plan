@@ -5,9 +5,9 @@ import { Button } from '@/components/Button';
 import { LessonPlanStack } from '@/components/LessonPlanTable';
 import { SelectField } from '@/components/SelectField';
 import { useToast } from '@/components/ToastProvider';
-import { translateLessonPlanSupport } from '@/lib/ai';
+import { translateLessonPlan } from '@/lib/ai';
 import { exportLessonPlansPdf, shareLessonPlans } from '@/lib/export';
-import { getLessonPlanBundleById, getLessonPlanById, saveLessonPlanBundle, saveLessonPlanWork } from '@/lib/lessonStore';
+import { getLessonPlanBundleById, getLessonPlanById, saveLessonPlanBundle } from '@/lib/lessonStore';
 import { LOCAL_LANGUAGE_OPTIONS } from '@/lib/options';
 import { colors } from '@/theme/colors';
 import type { LessonPlan, LessonPlanBundle } from '@/types/lessonPlan';
@@ -69,14 +69,14 @@ export default function LessonWeekDetailScreen() {
       <View style={styles.actions}>
         <Button title="Back" variant="secondary" onPress={() => router.back()} />
         <SelectField
-          label="Local language support"
+          label="Translate week plan"
           value={localLanguage}
           options={LOCAL_LANGUAGE_OPTIONS}
           onChange={setLocalLanguage}
-          helperText="Adds teacher-reviewable vocabulary and classroom prompts to all lessons in this week plan."
+          helperText="Creates a new AI-draft week bundle in the selected Ghanaian language."
         />
         <Button
-          title="Add translation"
+          title="Create translated copy"
           variant="secondary"
           loading={translating}
           onPress={async () => {
@@ -87,25 +87,17 @@ export default function LessonWeekDetailScreen() {
             setTranslating(true);
             try {
               const translatedPlans = await Promise.all(
-                plans.map(async (plan) => ({
-                  ...plan,
-                  localLanguageSupport: await translateLessonPlanSupport(plan, localLanguage),
-                })),
+                plans.map((plan) => translateLessonPlan(plan, localLanguage)),
               );
-              if (bundle) {
-                const saved = await saveLessonPlanWork({ ...bundle, plans: translatedPlans });
-                if ('plans' in saved) {
-                  setBundle(saved);
-                  setPlans(saved.plans);
-                }
-              } else {
-                const savedBundle = await saveLessonPlanBundle(translatedPlans);
-                setBundle(savedBundle);
-                setPlans(savedBundle.plans);
+              const savedBundle = await saveLessonPlanBundle(translatedPlans);
+              setBundle(savedBundle);
+              setPlans(savedBundle.plans);
+              if (savedBundle.id) {
+                router.replace(`/lesson/week?bundleId=${encodeURIComponent(savedBundle.id)}`);
               }
-              showToast({ message: 'Local language support added to week plan.' });
+              showToast({ message: 'Translated week plan saved.' });
             } catch (err) {
-              Alert.alert('Translation failed', err instanceof Error ? err.message : 'Could not add translation.');
+              Alert.alert('Translation failed', err instanceof Error ? err.message : 'Could not translate week plan.');
             } finally {
               setTranslating(false);
             }

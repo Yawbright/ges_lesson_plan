@@ -156,17 +156,19 @@ Do not switch to a different weekly topic just because it is a new session.\n`
       writeJson(res, 400, { error: 'lessonPlan and localLanguage are required' });
       return;
     }
+    if (!isSupportedGhanaianLanguage(body.localLanguage)) {
+      writeJson(res, 400, { error: 'Translation is currently limited to supported Ghanaian languages.' });
+      return;
+    }
 
     try {
-      const prompt = buildLessonSupportTranslationPrompt(body);
-      const support = process.env.GEMINI_API_KEY
-        ? await callGeminiJson(lessonSupportTranslationSystemPrompt, prompt)
-        : await callAnthropicJson({
-            system: lessonSupportTranslationSystemPrompt,
-            user: prompt,
-            maxTokens: 2500,
-          });
-      writeJson(res, 200, normalizeLocalLanguageSupport(support, body.localLanguage));
+      const prompt = buildLessonPlanTranslationPrompt(body);
+      const translatedPlan = await callAnthropicJson({
+        system: lessonPlanTranslationSystemPrompt,
+        user: prompt,
+        maxTokens: 6000,
+      });
+      writeJson(res, 200, normalizeTranslatedLessonPlan(translatedPlan, body));
     } catch (error) {
       writeJson(res, 500, { error: getErrorMessage(error) });
     }
@@ -359,6 +361,20 @@ Always respond with a single JSON object only, no markdown or commentary, with t
   ]
 }
 
+function isSupportedGhanaianLanguage(language) {
+  return new Set([
+    'Twi / Akan',
+    'Fante',
+    'Ewe',
+    'Ga',
+    'Dangme',
+    'Dagbani',
+    'Nzema',
+    'Gonja',
+    'Kasem',
+  ]).has(language);
+}
+
 Rules:
 - When a scheme context is provided, treat it as the authoritative guide for the week's strand, sub-strand,
   content standard, indicator, topic focus, and progression.
@@ -377,24 +393,60 @@ Rules:
 - For labelled_diagram use labels; for flowchart/timeline use steps; for bar_chart use data; for comparison_table use rows.
 - Return JSON only.`;
 
-const lessonSupportTranslationSystemPrompt = `You translate Ghanaian classroom lesson support into local languages.
+const lessonPlanTranslationSystemPrompt = `You translate Ghanaian lesson plans into Ghanaian local languages.
 Return a single JSON object only, no markdown or commentary, with this shape:
 {
-  "language": string,
-  "reviewNote": string,
-  "vocabulary": [{ "english": string, "local": string, "pronunciation": string }],
-  "classroomExpressions": [{ "english": string, "local": string }],
-  "activityPrompts": [{ "english": string, "local": string }],
-  "assessmentPrompts": [{ "english": string, "local": string }]
+  "termTitle": string,
+  "subjectClassTitle": string,
+  "weekTitle": string,
+  "date": string,
+  "period": string,
+  "subject": string,
+  "duration": string,
+  "strand": string,
+  "classLevel": string,
+  "classSize": string,
+  "subStrand": string,
+  "topic": string,
+  "contentStandard": string,
+  "indicator": string,
+  "lessonNumber": string,
+  "performanceIndicator": string,
+  "coreCompetencies": string[],
+  "references": string,
+  "week": number,
+  "phases": [
+    {
+      "phase": 1,
+      "title": string,
+      "duration": string,
+      "activities": string[],
+      "resources": string[]
+    }
+  ],
+  "visualAids": [
+    {
+      "type": "labelled_diagram" | "bar_chart" | "flowchart" | "timeline" | "comparison_table",
+      "title": string,
+      "purpose": string,
+      "phase": 1 | 2 | 3,
+      "activityLink": string,
+      "labels": string[],
+      "steps": string[],
+      "data": [{ "label": string, "value": number }],
+      "rows": [{ "label": string, "value": string }],
+      "caption": string
+    }
+  ]
 }
 
 Rules:
-- Keep English as the source text and provide side-by-side local language support only.
-- Do not translate the full lesson plan.
-- Produce 4-6 vocabulary items, 2-4 classroom expressions, 1-3 activity prompts, and 1-3 assessment prompts.
-- Prefer natural classroom language over literal wording.
-- Use Ghanaian classroom context.
-- Add a reviewNote reminding the teacher to review spelling, dialect, and tone before classroom use.
+- Translate the lesson plan itself into the requested Ghanaian language.
+- Keep curriculum codes, week numbers, lesson numbers, class level codes, dates, durations, and numeric values unchanged.
+- Preserve the same JSON structure and all phase/resource/assessment arrays.
+- Translate teacher-visible English text naturally for classroom use, not word-for-word when that sounds unnatural.
+- Keep Ghanaian curriculum and classroom context.
+- Only return a translated lesson plan JSON object.
 - Return JSON only.`;
 
 const schemeSystemPrompt = `You are an expert Ghanaian curriculum planner.
@@ -532,106 +584,80 @@ function normalizeLessonPlanResponse(payload, body) {
   };
 }
 
-function buildLessonSupportTranslationPrompt(body) {
+function buildLessonPlanTranslationPrompt(body) {
   const plan = body.lessonPlan || {};
-  const phases = Array.isArray(plan.phases) ? plan.phases : [];
-  const phaseText = phases
-    .map((phase) => {
-      const activities = Array.isArray(phase.activities) ? phase.activities.join(' | ') : '';
-      const assessment = Array.isArray(phase.assessment) ? phase.assessment.join(' | ') : '';
-      return `Phase ${phase.phase || ''} ${phase.title || ''}: ${activities}${assessment ? ` Assessment: ${assessment}` : ''}`;
-    })
-    .join('\n');
-
-  return `Create local language classroom support for this English lesson plan.
+  return `Translate this English lesson plan into the selected Ghanaian language.
 - Target local language: ${body.localLanguage}
 - Subject: ${cleanText(plan.subject)}
 - Class Level: ${cleanText(plan.classLevel)}
 - Topic: ${cleanText(plan.topic)}
-- Strand: ${cleanText(plan.strand)}
-- Sub-strand: ${cleanText(plan.subStrand)}
-- Performance indicator: ${cleanText(plan.performanceIndicator)}
-- Core lesson activities:
-${phaseText}
+- Source lesson plan JSON:
+${JSON.stringify(plan)}
 
 Return the JSON object only.`;
 }
 
-async function callGeminiJson(system, user) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
-  const geminiModel = process.env.GEMINI_TRANSLATION_MODEL || 'gemini-2.5-flash';
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent`,
-    {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-goog-api-key': apiKey,
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: `${system}\n\n${user}` }],
-          },
-        ],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          temperature: 0.2,
-        },
-      }),
-    }
-  );
-
-  const payload = await response.json().catch(() => null);
-  if (!response.ok) {
-    throw new Error(`Gemini API error ${response.status}: ${JSON.stringify(payload).slice(0, 500)}`);
-  }
-
-  const text = payload?.candidates?.[0]?.content?.parts
-    ?.map((part) => part?.text || '')
-    .join('')
-    .trim();
-  if (!text) throw new Error('Gemini returned an empty translation response');
-
-  try {
-    return JSON.parse(text);
-  } catch {
-    const cleaned = text.replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
-    return JSON.parse(cleaned);
-  }
-}
-
-function normalizeLocalLanguageSupport(value, requestedLanguage) {
-  const language = cleanText(requestedLanguage);
-  if (!language || !value || typeof value !== 'object') return undefined;
+function normalizeTranslatedLessonPlan(payload, body) {
+  const source = body.lessonPlan || {};
+  const language = cleanText(body.localLanguage);
+  const subject = cleanText(payload?.subject) || cleanText(source.subject);
+  const classLevel = cleanText(payload?.classLevel) || cleanText(source.classLevel);
+  const week = Number(payload?.week) || Number(source.week) || 1;
+  const sourceId = cleanText(source.id);
 
   return {
-    language,
-    reviewNote:
-      cleanText(value?.reviewNote) ||
-      'AI-assisted local language draft. Teacher should review spelling, dialect, and tone before classroom use.',
-    vocabulary: cleanTranslationPairs(value?.vocabulary, 6, true),
-    classroomExpressions: cleanTranslationPairs(value?.classroomExpressions, 4),
-    activityPrompts: cleanTranslationPairs(value?.activityPrompts, 3),
-    assessmentPrompts: cleanTranslationPairs(value?.assessmentPrompts, 3),
+    ...source,
+    ...payload,
+    id: `${sourceId || `${slugify(subject)}-${slugify(classLevel)}-${week}`}-translated-${slugify(language)}-${Date.now()}`,
+    subject,
+    classLevel,
+    week,
+    weekTitle: cleanText(payload?.weekTitle) || cleanText(source.weekTitle) || `WEEK ${week}`,
+    termTitle: cleanText(payload?.termTitle) || cleanText(source.termTitle),
+    subjectClassTitle: cleanText(payload?.subjectClassTitle) || cleanText(source.subjectClassTitle) || `${subject.toUpperCase()} - ${classLevel.toUpperCase()}`,
+    date: cleanText(payload?.date) || cleanText(source.date),
+    duration: cleanText(payload?.duration) || cleanText(source.duration),
+    lessonNumber: cleanText(payload?.lessonNumber) || cleanText(source.lessonNumber),
+    strand: cleanText(payload?.strand) || cleanText(source.strand),
+    subStrand: cleanText(payload?.subStrand) || cleanText(source.subStrand),
+    topic: cleanText(payload?.topic) || cleanText(source.topic),
+    contentStandard: cleanText(payload?.contentStandard) || cleanText(source.contentStandard),
+    indicator: cleanText(payload?.indicator) || cleanText(source.indicator),
+    performanceIndicator: cleanText(payload?.performanceIndicator) || cleanText(source.performanceIndicator),
+    coreCompetencies: cleanStringList(payload?.coreCompetencies, 8).length
+      ? cleanStringList(payload?.coreCompetencies, 8)
+      : cleanStringList(source.coreCompetencies, 8),
+    references: cleanText(payload?.references) || cleanText(source.references),
+    phases: normalizeTranslatedPhases(payload?.phases, source.phases),
+    visualAids: normalizeVisualAids(payload?.visualAids),
+    localLanguageSupport: undefined,
+    translationLanguage: language,
+    translatedFrom: cleanText(source.translationLanguage) || 'English',
+    sourceLessonPlanId: sourceId,
+    translationStatus: 'ai_draft',
+    createdAt: new Date().toISOString(),
+    updatedAt: undefined,
   };
 }
 
-function cleanTranslationPairs(value, limit, includePronunciation = false) {
-  if (!Array.isArray(value)) return [];
-  return value
-    .map((item) => {
-      const english = cleanText(item?.english);
-      const local = cleanText(item?.local);
-      if (!english || !local) return null;
-      return includePronunciation
-        ? { english, local, pronunciation: cleanText(item?.pronunciation) || undefined }
-        : { english, local };
+function normalizeTranslatedPhases(value, fallback) {
+  const phases = Array.isArray(value) && value.length ? value : fallback;
+  if (!Array.isArray(phases)) return [];
+
+  return phases
+    .filter((item) => item && typeof item === 'object')
+    .map((item, index) => {
+      const phaseNumber = Number(item.phase) || (index + 1);
+      return {
+        phase: phaseNumber === 1 || phaseNumber === 2 || phaseNumber === 3 ? phaseNumber : index + 1,
+        title: cleanText(item.title),
+        duration: cleanText(item.duration),
+        activities: cleanStringList(item.activities, 8),
+        resources: cleanStringList(item.resources, 6),
+        assessment: cleanStringList(item.assessment, 5),
+      };
     })
-    .filter(Boolean)
-    .slice(0, limit);
+    .slice(0, 3);
 }
 
 function normalizeVisualAids(value) {
@@ -692,4 +718,8 @@ function cleanVisualRows(value) {
     })
     .filter(Boolean)
     .slice(0, 5);
+}
+
+function slugify(value) {
+  return cleanText(value).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }

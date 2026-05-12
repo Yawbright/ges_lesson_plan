@@ -31,6 +31,7 @@ export type AppSettingsDraft = {
   purchasingEnabled: boolean;
   paystackMode: string;
   parserBackend: string;
+  translationProvider: string;
 };
 
 export type PackageDraft = {

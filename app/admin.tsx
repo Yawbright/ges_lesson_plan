@@ -259,6 +259,9 @@ export default function AdminScreen() {
         credit_purchasing: {
           enabled: appSettingsDraft.purchasingEnabled,
         },
+        translation_provider: {
+          provider: appSettingsDraft.translationProvider || 'anthropic',
+        },
       });
       Alert.alert('Settings saved', 'App settings have been updated.');
       await load();

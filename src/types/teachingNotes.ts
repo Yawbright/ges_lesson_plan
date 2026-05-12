@@ -33,6 +33,40 @@ export interface TeachingNotePhaseGuide {
   teacherNotes: string[];
 }
 
+export type TeachingNoteContentBlockType =
+  | 'heading'
+  | 'paragraph'
+  | 'bullet_list'
+  | 'worked_example'
+  | 'practice_questions'
+  | 'comparison_table'
+  | 'process_steps'
+  | 'labelled_diagram'
+  | 'image_grid'
+  | 'teacher_tip';
+
+export interface TeachingNoteImageGridItem {
+  label: string;
+  description?: string;
+  imageUrl?: string;
+  imagePrompt?: string;
+  attribution?: string;
+}
+
+export interface TeachingNoteContentBlock {
+  id: string;
+  type: TeachingNoteContentBlockType;
+  title?: string;
+  text?: string;
+  items?: string[];
+  rows?: string[][];
+  steps?: string[];
+  labels?: Array<{ label: string; description?: string }>;
+  imageItems?: TeachingNoteImageGridItem[];
+  caption?: string;
+  teacherOnly?: boolean;
+}
+
 export interface TeachingNotes {
   id?: string;
   lessonPlanId: string;
@@ -53,6 +87,7 @@ export interface TeachingNotes {
   classroomManagement: string[];
   boardSummary: string[];
   homework?: string[];
+  contentBlocks?: TeachingNoteContentBlock[];
   visuals?: TeachingNoteVisual[];
   sourceLessonPlan?: Pick<
     LessonPlan,

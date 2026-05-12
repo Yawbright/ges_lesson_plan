@@ -2,7 +2,7 @@ import { invokeEdgeFunction } from './edgeFunctions';
 import { buildFallbackLessonPlan } from './fallbackLessonPlan';
 import { getExplicitCurriculumYearWeeks, getExplicitSchemeOfWork } from './curriculum';
 import { buildSchemeContext, findMatchingScheme } from './schemeStore';
-import type { LessonPlan, LessonPlanPromptInput, LocalLanguageSupport } from '@/types/lessonPlan';
+import type { LessonPlan, LessonPlanPromptInput } from '@/types/lessonPlan';
 import type { SchemeGenerationInput, SchemeOfWork } from '@/types/scheme';
 import type { TeachingNotes } from '@/types/teachingNotes';
 
@@ -157,17 +157,19 @@ export async function generateTeachingNotes(plan: LessonPlan): Promise<TeachingN
   return validateTeachingNotes(data);
 }
 
-export async function translateLessonPlanSupport(
+export async function translateLessonPlan(
   plan: LessonPlan,
   localLanguage: string,
-): Promise<LocalLanguageSupport> {
+): Promise<LessonPlan> {
   const requestBody = { lessonPlan: plan, localLanguage };
 
   if (useLocalAi) {
-    return postLocal<LocalLanguageSupport>('/translate-lesson-support', requestBody);
+    const data = await postLocal<LessonPlan>('/translate-lesson-support', requestBody);
+    return validateLessonPlan(data);
   }
 
-  return invokeEdgeFunctionJson<LocalLanguageSupport>('translate-lesson-support', requestBody);
+  const data = await invokeEdgeFunctionJson<LessonPlan>('translate-lesson-support', requestBody);
+  return validateLessonPlan(data);
 }
 
 async function postLocal<T>(path: string, body: unknown): Promise<T> {
@@ -219,7 +221,13 @@ function validateTeachingNotes(notes: TeachingNotes): TeachingNotes {
     throw new Error('Teaching notes generation returned an invalid response.');
   }
 
-  if (!notes.lessonPlanId || !notes.overview || !Array.isArray(notes.phaseGuidance)) {
+  if (
+    !notes.lessonPlanId ||
+    !notes.overview ||
+    !Array.isArray(notes.phaseGuidance) ||
+    !Array.isArray(notes.contentBlocks) ||
+    !notes.contentBlocks.length
+  ) {
     throw new Error('Teaching notes generation returned incomplete notes. Please try again.');
   }
 
@@ -267,6 +275,34 @@ function buildFallbackTeachingNotes(plan: LessonPlan): TeachingNotes {
       plan.performanceIndicator || 'Main learning point from the lesson.',
     ],
     homework: ['Ask learners to revise the board summary and answer one related question at home.'],
+    contentBlocks: [
+      {
+        id: 'topic-heading',
+        type: 'heading',
+        text: plan.topic || plan.subject,
+      },
+      {
+        id: 'overview',
+        type: 'paragraph',
+        title: 'Lesson Note',
+        text: `This note explains the main ideas learners need for ${plan.topic || plan.subject}. The teacher should use clear examples and allow learners to practise the key skill or concept.`,
+      },
+      {
+        id: 'key-points',
+        type: 'bullet_list',
+        title: 'Key Points',
+        items: [
+          plan.performanceIndicator || `Understand the main idea in ${plan.topic || plan.subject}.`,
+          ...(plan.phases[1]?.activities ?? plan.phases.flatMap((phase) => phase.activities)).slice(0, 4),
+        ],
+      },
+      {
+        id: 'practice',
+        type: 'practice_questions',
+        title: 'Practice Questions',
+        items: plan.phases.flatMap((phase) => phase.assessment ?? []).slice(0, 5),
+      },
+    ],
     visuals: [],
   };
 }

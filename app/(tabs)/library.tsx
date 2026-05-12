@@ -153,7 +153,9 @@ function LibraryHeader() {
 function LessonCard({ work, onDelete }: { work: SavedLessonWork; onDelete: () => void }) {
   const isBundle = isLessonBundle(work);
   const title = `${work.subject} - ${work.classLevel} - Week ${work.week}`;
-  const subtitle = isBundle ? `${work.lessonCount} lessons | ${work.termTitle}` : work.termTitle;
+  const translationLanguage = isBundle ? work.plans[0]?.translationLanguage : work.translationLanguage;
+  const subtitleBase = isBundle ? `${work.lessonCount} lessons | ${work.termTitle}` : work.termTitle;
+  const subtitle = translationLanguage ? `${subtitleBase} | ${translationLanguage} AI draft` : subtitleBase;
 
   return (
     <Pressable

@@ -414,7 +414,7 @@ export function SettingsSection(props: {
         <Text style={styles.settingsIntroTitle}>Settings</Text>
         <Text style={styles.settingsIntroText}>
           Manage credit packages, promotions, starter credits, referral reward limits, feature credit costs,
-          Paystack mode, and parser backend controls from this area.
+          Paystack mode, parser backend, and AI backend controls from this area.
         </Text>
       </View>
       <Panel title="Credit Pricing & Promotions" style={styles.settingsPanel}>
@@ -535,8 +535,8 @@ export function SettingsSection(props: {
       <Panel title="App Settings" style={[styles.settingsPanel, styles.appSettingsPanel]}>
         <Text style={styles.bodyText}>
           These controls affect new signups, referral rewards, credit deductions, and generated file retention.
-          Paystack mode and parser backend are shown here as read-only because they still rely on secure deployment
-          secrets.
+          Paystack mode and AI backend fields are shown here as read-only because they still rely on secure deployment
+          secrets and function wiring.
         </Text>
         <View style={styles.settingsGrid}>
           <View style={styles.settingsBox}>
@@ -624,6 +624,8 @@ export function SettingsSection(props: {
             </View>
             <Field label="Paystack mode" value={props.appSettings.paystackMode} editable={false} />
             <Field label="Parser backend" value={props.appSettings.parserBackend} editable={false} />
+            <Field label="Translation provider" value={props.appSettings.translationProvider} editable={false} />
+            <Text style={styles.meta}>Lesson translation currently uses Anthropic. Gemini switching can be wired into this setting later.</Text>
           </View>
         </View>
         <View style={styles.editActionPanel}>

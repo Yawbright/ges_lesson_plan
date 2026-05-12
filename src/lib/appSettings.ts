@@ -11,6 +11,7 @@ export type RuntimeAppSettings = {
   };
   generatedFileRetention: { days: number };
   creditPurchasing: { enabled: boolean };
+  translationProvider: { provider: string };
 };
 
 export const defaultRuntimeSettings: RuntimeAppSettings = {
@@ -19,6 +20,7 @@ export const defaultRuntimeSettings: RuntimeAppSettings = {
   featureCreditCosts: { lesson_generation: 1, scheme_generation: 1, scheme_parsing: 1, teaching_notes_generation: 1 },
   generatedFileRetention: { days: 15 },
   creditPurchasing: { enabled: false },
+  translationProvider: { provider: 'anthropic' },
 };
 
 export async function loadRuntimeAppSettings(): Promise<RuntimeAppSettings> {
@@ -48,6 +50,9 @@ export async function loadRuntimeAppSettings(): Promise<RuntimeAppSettings> {
     creditPurchasing: {
       enabled: booleanValue(byKey.get('credit_purchasing')?.enabled, false),
     },
+    translationProvider: {
+      provider: stringValue(byKey.get('translation_provider')?.provider, defaultRuntimeSettings.translationProvider.provider),
+    },
   };
 }
 
@@ -58,4 +63,8 @@ function numberValue(value: unknown, fallback: number) {
 
 function booleanValue(value: unknown, fallback: boolean) {
   return typeof value === 'boolean' ? value : fallback;
+}
+
+function stringValue(value: unknown, fallback: string) {
+  return typeof value === 'string' && value.trim() ? value.trim() : fallback;
 }

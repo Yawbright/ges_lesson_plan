@@ -5,7 +5,7 @@ import { Button } from '@/components/Button';
 import { LessonPlanTable } from '@/components/LessonPlanTable';
 import { SelectField } from '@/components/SelectField';
 import { useToast } from '@/components/ToastProvider';
-import { translateLessonPlanSupport } from '@/lib/ai';
+import { translateLessonPlan } from '@/lib/ai';
 import { exportLessonPlanPdf, shareLessonPlan } from '@/lib/export';
 import { deleteLessonPlan, getLessonPlanById, saveLessonPlan } from '@/lib/lessonStore';
 import { LOCAL_LANGUAGE_OPTIONS } from '@/lib/options';
@@ -42,14 +42,14 @@ export default function LessonDetailScreen() {
       <View style={styles.actions}>
         <Button title="Teaching Notes" variant="secondary" onPress={() => router.push(`/tools/teaching-notes?lessonPlanId=${encodeURIComponent(plan.id ?? '')}`)} />
         <SelectField
-          label="Local language support"
+          label="Translate lesson plan"
           value={localLanguage}
           options={LOCAL_LANGUAGE_OPTIONS}
           onChange={setLocalLanguage}
-          helperText="Adds teacher-reviewable vocabulary and classroom prompts to this saved lesson."
+          helperText="Creates a new AI-draft copy of this lesson plan in the selected Ghanaian language."
         />
         <Button
-          title={plan.localLanguageSupport ? 'Update translation' : 'Add translation'}
+          title="Create translated copy"
           variant="secondary"
           loading={translating}
           onPress={async () => {
@@ -59,12 +59,15 @@ export default function LessonDetailScreen() {
             }
             setTranslating(true);
             try {
-              const support = await translateLessonPlanSupport(plan, localLanguage);
-              const saved = await saveLessonPlan({ ...plan, localLanguageSupport: support });
+              const translated = await translateLessonPlan(plan, localLanguage);
+              const saved = await saveLessonPlan(translated);
               setPlan(saved);
-              showToast({ message: 'Local language support added.' });
+              showToast({ message: 'Translated lesson plan saved.' });
+              if (saved.id) {
+                router.replace(`/lesson/${encodeURIComponent(saved.id)}`);
+              }
             } catch (err) {
-              Alert.alert('Translation failed', err instanceof Error ? err.message : 'Could not add translation.');
+              Alert.alert('Translation failed', err instanceof Error ? err.message : 'Could not translate lesson plan.');
             } finally {
               setTranslating(false);
             }
