@@ -48,12 +48,13 @@ export function getBuilderCurriculumEntries(input: {
     .flatMap((week) =>
       getWeekEntries(week).map((entry, index) => ({
         ...entry,
+        strand: getBuilderStrandLabel(input.subject, entry.strand),
         exemplars: getMappedExemplars(input.subject, entry),
         id: [
           week.sourceTerm,
           week.week,
           index,
-          entry.strand,
+          getBuilderStrandLabel(input.subject, entry.strand),
           entry.subStrand,
           entry.contentStandard,
           entry.indicator,
@@ -267,6 +268,31 @@ function pickNextEntry(
   return null;
 }
 
+function getBuilderStrandLabel(subject: string, strand?: string): string {
+  if (!isLanguageSubject(subject)) return cleanText(strand);
+
+  const normalized = normalizeText(strand);
+  if (!normalized) return '';
+
+  if (normalized.includes('oral') || normalized.includes('listening') || normalized.includes('speaking')) {
+    return 'Oral Language';
+  }
+  if (normalized.includes('grammar') || normalized.includes('grammer') || normalized.includes('convention')) {
+    return 'Grammar';
+  }
+  if (normalized.includes('writing')) {
+    return 'Writing';
+  }
+  if (normalized.includes('literature')) {
+    return 'Literature';
+  }
+  if (normalized.includes('reading')) {
+    return 'Reading';
+  }
+
+  return cleanText(strand);
+}
+
 function getMappedExemplars(subject: string, entry: SchemeWeekEntry): string[] {
   const codes = extractIndicatorCodes(entry.indicator);
   if (!codes.length) return [];
@@ -363,6 +389,10 @@ function normalizeTerm(term?: string): string {
 
 function normalizeText(value?: string): string {
   return (value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function cleanText(value?: string): string {
+  return (value ?? '').trim();
 }
 
 function slugify(value: string): string {
