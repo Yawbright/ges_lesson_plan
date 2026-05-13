@@ -274,20 +274,54 @@ function getBuilderStrandLabel(subject: string, strand?: string): string {
   const normalized = normalizeText(strand);
   if (!normalized) return '';
 
-  if (normalized.includes('oral') || normalized.includes('listening') || normalized.includes('speaking')) {
-    return 'Oral Language';
+  if (
+    normalized === 'reading/literature' ||
+    normalized.startsWith('reading/') ||
+    normalized.includes('independent reading') ||
+    normalized.includes('research reading') ||
+    normalized.includes('model analysis') ||
+    normalized.includes('comprehension') ||
+    (normalized.includes('reading') && !normalized.startsWith('literature/'))
+  ) {
+    return 'Reading';
   }
-  if (normalized.includes('grammar') || normalized.includes('grammer') || normalized.includes('convention')) {
-    return 'Grammar';
-  }
-  if (normalized.includes('writing')) {
-    return 'Writing';
-  }
-  if (normalized.includes('literature')) {
+  if (
+    normalized === 'literature/reading' ||
+    normalized.startsWith('literature/') ||
+    normalized.includes('literature') ||
+    normalized.includes('drama') ||
+    normalized.includes('poetry')
+  ) {
     return 'Literature';
   }
-  if (normalized.includes('reading')) {
-    return 'Reading';
+  if (
+    normalized.includes('oral') ||
+    normalized.includes('listening') ||
+    normalized.includes('speaking') ||
+    normalized.includes('conversation') ||
+    normalized.includes('presentation')
+  ) {
+    return 'Oral Language';
+  }
+  if (
+    normalized.includes('grammar') ||
+    normalized.includes('grammer') ||
+    normalized.includes('convention') ||
+    normalized.includes('punctuation') ||
+    normalized.includes('vocabulary') ||
+    normalized.includes('register')
+  ) {
+    return 'Grammar';
+  }
+  if (
+    normalized.includes('writing') ||
+    normalized.includes('text response') ||
+    normalized.includes('summary') ||
+    normalized.includes('notes') ||
+    normalized.includes('editing') ||
+    normalized.includes('revision')
+  ) {
+    return 'Writing';
   }
 
   return cleanText(strand);

@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/Button';
+import { Field } from '@/components/Field';
 import { SelectField } from '@/components/SelectField';
 import { useToast } from '@/components/ToastProvider';
 import {
@@ -19,6 +20,7 @@ import {
   isLanguageSubject,
   removeEntryFromWeek,
   type BuilderMode,
+  type CurriculumEntryOption,
 } from '@/lib/schemeBuilder';
 import { getWeekEntries, getWeekTopic } from '@/lib/schemeWeek';
 import { saveScheme } from '@/lib/schemeStore';
@@ -52,6 +54,7 @@ export default function SchemeBuilderScreen() {
   const [detailStrand, setDetailStrand] = useState('');
   const [detailSubStrand, setDetailSubStrand] = useState('');
   const [detailStandard, setDetailStandard] = useState('');
+  const [detailTopicSearch, setDetailTopicSearch] = useState('');
   const [weeks, setWeeks] = useState<SchemeWeek[]>(createEmptyWeeks(12));
   const [saving, setSaving] = useState(false);
 
@@ -95,6 +98,13 @@ export default function SchemeBuilderScreen() {
       }),
     [curriculumEntries, detailStrand, detailSubStrand]
   );
+  const languageTopicMatches = useMemo(() => {
+    if (!languageSubject || !detailStrand || detailTopicSearch.trim().length < 2) return [];
+    return curriculumEntries
+      .filter((entry) => entry.strand === detailStrand)
+      .filter((entry) => curriculumEntryMatchesTopicSearch(entry, detailTopicSearch))
+      .slice(0, 12);
+  }, [curriculumEntries, detailStrand, detailTopicSearch, languageSubject]);
   const weekOptions = useMemo(
     () =>
       Array.from({ length: numberOfWeeks }, (_, index) => ({
@@ -125,11 +135,13 @@ export default function SchemeBuilderScreen() {
     setDetailStrand('');
     setDetailSubStrand('');
     setDetailStandard('');
+    setDetailTopicSearch('');
   }, [classLevel, numberOfWeeks, subject, term]);
 
   useEffect(() => {
     setDetailSubStrand('');
     setDetailStandard('');
+    setDetailTopicSearch('');
   }, [detailStrand]);
 
   useEffect(() => {
@@ -180,6 +192,24 @@ export default function SchemeBuilderScreen() {
 
     setWeeks((current) => addEntryToWeek(current, activeWeek, entry));
     showToast({ message: 'Next unused indicator assigned.' });
+  }
+
+  function handleAddLanguageTopic(entry: CurriculumEntryOption) {
+    const alreadyUsed = weeks
+      .flatMap((week) => getWeekEntries(week))
+      .some((usedEntry) => getEntryKey(usedEntry) === getEntryKey(entry));
+
+    if (alreadyUsed) {
+      Alert.alert(
+        'Indicator already used',
+        'This mapped indicator is already in the draft. Choose another topic/focus or remove the existing entry first.'
+      );
+      return;
+    }
+
+    setWeeks((current) => addEntryToWeek(current, activeWeek, entry));
+    setDetailTopicSearch(entry.topic ?? '');
+    showToast({ message: 'Topic mapped to curriculum details.' });
   }
 
   async function handleSave() {
@@ -305,7 +335,9 @@ export default function SchemeBuilderScreen() {
         <View style={styles.panel}>
           <Text style={styles.panelTitle}>Detailed Builder</Text>
           <Text style={styles.helper}>
-            Choose a week, then choose strand, sub-strand and content standard. The system assigns the next unused indicator.
+            {languageSubject
+              ? 'Choose a week and aspect, then search the topic or focus. The system maps it to the matching sub-strand, content standard and indicator.'
+              : 'Choose a week, then choose strand, sub-strand and content standard. The system assigns the next unused indicator.'}
           </Text>
 
           <SelectField
@@ -332,24 +364,61 @@ export default function SchemeBuilderScreen() {
             onChange={setDetailStrand}
             placeholder="Choose strand or aspect"
           />
-          <SelectField
-            label="Sub-strand"
-            value={detailSubStrand}
-            options={detailSubStrandOptions}
-            onChange={setDetailSubStrand}
-            placeholder="Choose sub-strand"
-            disabled={!detailStrand}
-          />
-          <SelectField
-            label="Content standard"
-            value={detailStandard}
-            options={detailStandardOptions}
-            onChange={setDetailStandard}
-            placeholder="Choose content standard"
-            disabled={!detailSubStrand}
-          />
+          {languageSubject ? (
+            <>
+              <Field
+                label="Search topic / focus"
+                value={detailTopicSearch}
+                onChangeText={setDetailTopicSearch}
+                placeholder="Try letter writing, reported speech, summary writing..."
+                editable={Boolean(detailStrand)}
+              />
+              {detailStrand && detailTopicSearch.trim().length >= 2 ? (
+                <View style={styles.matchPanel}>
+                  <Text style={styles.matchTitle}>
+                    {languageTopicMatches.length ? 'Mapped Matches' : 'No mapped matches found'}
+                  </Text>
+                  {languageTopicMatches.map((entry) => (
+                    <Pressable
+                      key={entry.id}
+                      style={({ pressed }) => [styles.matchRow, pressed && styles.pressed]}
+                      onPress={() => handleAddLanguageTopic(entry)}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.matchRowTitle}>{entry.topic || entry.indicator}</Text>
+                        <Text style={styles.matchRowMeta}>
+                          {entry.sourceTerm} - Week {entry.sourceWeek} | {entry.subStrand || 'No sub-strand'}
+                        </Text>
+                        <Text style={styles.matchRowMeta}>{entry.indicator || entry.contentStandard}</Text>
+                      </View>
+                      <Ionicons name="add-circle-outline" size={22} color={colors.primary} />
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <SelectField
+                label="Sub-strand"
+                value={detailSubStrand}
+                options={detailSubStrandOptions}
+                onChange={setDetailSubStrand}
+                placeholder="Choose sub-strand"
+                disabled={!detailStrand}
+              />
+              <SelectField
+                label="Content standard"
+                value={detailStandard}
+                options={detailStandardOptions}
+                onChange={setDetailStandard}
+                placeholder="Choose content standard"
+                disabled={!detailSubStrand}
+              />
 
-          <Button title="Assign Next Indicator to Week" onPress={handleAddDetailedEntry} />
+              <Button title="Assign Next Indicator to Week" onPress={handleAddDetailedEntry} />
+            </>
+          )}
 
           <View style={styles.weekEditor}>
             <Text style={styles.weekEditorTitle}>Week {activeWeek} Focuses</Text>
@@ -490,6 +559,107 @@ function toggleValue(values: string[], value: string): string[] {
     : [...values, value];
 }
 
+function curriculumEntryMatchesTopicSearch(entry: CurriculumEntryOption, query: string): boolean {
+  const haystack = tokenizeSearchText(
+    [
+      entry.strand,
+      entry.subStrand,
+      entry.topic,
+      entry.indicator,
+      entry.contentStandard,
+      ...(entry.exemplars ?? []),
+      getTopicAliases(entry),
+    ].join(' ')
+  );
+  const queryTokens = tokenizeSearchText(expandQueryAliases(query));
+
+  return queryTokens.every((queryToken) =>
+    haystack.some(
+      (token) =>
+        token === queryToken ||
+        token.includes(queryToken) ||
+        queryToken.includes(token) ||
+        stripTrailingS(token) === stripTrailingS(queryToken)
+    )
+  );
+}
+
+function getTopicAliases(entry: CurriculumEntryOption): string {
+  const text = [entry.topic, entry.indicator, entry.contentStandard].join(' ').toLowerCase();
+  const aliases: string[] = [];
+
+  if (text.includes('formal') || text.includes('letter') || text.includes('email')) {
+    aliases.push('letter writing formal letter informal letter email business letter practical writing');
+  }
+  if (text.includes('summary') || text.includes('summar')) {
+    aliases.push('summary writing summarising summarizing');
+  }
+  if (text.includes('reported speech')) {
+    aliases.push('direct speech indirect speech');
+  }
+  if (text.includes('article')) {
+    aliases.push('publication writing magazine writing');
+  }
+  if (text.includes('dialogue')) {
+    aliases.push('dialog writing conversation script');
+  }
+
+  return aliases.join(' ');
+}
+
+function expandQueryAliases(query: string): string {
+  const normalized = query.toLowerCase();
+  const aliases = [query];
+
+  if (normalized.includes('letter')) {
+    aliases.push('formal letters emails business letters formal writing practical writing');
+  }
+  if (normalized.includes('summary')) {
+    aliases.push('summarising summarizing objective summary');
+  }
+  if (normalized.includes('direct speech') || normalized.includes('indirect speech')) {
+    aliases.push('reported speech');
+  }
+
+  return aliases.join(' ');
+}
+
+function tokenizeSearchText(value: string): string[] {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9/]+/g, ' ')
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 2 && !SEARCH_STOP_WORDS.has(token));
+}
+
+function stripTrailingS(value: string): string {
+  return value.endsWith('s') ? value.slice(0, -1) : value;
+}
+
+function getEntryKey(entry: { indicator?: string; contentStandard?: string; topic?: string }) {
+  return [entry.contentStandard, entry.indicator, entry.topic]
+    .join('|')
+    .trim()
+    .toLowerCase();
+}
+
+const SEARCH_STOP_WORDS = new Set([
+  'and',
+  'the',
+  'for',
+  'with',
+  'using',
+  'use',
+  'write',
+  'compose',
+  'create',
+  'apply',
+  'different',
+  'given',
+  'appropriate',
+]);
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 20, paddingBottom: 48 },
@@ -606,6 +776,30 @@ const styles = StyleSheet.create({
   },
   focusTitle: { color: colors.text, fontWeight: '700', marginBottom: 3 },
   focusMeta: { color: colors.textMuted, lineHeight: 18 },
+  matchPanel: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    padding: 10,
+    marginTop: -6,
+    marginBottom: 14,
+  },
+  matchTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  matchRow: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  matchRowTitle: { fontSize: 14, fontWeight: '800', color: colors.text, marginBottom: 3 },
+  matchRowMeta: { color: colors.textMuted, lineHeight: 18 },
   iconButton: {
     width: 38,
     height: 38,
