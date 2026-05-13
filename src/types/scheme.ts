@@ -7,6 +7,7 @@ export interface SchemeWeekEntry {
   indicator?: string;
   topic?: string;
   resources?: string[];
+  exemplars?: string[];
 }
 
 /** A single week row in a Scheme of Learning / Scheme of Work. */

@@ -2,6 +2,11 @@ import { invokeEdgeFunction } from './edgeFunctions';
 import { buildFallbackLessonPlan } from './fallbackLessonPlan';
 import { getExplicitCurriculumYearWeeks, getExplicitSchemeOfWork } from './curriculum';
 import { buildSchemeContext, findMatchingScheme } from './schemeStore';
+import { buildComputingLessonFocusGuidance } from './computingExemplarGuidance';
+import { buildEnglishLessonSupportGuidance } from './englishExemplarGuidance';
+import { buildMathematicsLessonFocusGuidance } from './mathematicsExemplarGuidance';
+import { buildScienceLessonFocusGuidance } from './scienceExemplarGuidance';
+import { buildSocialStudiesLessonFocusGuidance } from './socialStudiesExemplarGuidance';
 import type { LessonPlan, LessonPlanPromptInput } from '@/types/lessonPlan';
 import type { SchemeGenerationInput, SchemeOfWork } from '@/types/scheme';
 import type { TeachingNotes } from '@/types/teachingNotes';
@@ -74,9 +79,45 @@ export async function generateLessonPlan(
     );
   }
 
+  const schemeContext = buildSchemeContext(groundingScheme, input.week);
+  const lessonFocusGuidance = buildScienceLessonFocusGuidance({
+    subject: groundingScheme.subject || input.subject,
+    classLevel: groundingScheme.classLevel || input.classLevel,
+    week: schemeContext.selectedWeek,
+    sessionIndex: input.sessionIndex,
+    sessionsPerWeek: input.sessionsPerWeek,
+  }) ?? buildMathematicsLessonFocusGuidance({
+    subject: groundingScheme.subject || input.subject,
+    classLevel: groundingScheme.classLevel || input.classLevel,
+    week: schemeContext.selectedWeek,
+    sessionIndex: input.sessionIndex,
+    sessionsPerWeek: input.sessionsPerWeek,
+  }) ?? buildSocialStudiesLessonFocusGuidance({
+    subject: groundingScheme.subject || input.subject,
+    classLevel: groundingScheme.classLevel || input.classLevel,
+    week: schemeContext.selectedWeek,
+    sessionIndex: input.sessionIndex,
+    sessionsPerWeek: input.sessionsPerWeek,
+  }) ?? buildComputingLessonFocusGuidance({
+    subject: groundingScheme.subject || input.subject,
+    classLevel: groundingScheme.classLevel || input.classLevel,
+    week: schemeContext.selectedWeek,
+    sessionIndex: input.sessionIndex,
+    sessionsPerWeek: input.sessionsPerWeek,
+  }) ?? buildEnglishLessonSupportGuidance({
+    subject: groundingScheme.subject || input.subject,
+    classLevel: groundingScheme.classLevel || input.classLevel,
+    week: schemeContext.selectedWeek,
+    sessionIndex: input.sessionIndex,
+    sessionsPerWeek: input.sessionsPerWeek,
+  });
+
   const requestBody = {
     ...input,
-    schemeContext: buildSchemeContext(groundingScheme, input.week),
+    schemeContext: {
+      ...schemeContext,
+      lessonFocusGuidance,
+    },
   };
 
   if (useLocalAi) {

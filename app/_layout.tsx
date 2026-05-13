@@ -63,6 +63,10 @@ export default function RootLayout() {
               options={{ title: 'Scheme Tool' }}
             />
             <Stack.Screen
+              name="tools/scheme-builder"
+              options={{ title: 'Scheme Builder' }}
+            />
+            <Stack.Screen
               name="tools/teaching-notes"
               options={{ title: 'Teaching Notes' }}
             />

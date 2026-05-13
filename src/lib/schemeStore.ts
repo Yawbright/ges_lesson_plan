@@ -23,6 +23,10 @@ type SchemeContext = {
   selectedWeek?: SchemeWeek;
   previousWeek?: SchemeWeek;
   nextWeek?: SchemeWeek;
+  lessonFocusGuidance?: {
+    allFocuses: string[];
+    currentFocus?: string;
+  };
 };
 
 export async function saveScheme(scheme: SchemeOfWork): Promise<SchemeOfWork> {

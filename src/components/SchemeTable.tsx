@@ -75,6 +75,12 @@ export function SchemeTable({ scheme }: Props) {
               <Text style={styles.detailBody}>{entry.contentStandard || 'Not specified'}</Text>
               <Text style={styles.detailLabel}>Indicator</Text>
               <Text style={styles.detailBody}>{entry.indicator || 'Not specified'}</Text>
+              {entry.exemplars?.length ? (
+                <>
+                  <Text style={styles.detailLabel}>Exemplars</Text>
+                  <Text style={styles.detailBody}>{entry.exemplars.join('\n')}</Text>
+                </>
+              ) : null}
             </View>
           ))}
           <Text style={styles.detailLabel}>Resources</Text>

@@ -21,6 +21,10 @@ interface SchemeContext {
   selectedWeek?: SchemeWeek;
   previousWeek?: SchemeWeek;
   nextWeek?: SchemeWeek;
+  lessonFocusGuidance?: {
+    allFocuses?: string[];
+    currentFocus?: string;
+  };
 }
 
 export interface LessonGenerationBody {
@@ -130,6 +134,18 @@ Rules:
   must match the selected week from that scheme. Do not substitute a different topic from another term or strand.
 - When session information is provided, set lessonNumber to match that weekly session, for example "1 of 3",
   "2 of 3", or "3 of 3", and make the activities progress within the same topic across the week.
+- When lesson focus guidance is provided, use it as internal curriculum guidance for this session's activities,
+  performance indicator, examples, and assessment. Do not add an "exemplars" field to the JSON output.
+- For Mathematics, treat exemplar examples as anchor examples: teach the method, solve additional similar
+  worked examples, and give learners practice problems around the current lesson focus.
+- For Social Studies, treat exemplar guidance as inquiry/action guidance: use discussion, local examples,
+  role-play, research, presentation, reflection, or community tasks around the current lesson focus.
+- For Computing, treat exemplar guidance as practical ICT guidance: include demonstration, hands-on tool
+  exploration, troubleshooting, safe/responsible use, and where useful a small digital artefact or lab task
+  around the current lesson focus.
+- For English Language, do not split exemplar points as separate weekly topics. Keep the selected scheme entry
+  or aspect as the lesson focus, and use exemplar points only as supporting teaching points, practice moves,
+  text-response prompts, language-use prompts, or assessment cues.
 - Always set duration to "60 mins" unless the request explicitly provides a different duration.
 - When a week ending date is provided, put it in the date field.
 - When no scheme context is provided, infer the weekly focus from the NaCCA curriculum and the term position:
@@ -319,6 +335,7 @@ ${formatWeekBlock('Selected week', body.schemeContext.selectedWeek)}${formatWeek
         'Previous week',
         body.schemeContext.previousWeek,
       )}${formatWeekBlock('Next week', body.schemeContext.nextWeek)}
+${formatLessonFocusGuidance(body.schemeContext.lessonFocusGuidance)}
 
 The lesson plan must align tightly with the selected scheme week. Use the strand, sub-strand, indicator,
 content standard, and topic progression from the scheme. Do not jump ahead to later-term content unless the
@@ -719,6 +736,19 @@ function formatWeekBlock(label: string, week?: SchemeWeek) {
   Indicator: ${week.indicator || ''}
   Resources: ${(week.resources || []).join(', ')}
 ${entriesBlock}`;
+}
+
+function formatLessonFocusGuidance(guidance?: SchemeContext['lessonFocusGuidance']) {
+  const allFocuses = Array.isArray(guidance?.allFocuses)
+    ? guidance.allFocuses.filter(Boolean)
+    : [];
+  if (!guidance?.currentFocus && !allFocuses.length) return '';
+
+  return `Internal exemplar lesson focus guidance:
+  Current lesson focus: ${guidance?.currentFocus || ''}
+  Weekly lesson focus sequence:
+${allFocuses.map((focus, index) => `  ${index + 1}. ${focus}`).join('\n')}
+`;
 }
 
 function normalizeParsedWeeks(weeks: SchemeWeek[], expectedWeeks: number) {

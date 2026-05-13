@@ -18,6 +18,12 @@ const tools = [
     route: '/tools/scheme',
   },
   {
+    title: 'Scheme Builder',
+    description: 'Build a scheme week by week from mapped curriculum.',
+    icon: 'calendar-outline' as const,
+    route: '/tools/scheme-builder',
+  },
+  {
     title: 'Teaching Notes',
     description: 'Generate comprehensive notes from a saved lesson plan.',
     icon: 'reader-outline' as const,

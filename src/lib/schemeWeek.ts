@@ -12,6 +12,7 @@ export function getWeekEntries(week: SchemeWeek): SchemeWeekEntry[] {
     indicator: week.indicator,
     topic: week.topic,
     resources: week.resources,
+    exemplars: week.exemplars,
   };
 
   return hasMeaningfulContent(fallbackEntry) ? [fallbackEntry] : [];
@@ -73,6 +74,7 @@ export function normalizeSchemeWeek(week: SchemeWeek): SchemeWeek {
     indicator: cleanText(entry.indicator),
     topic: cleanText(entry.topic),
     resources: uniqueStrings(entry.resources ?? []),
+    exemplars: uniqueStrings(entry.exemplars ?? []),
   }));
 
   const primaryEntry = entries[0];
@@ -90,6 +92,10 @@ export function normalizeSchemeWeek(week: SchemeWeek): SchemeWeek {
       ...week,
       entries,
     }),
+    exemplars: uniqueStrings([
+      ...(week.exemplars ?? []),
+      ...(primaryEntry?.exemplars ?? []),
+    ]),
     entries: entries.length > 1 ? entries : undefined,
   };
 }
