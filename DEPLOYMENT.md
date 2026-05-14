@@ -123,20 +123,25 @@ $$;
 
 In Supabase Auth settings:
 
-- Set the production Site URL to your web app URL.
-- Add your local development URL as an additional redirect URL if needed.
-- Decide whether email confirmation is enabled for launch.
-- Email confirmation links should use your production Site URL, for example:
+- Set the production Site URL to your web app URL:
 
 ```text
-https://your-netlify-site.netlify.app
+https://geslessonplanner.netlify.app
+```
+
+- Add your local development URL as an additional redirect URL if needed.
+- Decide whether email confirmation is enabled for launch.
+- Email confirmation links should use your production Site URL:
+
+```text
+https://geslessonplanner.netlify.app
 ```
 
 If confirmation emails open `http://localhost:3000`, the Supabase Auth Site URL is still pointing to localhost.
 - For password reset, make sure this redirect URL is allowed:
 
 ```text
-https://your-web-app-domain/sign-in?reset=1
+https://geslessonplanner.netlify.app/sign-in?reset=1
 ```
 
 ## 3. Paystack
@@ -291,6 +296,12 @@ Environment variables for the static host:
 ```env
 EXPO_PUBLIC_SUPABASE_URL=https://xzgflafcenfnwiqexxuf.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+Current production URL:
+
+```text
+https://geslessonplanner.netlify.app
 ```
 
 ## 6. Launch Smoke Test

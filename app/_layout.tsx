@@ -28,8 +28,8 @@ export default function RootLayout() {
               property="og:description"
               content="Create Ghanaian lesson plans, schemes of learning, and printable classroom documents with AI."
             />
-            <meta property="og:url" content="https://geslessonplan.netlify.app/" />
-            <meta property="og:image" content="https://geslessonplan.netlify.app/og-image.png" />
+            <meta property="og:url" content="https://geslessonplanner.netlify.app/" />
+            <meta property="og:image" content="https://geslessonplanner.netlify.app/og-image.png" />
             <meta property="og:image:width" content="1200" />
             <meta property="og:image:height" content="630" />
             <meta name="twitter:card" content="summary_large_image" />
@@ -38,7 +38,7 @@ export default function RootLayout() {
               name="twitter:description"
               content="AI-powered lesson plans and schemes for Ghanaian classrooms."
             />
-            <meta name="twitter:image" content="https://geslessonplan.netlify.app/og-image.png" />
+            <meta name="twitter:image" content="https://geslessonplanner.netlify.app/og-image.png" />
             <link rel="icon" type="image/png" href="/favicon.png" />
             <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
             <link rel="manifest" href="/site.webmanifest" />

@@ -228,7 +228,7 @@ export function EmailPasswordAuthForm({
             setFieldError(null);
           }}
           placeholder={mode === 'reset-update' ? 'Enter new password' : 'Enter your password'}
-          secureTextEntry
+          isPasswordField
           autoComplete={mode === 'signin' ? 'password' : 'new-password'}
           error={fieldError ?? undefined}
         />
@@ -243,7 +243,7 @@ export function EmailPasswordAuthForm({
               setFieldError(null);
             }}
             placeholder="Re-enter your password"
-            secureTextEntry
+            isPasswordField
             autoComplete="new-password"
           />
           {mode === 'signup' ? (
@@ -270,13 +270,16 @@ export function EmailPasswordAuthForm({
       ) : null}
       {infoMessage ? <Text style={styles.infoNote}>{infoMessage}</Text> : null}
 
-      <Button
-        title={getPrimaryButtonTitle(mode)}
-        onPress={submit}
-        loading={loading}
-      />
+      <View style={styles.buttonContainer}>
+        <Button
+          title={getPrimaryButtonTitle(mode)}
+          onPress={submit}
+          loading={loading}
+          size="medium"
+        />
+      </View>
       {mode === 'signin' ? (
-        <>
+        <View style={styles.secondaryButtonContainer}>
           <Button
             title="Forgot password?"
             variant="ghost"
@@ -286,6 +289,7 @@ export function EmailPasswordAuthForm({
               setPassword('');
               setMode('reset-request');
             }}
+            size="small"
           />
           <Button
             title="New here? Create an account"
@@ -296,19 +300,23 @@ export function EmailPasswordAuthForm({
               setConfirmPassword('');
               setMode('signup');
             }}
+            size="small"
           />
-        </>
+        </View>
       ) : (
-        <Button
-          title="Back to sign in"
-          variant="ghost"
-          onPress={() => {
-            setFieldError(null);
-            setInfoMessage(null);
-            setConfirmPassword('');
-            setMode('signin');
-          }}
-        />
+        <View style={styles.secondaryButtonContainer}>
+          <Button
+            title="Back to sign in"
+            variant="ghost"
+            onPress={() => {
+              setFieldError(null);
+              setInfoMessage(null);
+              setConfirmPassword('');
+              setMode('signin');
+            }}
+            size="small"
+          />
+        </View>
       )}
     </View>
   );
@@ -349,37 +357,50 @@ function getPrimaryButtonTitle(mode: AuthFormMode) {
 }
 
 const styles = StyleSheet.create({
-  block: { gap: 0 },
+  block: { gap: 2 },
   subtitle: {
-    fontSize: 14,
+    fontSize: 16,
     color: colors.textMuted,
-    marginBottom: 16,
-    lineHeight: 20,
+    marginBottom: 24,
+    lineHeight: 24,
+    fontWeight: '500',
   },
   referralNote: {
     color: colors.primary,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
-    marginTop: -6,
-    marginBottom: 12,
+    marginTop: -8,
+    marginBottom: 14,
+    letterSpacing: 0.3,
   },
   invitationNotice: {
     color: colors.textMuted,
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: -8,
-    marginBottom: 14,
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: -10,
+    marginBottom: 20,
+    fontWeight: '500',
   },
   infoNote: {
     backgroundColor: '#EEF5EF',
     borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: 8,
+    borderWidth: 1.5,
+    borderRadius: 10,
     color: colors.primaryDark,
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 19,
-    marginBottom: 12,
-    padding: 10,
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 21,
+    marginBottom: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    letterSpacing: 0.2,
+  },
+  buttonContainer: {
+    marginBottom: 16,
+    marginTop: 8,
+  },
+  secondaryButtonContainer: {
+    marginTop: 12,
+    gap: 8,
   },
 });
