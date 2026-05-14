@@ -43,7 +43,7 @@ export function getBuilderCurriculumEntries(input: {
     classLevel: input.classLevel,
   });
 
-  return weeks
+  const mappedEntries = weeks
     .filter((week) => input.includeFullYear || normalizeTerm(week.sourceTerm) === normalizedTerm)
     .flatMap((week) =>
       getWeekEntries(week).map((entry, index) => ({
@@ -66,6 +66,13 @@ export function getBuilderCurriculumEntries(input: {
       }))
     )
     .filter((entry) => entry.strand || entry.subStrand || entry.contentStandard);
+
+  const supplementalEntries = isEnglishSubject(input.subject)
+    ? getEnglishSupplementalEntries(input.subject, input.classLevel, weeks)
+        .filter((entry) => input.includeFullYear || normalizeTerm(entry.sourceTerm) === normalizedTerm)
+    : [];
+
+  return mergeCurriculumEntries([...mappedEntries, ...supplementalEntries]);
 }
 
 export function getStrandOptions(entries: CurriculumEntryOption[]): CurriculumOption[] {
@@ -327,14 +334,299 @@ function getBuilderStrandLabel(subject: string, strand?: string): string {
   return cleanText(strand);
 }
 
+function getEnglishSupplementalEntries(
+  subject: string,
+  classLevel: ClassLevel,
+  pacingWeeks: Array<SchemeWeek & { sourceTerm?: string }>
+): CurriculumEntryOption[] {
+  return Object.entries(englishExemplarsByIndicator)
+    .filter(([code]) => code.startsWith(`${classLevel}/`))
+    .map(([code, record]) => {
+      const strand = getEnglishStrandFromCode(code);
+      const subStrand = getEnglishSubStrandFromIndicator(strand, record.indicator, record.exemplars);
+      const topic = getEnglishTopicFromIndicator(record.indicator, record.exemplars);
+      const standardCode = getContentStandardCodeFromIndicatorCode(code);
+      const placement = getSuggestedEnglishPlacement({
+        code,
+        strand,
+        subStrand,
+        topic,
+        indicator: record.indicator,
+        pacingWeeks,
+      });
+
+      return {
+        id: `english-exemplar|${code}`,
+        strand,
+        subStrand,
+        contentStandard: `${standardCode} ${getEnglishContentStandardSummary(strand, subStrand)}`,
+        indicator: `${code} ${record.indicator}`,
+        topic,
+        resources: getLanguageResourcesForStrand(strand),
+        exemplars: record.exemplars,
+        sourceWeek: placement.week,
+        sourceTerm: placement.term,
+      };
+    })
+    .filter((entry) => Boolean(entry.strand));
+}
+
+function getSuggestedEnglishPlacement(input: {
+  code: string;
+  strand: string;
+  subStrand: string;
+  topic: string;
+  indicator: string;
+  pacingWeeks: Array<SchemeWeek & { sourceTerm?: string }>;
+}): { term: string; week: number } {
+  const standardCode = getContentStandardCodeFromIndicatorCode(input.code);
+  const exactCode = input.code;
+  const candidates = input.pacingWeeks
+    .map((week) => ({
+      week,
+      entries: getWeekEntries(week),
+    }))
+    .flatMap(({ week, entries }) =>
+      entries.map((entry) => ({
+        week,
+        entry,
+        text: [entry.contentStandard, entry.indicator, entry.topic, entry.subStrand].join(' '),
+      }))
+    );
+
+  const exactMatch = candidates.find((candidate) => candidate.text.includes(exactCode));
+  if (exactMatch) {
+    return {
+      term: exactMatch.week.sourceTerm || 'Term 1',
+      week: exactMatch.week.week,
+    };
+  }
+
+  const standardMatches = candidates.filter((candidate) => candidate.text.includes(standardCode));
+  if (standardMatches.length) {
+    const scored = standardMatches
+      .map((candidate) => ({
+        ...candidate,
+        score: countTokenOverlap(
+          tokenizeForMatch([input.topic, input.indicator, input.subStrand].join(' ')),
+          tokenizeForMatch(candidate.text)
+        ),
+      }))
+      .sort((left, right) => right.score - left.score || left.week.week - right.week.week);
+    return {
+      term: scored[0].week.sourceTerm || 'Term 1',
+      week: scored[0].week.week,
+    };
+  }
+
+  const strandMatches = candidates.filter(
+    (candidate) => getBuilderStrandLabel('English Language', candidate.entry.strand) === input.strand
+  );
+  if (strandMatches.length) {
+    const sorted = [...strandMatches].sort((left, right) => left.week.week - right.week.week);
+    return {
+      term: sorted[0].week.sourceTerm || 'Term 1',
+      week: sorted[0].week.week,
+    };
+  }
+
+  return fallbackEnglishPlacement(input.code);
+}
+
+function fallbackEnglishPlacement(code: string): { term: string; week: number } {
+  const parts = code.split('.');
+  const strandNumber = Number(parts[1]) || 1;
+  const contentNumber = Number(parts[3]) || 1;
+  const indicatorNumber = Number(parts[4]) || 1;
+  const sequence = (strandNumber - 1) * 8 + contentNumber * 2 + indicatorNumber;
+  const termIndex = Math.min(2, Math.floor((sequence - 1) / 12));
+  const week = ((sequence - 1) % 12) + 1;
+
+  return {
+    term: `Term ${termIndex + 1}`,
+    week,
+  };
+}
+
+function mergeCurriculumEntries(entries: CurriculumEntryOption[]): CurriculumEntryOption[] {
+  const seen = new Set<string>();
+  const result: CurriculumEntryOption[] = [];
+
+  for (const entry of entries) {
+    const code = extractIndicatorCodes(entry.indicator)[0];
+    const key = code || [entry.strand, entry.subStrand, entry.contentStandard, entry.indicator, entry.topic]
+      .map((part) => normalizeText(part))
+      .join('|');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(entry);
+  }
+
+  return result;
+}
+
+function getEnglishStrandFromCode(code: string): string {
+  const strandNumber = code.match(/JHS\d\.(\d)\./)?.[1];
+  if (strandNumber === '1') return 'Oral Language';
+  if (strandNumber === '2') return 'Reading';
+  if (strandNumber === '3') return 'Grammar';
+  if (strandNumber === '4') return 'Writing';
+  if (strandNumber === '5') return 'Literature';
+  return '';
+}
+
+function getEnglishSubStrandFromIndicator(
+  strand: string,
+  indicator: string,
+  exemplars: string[]
+): string {
+  const text = normalizeText([indicator, ...exemplars].join(' '));
+
+  if (strand === 'Writing') {
+    if (hasAny(text, ['formal writing', 'business letter', 'formal letter', 'email', 'minutes', 'agenda', 'reports'])) {
+      return 'Text Types and Purposes';
+    }
+    if (hasAny(text, ['informal letter', 'friendly letter', 'personal letter'])) {
+      return 'Text Types and Purposes';
+    }
+    if (hasAny(text, ['article', 'publication', 'magazine', 'flyer', 'poster', 'notice', 'invitation', 'speech', 'dialogue'])) {
+      return 'Text Types and Purposes';
+    }
+    if (hasAny(text, ['research', 'source', 'figures', 'tables', 'graphs', 'maps'])) {
+      return 'Building and Presenting Knowledge';
+    }
+    if (hasAny(text, ['paragraph', 'coherent', 'cohesive', 'revise', 'edit'])) {
+      return 'Production and Distribution of Writing';
+    }
+    return 'Writing';
+  }
+
+  if (strand === 'Grammar') {
+    if (hasAny(text, ['punctuation', 'capitalisation', 'capitalization', 'apostrophe', 'colon', 'semicolon', 'hyphen'])) {
+      return 'Punctuation and Capitalisation';
+    }
+    if (hasAny(text, ['vocabulary', 'spelling', 'word choice', 'register', 'formal language', 'slang', 'jargon'])) {
+      return 'Vocabulary and Language Use';
+    }
+    if (hasAny(text, ['aesthetic', 'figurative', 'proverb', 'imagery', 'simile', 'metaphor'])) {
+      return 'Aesthetic Language';
+    }
+    return 'Grammar';
+  }
+
+  if (strand === 'Reading') {
+    if (hasAny(text, ['summary', 'summarise', 'summarize'])) return 'Summarising';
+    if (hasAny(text, ['independent reading', 'reading portfolio'])) return 'Independent Reading';
+    return 'Comprehension';
+  }
+
+  if (strand === 'Oral Language') {
+    if (hasAny(text, ['sound', 'vowel', 'diphthong', 'consonant'])) return 'English Sounds';
+    if (hasAny(text, ['listen', 'listening'])) return 'Listening Comprehension';
+    return 'Conversation/Everyday Discourse';
+  }
+
+  if (strand === 'Literature') return 'Narrative, Drama and Poetry';
+
+  return strand;
+}
+
+function getEnglishTopicFromIndicator(indicator: string, exemplars: string[]): string {
+  const text = normalizeText([indicator, ...exemplars].join(' '));
+
+  if (hasAny(text, ['informal letter', 'friendly letter', 'personal letter'])) return 'Informal letter writing';
+  if (hasAny(text, ['formal letter', 'business letter', 'email', 'minutes', 'agenda'])) return 'Formal and practical writing';
+  if (hasAny(text, ['article', 'publication', 'magazine'])) return 'Article and publication writing';
+  if (hasAny(text, ['flyer', 'poster', 'notice', 'invitation'])) return 'Flyers, notices, posters and invitations';
+  if (hasAny(text, ['dialogue', 'monologue'])) return 'Dialogue and monologue writing';
+  if (hasAny(text, ['speech'])) return 'Speech writing and presentation';
+  if (hasAny(text, ['summary', 'summarise', 'summarize'])) return 'Summary writing';
+  if (hasAny(text, ['report'])) return 'Report writing';
+  if (hasAny(text, ['research'])) return 'Research-supported writing';
+  if (hasAny(text, ['personal narrative'])) return 'Personal narrative writing';
+  if (hasAny(text, ['descriptive'])) return 'Descriptive writing';
+  if (hasAny(text, ['persuasive', 'argumentative'])) return 'Persuasive and argumentative writing';
+  if (hasAny(text, ['informative', 'explanatory'])) return 'Informative and explanatory writing';
+
+  return cleanIndicatorText(indicator);
+}
+
+function getEnglishContentStandardSummary(strand: string, subStrand: string): string {
+  if (strand === 'Writing' && subStrand === 'Text Types and Purposes') {
+    return 'Apply writing skills to specific life situations and compose texts for different purposes and audiences.';
+  }
+  if (strand === 'Writing') return 'Develop, organise and present written ideas for appropriate purposes.';
+  if (strand === 'Grammar') return 'Apply language structure, vocabulary and conventions accurately in communication.';
+  if (strand === 'Reading') return 'Read, comprehend, interpret and analyse varied texts.';
+  if (strand === 'Oral Language') return 'Use appropriate spoken language, listening and presentation skills in context.';
+  if (strand === 'Literature') return 'Demonstrate understanding of literary genres, elements and devices.';
+  return 'Curriculum content standard.';
+}
+
+function getLanguageResourcesForStrand(strand: string): string[] {
+  if (strand === 'Writing') return ['Exercise book', 'Writing frame', 'Model texts', 'Dictionary'];
+  if (strand === 'Reading') return ['Reading passages', 'Library books', 'Graphic organisers'];
+  if (strand === 'Grammar') return ['Sentence cards', 'Grammar chart', 'Exercise book'];
+  if (strand === 'Oral Language') return ['Prompt cards', 'Discussion guide', 'Audio clips'];
+  if (strand === 'Literature') return ['Poems', 'Stories', 'Drama excerpts'];
+  return ['Textbook', 'Exercise book'];
+}
+
+function getContentStandardCodeFromIndicatorCode(code: string): string {
+  return code.split('.').slice(0, 4).join('.');
+}
+
+function cleanIndicatorText(indicator: string): string {
+  return indicator
+    .replace(/^B\d(?:\/JHS\d)?(?:\.\d+){4}\s*/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function hasAny(value: string, needles: string[]): boolean {
+  return needles.some((needle) => value.includes(needle));
+}
+
 function getMappedExemplars(subject: string, entry: SchemeWeekEntry): string[] {
   const codes = extractIndicatorCodes(entry.indicator);
-  if (!codes.length) return [];
-
   const source = getExemplarSource(subject);
   if (!source) return [];
 
-  return uniqueStrings(codes.flatMap((code) => source[code]?.exemplars ?? [])).slice(0, 6);
+  const directMatches = uniqueStrings(codes.flatMap((code) => source[code]?.exemplars ?? []));
+  if (directMatches.length) return directMatches.slice(0, 6);
+
+  if (isEnglishSubject(subject)) {
+    return getBestEnglishExemplarsForEntry(entry).slice(0, 6);
+  }
+
+  return [];
+}
+
+function getBestEnglishExemplarsForEntry(entry: SchemeWeekEntry): string[] {
+  const entryTokens = tokenizeForMatch([
+    entry.strand,
+    entry.subStrand,
+    entry.contentStandard,
+    entry.indicator,
+    entry.topic,
+  ].join(' '));
+  if (!entryTokens.length) return [];
+
+  const entryCodePrefix = extractStandardCode(entry.contentStandard || entry.indicator);
+  const candidates = Object.entries(englishExemplarsByIndicator)
+    .filter(([code]) => !entryCodePrefix || code.startsWith(entryCodePrefix))
+    .map(([code, record]) => ({
+      code,
+      exemplars: record.exemplars,
+      score: countTokenOverlap(
+        entryTokens,
+        tokenizeForMatch([record.indicator, ...record.exemplars].join(' '))
+      ),
+    }))
+    .sort((left, right) => right.score - left.score);
+
+  const best = candidates[0];
+  return best && best.score > 0 ? best.exemplars : [];
 }
 
 function getExemplarSource(subject: string): Record<string, { exemplars: string[] }> | null {
@@ -344,6 +636,10 @@ function getExemplarSource(subject: string): Record<string, { exemplars: string[
   if (normalized.includes('science')) return scienceExemplarsByIndicator;
   if (normalized.includes('social studies')) return socialStudiesExemplarsByIndicator;
   return null;
+}
+
+function isEnglishSubject(subject: string): boolean {
+  return normalizeText(subject).includes('english');
 }
 
 function extractIndicatorCodes(value?: string): string[] {
@@ -368,6 +664,23 @@ function extractIndicatorCodes(value?: string): string[] {
   }
 
   return uniqueStrings(expanded);
+}
+
+function extractStandardCode(value?: string): string {
+  return value?.match(/B\d(?:\/JHS\d)?(?:\.\d+){3}/)?.[0] ?? '';
+}
+
+function tokenizeForMatch(value: string): string[] {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((token) => token.length > 3 && !MATCH_STOP_WORDS.has(token));
+}
+
+function countTokenOverlap(left: string[], right: string[]): number {
+  const rightSet = new Set(right);
+  return left.reduce((score, token) => score + (rightSet.has(token) ? 1 : 0), 0);
 }
 
 function escapeRegExp(value: string): string {
@@ -432,3 +745,24 @@ function cleanText(value?: string): string {
 function slugify(value: string): string {
   return normalizeText(value).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
+
+const MATCH_STOP_WORDS = new Set([
+  'apply',
+  'appropriate',
+  'communication',
+  'compose',
+  'content',
+  'different',
+  'english',
+  'given',
+  'indicator',
+  'language',
+  'purposes',
+  'specific',
+  'standard',
+  'texts',
+  'using',
+  'with',
+  'write',
+  'writing',
+]);

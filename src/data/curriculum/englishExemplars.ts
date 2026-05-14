@@ -1194,6 +1194,88 @@ export const englishExemplarsByIndicator: Record<string, EnglishExemplarRecord> 
     ],
     sourcePage: 58,
   },
+  "B7/JHS1.3.1.1.4": {
+    indicator: "Relate forms of verbs to everyday activities in context",
+    exemplars: [
+      "Identify verbs that show present tense and aspect in sentences.",
+      "Use simple present tense in context, for example 'I wash a car.'",
+      "Use present progressive forms in context, for example 'I am washing a car.'",
+      "Relate verb forms to everyday activities, role play, radio, TV, films and narratives.",
+    ],
+    sourcePage: 49,
+  },
+  "B7/JHS1.3.1.1.5": {
+    indicator: "Use adverbs to modify verbs accurately at phrase and sentence level",
+    exemplars: [
+      "Recognise the effective use of adverbs in paragraphs.",
+      "Use adverbs to give more information about verbs.",
+      "Use adverbs to give more information about adjectives.",
+      "Explore adverbs in sentences and short paragraphs.",
+    ],
+    sourcePage: 50,
+  },
+  "B7/JHS1.3.1.1.8": {
+    indicator: "Identify and use determiners in speaking and texts",
+    exemplars: [
+      "Identify determiners from texts.",
+      "Use articles such as 'the', 'a' and 'an' appropriately.",
+      "Use possessives such as our, your, my, their, her and his to provide context in sentences.",
+      "Apply determiners accurately in speech and writing.",
+    ],
+    sourcePage: 51,
+  },
+  "B7/JHS1.3.1.5.1": {
+    indicator: "Use conditional sentences in communication to indicate a possible condition and its possible result",
+    exemplars: [
+      "Construct simple sentences using future time.",
+      "Construct complex sentences and analyse main and subordinate ideas.",
+      "Use conditional sentences to show possible conditions and results.",
+      "Apply conditional tenses in everyday communication.",
+    ],
+    sourcePage: 54,
+  },
+  "B7/JHS1.3.1.6.2": {
+    indicator: "Demonstrate use and command of reported speech",
+    exemplars: [
+      "Compose sentences in direct speech and change them to reported speech.",
+      "Report what people say in formal and informal situations.",
+      "Use reported speech to communicate what someone agreed, regretted, said or explained.",
+      "Apply reported speech accurately in sentences and short texts.",
+    ],
+    sourcePage: 55,
+  },
+  "B7/JHS1.4.2.1.1": {
+    indicator: "Write personal narratives using effective techniques incorporating descriptive details and logical event sequences",
+    exemplars: [
+      "Plan and record ideas detailing personal experiences or past events.",
+      "Use descriptive details to develop setting, experiences and events.",
+      "Use first-person point of view to convey feelings, experiences and thoughts.",
+      "Sequence events logically in personal narrative writing.",
+    ],
+    sourcePage: 62,
+  },
+  "B7/JHS1.4.2.2.1": {
+    indicator: "Compose informal letters on varied topics using appropriate format",
+    exemplars: [
+      "Identify features of informal letters such as writer's address, date, salutation, body, subscription and name.",
+      "Use the correct features of informal letters appropriately.",
+      "Write informal letters on a range of themes to friends and relatives, such as school life, excursions, games and festivals.",
+      "Correct errors in informal letters written by others.",
+    ],
+    sourcePage: 65,
+  },
+  "B7/JHS1.4.2.2.2": {
+    indicator: "Compose formal writing such as application, invitation, email and media texts on given topics using appropriate format",
+    exemplars: [
+      "Identify features of formal letters such as writer's address, recipient address, date, heading, salutation, body, subscription, signature and name.",
+      "Write formal letters to offices such as the headteacher, Director of Education, Assembly member, SMC chairperson or PTA chairperson.",
+      "Correct errors in formal letters written by others.",
+      "Write notices to class or club members to provide updates on rules, schedules or programmes.",
+      "Create media texts for different purposes and audiences using appropriate forms, conventions and techniques.",
+      "Edit, proofread and publish writing using different media including ICT.",
+    ],
+    sourcePage: 66,
+  },
   "B7/JHS1.4.2.2.3": {
     indicator: "Take notes for academic and other purposes",
     exemplars: [
@@ -1228,6 +1310,36 @@ export const englishExemplarsByIndicator: Record<string, EnglishExemplarRecord> 
     ],
     sourcePage: 98,
   },
+  "B8/JHS2.3.1.1.2": {
+    indicator: "Demonstrate use of relative pronouns correctly in speaking and writing",
+    exemplars: [
+      "Construct sentences with relative pronouns that relate to human beings such as who, whose and that.",
+      "Construct sentences with relative pronouns such as which and that for things and ideas.",
+      "Use relative pronouns accurately in speech and writing.",
+      "Apply relative pronouns to expand and combine sentences.",
+    ],
+    sourcePage: 86,
+  },
+  "B8/JHS2.3.1.1.4": {
+    indicator: "Use verb forms correctly when talking about future events",
+    exemplars: [
+      "Use simple future forms to talk or write about future events.",
+      "Use future progressive forms in context.",
+      "Use future perfect and future perfect progressive forms in context.",
+      "Apply future verb forms accurately in speech and writing.",
+    ],
+    sourcePage: 87,
+  },
+  "B8/JHS2.4.1.1.1": {
+    indicator: "Demonstrate understanding of how different sentences relate within a paragraph using appropriate cohesive devices",
+    exemplars: [
+      "Use logical connectors to create a cohesive paragraph.",
+      "Use pronouns, repetition of vocabulary and grammatical structures to link ideas.",
+      "Apply cohesive devices to show how sentences relate within a paragraph.",
+      "Revise paragraphs for coherence and cohesion.",
+    ],
+    sourcePage: 92,
+  },
   "B8/JHS2.4.2.2.2": {
     indicator: "Compose notes, brochures and flyers for different purposes and audiences",
     exemplars: [
@@ -1248,6 +1360,15 @@ export const englishExemplarsByIndicator: Record<string, EnglishExemplarRecord> 
     ],
     sourcePage: 101,
   },
+  "B8/JHS2.4.2.2.5": {
+    indicator: "Compose speeches for different purposes and occasions",
+    exemplars: [
+      "Write a speech by combining narrative, descriptive, explanatory and persuasive skills to make logical and emotional appeals.",
+      "Organise speeches with an introduction, body and conclusion.",
+      "Use speech writing to tell the audience what you are going to say, say it, and remind them what you said.",
+    ],
+    sourcePage: 101,
+  },
   "B8/JHS2.5.1.1.3": {
     indicator: "Examine how monologues and dialogues are used to convey characters in narratives and play scripts",
     exemplars: [
@@ -1264,6 +1385,44 @@ export const englishExemplarsByIndicator: Record<string, EnglishExemplarRecord> 
       "Write emails with recipient address, CC, subject, message, sender's name and contact.",
     ],
     sourcePage: 132,
+  },
+  "B9/JHS3.2.1.2.9": {
+    indicator: "Make conceptual connections between known and unknown words or phrases and analyse nuances of words or phrases in texts",
+    exemplars: [
+      "Read grade-appropriate texts.",
+      "Identify known and unknown words meaningfully.",
+      "Use context to connect known and unknown words or phrases.",
+      "Analyse nuances of words and phrases in texts.",
+    ],
+    sourcePage: 116,
+  },
+  "B9/JHS3.4.2.1.2": {
+    indicator: "Use different narrative techniques to manipulate time in a story",
+    exemplars: [
+      "Compose narrative essays using backstory.",
+      "Use flashback and flash-forward to manipulate time in a story.",
+      "Use foreshadowing in narrative writing.",
+      "Proofread narrative writing for clarity and effect.",
+    ],
+    sourcePage: 128,
+  },
+  "B9/JHS3.4.2.2.3": {
+    indicator: "Write articles, short reports, letters and case studies on given issues for publication",
+    exemplars: [
+      "Write short reports, case studies and letters to the editor on given issues for publication.",
+      "Prepare writing for self-publication, newspapers, literary magazines, scholarly journals or webzines.",
+      "Use publication writing to address real issues for an intended audience.",
+    ],
+    sourcePage: 133,
+  },
+  "B9/JHS3.4.2.2.4": {
+    indicator: "Compose speeches for different purposes and occasions",
+    exemplars: [
+      "Compose speeches with a clear introduction, body and conclusion.",
+      "Use emotive adjectives, tripling, repetition, parallel sentence structure and powerful imagery to create effect.",
+      "Use inclusive language such as 'we' to include everyone in a speech.",
+    ],
+    sourcePage: 133,
   },
   "B9/JHS3.5.1.1.4": {
     indicator: "Use literary devices and imagery in texts",

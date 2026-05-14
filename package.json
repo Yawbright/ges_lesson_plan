@@ -13,6 +13,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
+    "audit:english-curriculum": "node scripts/audit-english-curriculum.mjs",
     "verify:refactor": "node scripts/verify-admin-refactor.mjs"
   },
   "dependencies": {
