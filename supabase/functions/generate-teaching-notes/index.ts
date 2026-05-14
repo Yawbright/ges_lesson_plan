@@ -7,6 +7,7 @@ import {
 } from '../_shared/generation.ts';
 import { consumeCreditsForRequest, getFeatureCreditCost, refundCredits } from '../_shared/credits.ts';
 import { HttpError, logEdgeError } from '../_shared/supabase.ts';
+import { rewardReferralIfQualified } from '../_shared/referrals.ts';
 
 const TEACHING_NOTES_CREDIT_COST = 1;
 
@@ -53,6 +54,8 @@ Deno.serve(async (req) => {
       maxTokens: 12000,
     });
     const normalized = normalizeTeachingNotesResponse(rawNotes, body);
+
+    await rewardReferralIfQualified(creditDebit.user.id);
 
     return json({ ...normalized, creditBalance: creditDebit.balance }, 200);
   } catch (err) {

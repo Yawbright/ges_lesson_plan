@@ -7,6 +7,7 @@ import {
 } from '../_shared/generation.ts';
 import { consumeCreditsForRequest, getFeatureCreditCost, refundCredits } from '../_shared/credits.ts';
 import { HttpError, logEdgeError } from '../_shared/supabase.ts';
+import { rewardReferralIfQualified } from '../_shared/referrals.ts';
 
 const SCHEME_CREDIT_COST = 1;
 
@@ -50,6 +51,8 @@ Deno.serve(async (req) => {
       system: schemeSystemPrompt,
       user: buildSchemePrompt(body),
     });
+
+    await rewardReferralIfQualified(creditDebit.user.id);
 
     return json(
       {

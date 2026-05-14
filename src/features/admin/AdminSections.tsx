@@ -329,10 +329,9 @@ export function ReferralsSection(props: {
         referrals.map((item) => (
           <View key={item.id} style={styles.dataRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.rowTitle}>{item.referrer_email || item.referrer_user_id}</Text>
-              <Text style={styles.meta}>Referred: {item.referred_email || item.referred_user_id}</Text>
-              <Text style={styles.meta}>Code: {item.referral_code}</Text>
-              <Text style={styles.meta}>Email: {item.referred_email_confirmed ? '✓ Confirmed' : '⏱ Unconfirmed'}</Text>
+              <Text style={styles.rowTitle}>{item.referred_email || item.referred_user_id}</Text>
+              <Text style={styles.meta}>Referrer: {item.referrer_email || item.referrer_user_id}</Text>
+              <Text style={styles.meta}>Code: {item.referral_code} | Email: {item.referred_email_confirmed ? '✓ Confirmed' : '⏱ Unconfirmed'}</Text>
               {item.rejection_reason ? <Text style={styles.meta}>Reason: {item.rejection_reason}</Text> : null}
             </View>
             <StatusPill status={item.status === 'rejected' ? 'not rewarded' : item.status} />
