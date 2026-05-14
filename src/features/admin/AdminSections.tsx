@@ -1,4 +1,4 @@
-import { Pressable, StyleProp, Switch, Text, View, ViewStyle } from 'react-native';
+import { Pressable, ScrollView, StyleProp, Switch, Text, View, ViewStyle } from 'react-native';
 import { Button } from '@/components/Button';
 import { Field } from '@/components/Field';
 import { SelectField } from '@/components/SelectField';
@@ -664,7 +664,9 @@ function Panel({ title, children, style }: { title: string; children: React.Reac
   return (
     <View style={[styles.panel, style]}>
       <Text style={styles.panelTitle}>{title}</Text>
-      {children}
+      <ScrollView style={styles.panelScroll} scrollEnabled={true} nestedScrollEnabled={true}>
+        {children}
+      </ScrollView>
     </View>
   );
 }
