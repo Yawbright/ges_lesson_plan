@@ -49,8 +49,15 @@ export async function countRows(
 export async function loadEmails(service: ServiceClient, userIds: string[]) {
   const emailById = new Map<string, string>();
   if (!userIds.length) return emailById;
-  const { data, error } = await service.from('app_user_directory').select('user_id,email').in('user_id', userIds);
-  if (error) return emailById;
-  for (const item of data ?? []) emailById.set(item.user_id, item.email ?? '');
+  try {
+    const { data, error } = await service.from('app_user_directory').select('user_id,email').in('user_id', userIds);
+    if (error) {
+      console.error('[loadEmails] Query error:', error.message, error.details);
+      return emailById;
+    }
+    for (const item of data ?? []) emailById.set(item.user_id, item.email ?? '');
+  } catch (err) {
+    console.error('[loadEmails] Exception:', err);
+  }
   return emailById;
 }
