@@ -47,7 +47,7 @@ export default function Entry() {
   }
 
   if (verified) {
-    return <Redirect href="/onboarding" />;
+    return <Redirect href="/(auth)/sign-in" />;
   }
 
   return <Redirect href={session ? '/(tabs)/tools' : '/(auth)/sign-in'} />;
