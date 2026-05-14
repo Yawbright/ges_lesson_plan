@@ -71,7 +71,7 @@ export const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 14,
     minWidth: 0,
-    maxHeight: 600,
+    maxHeight: 1200,
   },
   panelScroll: {
     flex: 1,

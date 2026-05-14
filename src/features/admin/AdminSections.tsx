@@ -186,14 +186,20 @@ export function UsersSection(props: {
 }) {
   return (
     <>
-      <Panel title="Users">
-        <View style={styles.searchRow}>
-          <View style={{ flex: 1 }}>
-            <Field label="Search by email or user ID" value={props.query} onChangeText={props.setQuery} autoCapitalize="none" />
-          </View>
-          <Button title="Search" onPress={props.searchUsers} loading={props.searching} style={styles.searchButton} />
-        </View>
-        <Text style={styles.helpText}>Latest users load automatically. Search only when you need a specific account.</Text>
+      <Panel 
+        title="Users"
+        filters={
+          <>
+            <View style={styles.searchRow}>
+              <View style={{ flex: 1 }}>
+                <Field label="Search by email or user ID" value={props.query} onChangeText={props.setQuery} autoCapitalize="none" />
+              </View>
+              <Button title="Search" onPress={props.searchUsers} loading={props.searching} style={styles.searchButton} />
+            </View>
+            <Text style={styles.helpText}>Latest users load automatically. Search only when you need a specific account.</Text>
+          </>
+        }
+      >
         {props.users.length ? (
           props.users.map((user) => <UserRow key={user.user_id} user={user} onPress={() => props.openUser(user)} />)
         ) : (
@@ -228,14 +234,18 @@ export function CreditsSection(props: {
   const filtered = filterTransactions(props.transactions, props.filter, []);
   const adjustments = filtered.filter((item) => item.kind === 'adjustment');
   return (
-    <Panel title="Credit Adjustments">
-      <ReportFilters
-        filter={props.filter}
-        setFilter={props.setFilter}
-        statusLabel="Credit kind"
-        statusOptions={creditKindOptions}
-        searchPlaceholder="Search email, user ID, or description"
-      />
+    <Panel 
+      title="Credit Adjustments"
+      filters={
+        <ReportFilters
+          filter={props.filter}
+          setFilter={props.setFilter}
+          statusLabel="Credit kind"
+          statusOptions={creditKindOptions}
+          searchPlaceholder="Search email, user ID, or description"
+        />
+      }
+    >
       {(adjustments.length ? adjustments : filtered).length ? (
         (adjustments.length ? adjustments : filtered).map((item) => <TransactionRow key={item.id} item={item} />)
       ) : (
@@ -256,14 +266,18 @@ export function PaymentsSection(props: {
 }) {
   const purchases = filterPurchases(props.purchases, props.filter);
   return (
-    <Panel title="Payment Receipts">
-      <ReportFilters
-        filter={props.filter}
-        setFilter={props.setFilter}
-        statusLabel="Payment status"
-        statusOptions={paymentStatusOptions}
-        searchPlaceholder="Search email, reference, or package"
-      />
+    <Panel 
+      title="Payment Receipts"
+      filters={
+        <ReportFilters
+          filter={props.filter}
+          setFilter={props.setFilter}
+          statusLabel="Payment status"
+          statusOptions={paymentStatusOptions}
+          searchPlaceholder="Search email, reference, or package"
+        />
+      }
+    >
       {purchases.length ? (
         purchases.map((item) => <PaymentRow key={item.id} purchase={item} />)
       ) : (
@@ -289,14 +303,18 @@ export function UsageSection(props: {
     'teaching_notes_generation',
   ]);
   return (
-    <Panel title="Usage History">
-      <ReportFilters
-        filter={props.filter}
-        setFilter={props.setFilter}
-        statusLabel="Feature"
-        statusOptions={usageKindOptions}
-        searchPlaceholder="Search email, user ID, or description"
-      />
+    <Panel 
+      title="Usage History"
+      filters={
+        <ReportFilters
+          filter={props.filter}
+          setFilter={props.setFilter}
+          statusLabel="Feature"
+          statusOptions={usageKindOptions}
+          searchPlaceholder="Search email, user ID, or description"
+        />
+      }
+    >
       {usage.length ? (
         usage.map((item) => <TransactionRow key={item.id} item={item} />)
       ) : (
@@ -317,14 +335,18 @@ export function ReferralsSection(props: {
 }) {
   const referrals = filterReferrals(props.referrals, props.filter);
   return (
-    <Panel title="Referral Activity">
-      <ReportFilters
-        filter={props.filter}
-        setFilter={props.setFilter}
-        statusLabel="Reward status"
-        statusOptions={referralStatusOptions}
-        searchPlaceholder="Search referrer, referred user, or code"
-      />
+    <Panel 
+      title="Referral Activity"
+      filters={
+        <ReportFilters
+          filter={props.filter}
+          setFilter={props.setFilter}
+          statusLabel="Reward status"
+          statusOptions={referralStatusOptions}
+          searchPlaceholder="Search referrer, referred user, or code"
+        />
+      }
+    >
       {referrals.length ? (
         referrals.map((item) => (
           <View key={item.id} style={styles.dataRow}>
@@ -357,14 +379,18 @@ export function LogsSection(props: {
 }) {
   const logs = filterLogs(props.logs, props.filter);
   return (
-    <Panel title="Error Logs">
-      <ReportFilters
-        filter={props.filter}
-        setFilter={props.setFilter}
-        statusLabel="Severity"
-        statusOptions={logSeverityOptions}
-        searchPlaceholder="Search email, source, action, or message"
-      />
+    <Panel 
+      title="Error Logs"
+      filters={
+        <ReportFilters
+          filter={props.filter}
+          setFilter={props.setFilter}
+          statusLabel="Severity"
+          statusOptions={logSeverityOptions}
+          searchPlaceholder="Search email, source, action, or message"
+        />
+      }
+    >
       {logs.length ? logs.map((log) => {
         const open = props.selectedLog === log.id;
         return (
@@ -660,10 +686,21 @@ function UserDetails({ detail }: { detail: AdminUserDetail }) {
   );
 }
 
-function Panel({ title, children, style }: { title: string; children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
+function Panel({ 
+  title, 
+  children, 
+  style,
+  filters,
+}: { 
+  title: string; 
+  children: React.ReactNode; 
+  style?: StyleProp<ViewStyle>;
+  filters?: React.ReactNode;
+}) {
   return (
     <View style={[styles.panel, style]}>
       <Text style={styles.panelTitle}>{title}</Text>
+      {filters}
       <ScrollView style={styles.panelScroll} scrollEnabled={true} nestedScrollEnabled={true}>
         {children}
       </ScrollView>
