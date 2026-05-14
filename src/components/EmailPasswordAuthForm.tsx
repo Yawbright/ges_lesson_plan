@@ -324,11 +324,16 @@ export function EmailPasswordAuthForm({
 
 async function applyPendingReferral() {
   const code = await consumePendingReferralCode();
-  if (!code) return;
+  if (!code) {
+    console.log('[referrals] No pending referral code to apply');
+    return;
+  }
   try {
-    await applyReferralCode(code);
+    console.log('[referrals] Applying referral code:', code);
+    const result = await applyReferralCode(code);
+    console.log('[referrals] Referral code applied:', result);
   } catch (error) {
-    console.warn('[referrals] Could not apply referral code', error);
+    console.error('[referrals] Could not apply referral code:', error);
   }
 }
 

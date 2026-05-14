@@ -16,13 +16,17 @@ Deno.serve(async (req) => {
 
   try {
     const user = await getAuthenticatedUser(req);
+    console.log('[apply-referral] User:', user.id);
+    
     const body = (await req.json().catch(() => ({}))) as Body;
     const code = body.code?.trim();
 
     if (!code) {
+      console.log('[apply-referral] No code provided');
       return json({ error: 'Referral code is required' }, 400);
     }
 
+    console.log('[apply-referral] Applying code:', code);
     const service = createServiceClient();
     const ip =
       req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
@@ -38,15 +42,20 @@ Deno.serve(async (req) => {
       p_referred_user_agent: userAgent,
     });
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error('[apply-referral] RPC error:', error.message, error.details);
+      throw new Error(error.message);
+    }
 
     const result = Array.isArray(data) ? data[0] : data;
+    console.log('[apply-referral] Result:', result);
     return json({
       status: result?.status ?? 'rejected',
       referrerUserId: result?.referrer_user_id ?? null,
       reason: result?.reason ?? null,
     }, 200);
   } catch (err) {
+    console.error('[apply-referral] Error:', (err as Error).message);
     if (err instanceof HttpError) {
       return json({ error: err.message, ...(err.payload ?? {}) }, err.status);
     }
