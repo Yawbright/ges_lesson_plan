@@ -46,6 +46,7 @@ export const usageKindOptions = [
 
 export const referralStatusOptions = [
   { label: 'All statuses', value: '' },
+  { label: 'Unconfirmed email', value: 'unconfirmed' },
   { label: 'Pending', value: 'pending' },
   { label: 'Rewarded', value: 'rewarded' },
   { label: 'Not rewarded', value: 'rejected' },

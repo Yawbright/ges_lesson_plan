@@ -202,7 +202,13 @@ export function filterPurchases(items: AdminPurchase[], filter: ReportFilter) {
 
 export function filterReferrals(items: AdminReferral[], filter: ReportFilter) {
   return items.filter((item) => {
-    if (filter.status && item.status !== filter.status) return false;
+    // Handle email confirmation filter
+    if (filter.status === 'unconfirmed') {
+      if (item.referred_email_confirmed) return false;
+    } else if (filter.status && item.status !== filter.status) {
+      return false;
+    }
+    
     if (!matchesDate(item.rewarded_at ?? item.created_at, filter)) return false;
     return matchesSearch(filter.search, [
       item.referrer_email,

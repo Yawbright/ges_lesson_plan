@@ -66,6 +66,8 @@ export type AdminReferral = {
   rejection_reason: string | null;
   qualified_at: string | null;
   rewarded_at: string | null;
+  referred_email_confirmed: boolean;
+  referred_email_confirmed_at: string | null;
   created_at: string;
 };
 

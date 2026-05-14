@@ -45,7 +45,7 @@ export async function loadReferrals(service: ServiceClient, input: ReportInput =
   const { page, pageSize, from, to } = pageBounds(input);
   let query = service
     .from('referrals')
-    .select('id,referrer_user_id,referred_user_id,referral_code,status,rejection_reason,qualified_at,rewarded_at,created_at', { count: 'exact' })
+    .select('id,referrer_user_id,referred_user_id,referral_code,status,rejection_reason,qualified_at,rewarded_at,referred_email_confirmed,referred_email_confirmed_at,created_at', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(from, to);
   if (input.userId) query = query.or(`referrer_user_id.eq.${input.userId},referred_user_id.eq.${input.userId}`);

@@ -177,16 +177,20 @@ export function EmailPasswordAuthForm({
         const validatedCode = await validateReferralCode(invitationCode);
         await savePendingReferralCode(validatedCode);
         const data = await signUpWithEmail(normalizedEmail, password, validatedCode);
+        
+        // Apply referral immediately after signup (before email confirmation)
+        console.log('[referral] Applying referral immediately after signup');
+        await applyPendingReferral();
+        
         if (data.session) {
-          await applyPendingReferral();
           showToast({ message: 'Account created. You are now signed in.' });
           onAccountCreated?.();
         } else {
           showToast({
-            message: 'Account created. Please confirm your email, then sign in.',
+            message: 'Account created. Please confirm your email to unlock all features.',
             type: 'info',
           });
-          setInfoMessage('Sign-up successful. Check your email and confirm your account before signing in.');
+          setInfoMessage('Sign-up successful. Check your email and confirm your account to unlock all features.');
           await savePendingTeacherSetup();
           setMode('signin');
         }
