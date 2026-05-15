@@ -25,7 +25,8 @@ function generateOtp(): string {
 function validatePhoneNumber(phone: string): boolean {
   // Accept various formats: +233XXXXXXXXX, 0XXXXXXXXX, 233XXXXXXXXX, etc.
   const cleaned = phone.replace(/\D/g, '');
-  return cleaned.length >= 10; // At least 10 digits
+  console.log('[validatePhoneNumber] Input:', phone, '-> Cleaned:', cleaned, '-> Valid:', cleaned.length >= 9);
+  return cleaned.length >= 9; // At least 9 digits (allows Ghanaian numbers)
 }
 
 // Send SMS via Arkesel API
@@ -78,11 +79,13 @@ serve(async (req: Request) => {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed', success: false }), {
       status: 405,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
     });
   }
 
   try {
+    console.log('[send-phone-otp] Request received');
+    
     // Check if ARKESEL_API_KEY is set
     if (!arkeselApiKey?.trim()) {
       console.error('[send-phone-otp] ARKESEL_API_KEY is not configured');
@@ -91,68 +94,61 @@ serve(async (req: Request) => {
           error: 'SMS service is not configured. Please contact support. (Missing ARKESEL_API_KEY)',
           success: false,
         }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
+        { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
       );
     }
 
-    const { phoneNumber } = (await req.json()) as SendPhoneOtpRequest;
+    const body = await req.json();
+    console.log('[send-phone-otp] Request body:', { phoneNumber: body?.phoneNumber ? '***' : 'missing' });
+    
+    const { phoneNumber } = body as SendPhoneOtpRequest;
 
     if (!phoneNumber?.trim()) {
+      console.warn('[send-phone-otp] Missing phone number');
       return new Response(
         JSON.stringify({ error: 'Phone number is required', success: false }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
       );
     }
 
     if (!validatePhoneNumber(phoneNumber)) {
+      console.warn('[send-phone-otp] Invalid phone number format:', phoneNumber);
       return new Response(
         JSON.stringify({ error: 'Invalid phone number format', success: false }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
       );
     }
 
     // Initialize Supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    console.log('[send-phone-otp] Supabase client initialized');
 
     // Generate OTP
     const otp = generateOtp();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
-
-    // Clean phone number for storage
     const cleanedPhone = phoneNumber.replace(/\D/g, '');
 
-    // Check for recent attempts to prevent abuse
-    const { data: recentAttempts } = await supabase
-      .from('phone_auth_requests')
-      .select('*')
-      .eq('phone_number', cleanedPhone)
-      .gt('created_at', new Date(Date.now() - 60 * 1000).toISOString()) // Last 60 seconds
-      .order('created_at', { ascending: false })
-      .limit(1);
+    console.log('[send-phone-otp] Generated OTP:', otp, 'for phone:', cleanedPhone);
 
-    if (recentAttempts && recentAttempts.length > 0) {
-      return new Response(
-        JSON.stringify({
-          error: 'Please wait before requesting a new OTP',
-          success: false,
-        }),
-        { status: 429, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Send SMS via Arkesel
+    // Send SMS via Arkesel FIRST (before database operations)
+    console.log('[send-phone-otp] Sending SMS via Arkesel...');
     const smsMessage = `Your verification code is: ${otp}\n\nValid for 15 minutes.`;
     const sendSuccess = await sendViaArkesel(cleanedPhone, otp, smsMessage);
+    
+    console.log('[send-phone-otp] Arkesel send result:', sendSuccess);
 
     if (!sendSuccess) {
+      console.error('[send-phone-otp] Arkesel SMS send failed');
       return new Response(
         JSON.stringify({
           error: 'Failed to send SMS. Please check your phone number and try again.',
           success: false,
         }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
+        { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
       );
     }
+
+    console.log('[send-phone-otp] SMS sent successfully, storing OTP in database');
 
     // Store OTP in database
     const { data, error } = await supabase.from('phone_auth_requests').insert({
@@ -163,38 +159,39 @@ serve(async (req: Request) => {
     });
 
     if (error) {
-      console.error('[DB Error]', error);
+      console.error('[send-phone-otp] DB Error:', error);
       return new Response(
         JSON.stringify({
           error: 'Failed to create OTP request',
           success: false,
         }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
+        { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
       );
     }
+
+    console.log('[send-phone-otp] OTP stored successfully');
 
     return new Response(
       JSON.stringify({
         success: true,
         message: 'OTP sent successfully to your phone',
         otpId: data?.[0]?.id,
-        expiresIn: 900, // 15 minutes in seconds
+        expiresIn: 900,
       }),
       {
         status: 200,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
       }
     );
   } catch (error) {
-    console.error('[Request Error]', error);
+    console.error('[send-phone-otp] Catch error:', error);
     const errorMessage = error instanceof Error ? error.message : String(error);
     return new Response(
       JSON.stringify({
         error: `Internal server error: ${errorMessage}`,
         success: false,
-        details: errorMessage,
       }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
     );
   }
 });
