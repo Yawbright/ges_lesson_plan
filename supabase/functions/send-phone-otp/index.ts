@@ -31,6 +31,9 @@ function validatePhoneNumber(phone: string): boolean {
 // Send SMS via Arkesel API
 async function sendViaArkesel(phoneNumber: string, otp: string, message: string): Promise<boolean> {
   try {
+    console.log('[Arkesel] Sending SMS to:', phoneNumber);
+    console.log('[Arkesel] Using API Key:', arkeselApiKey ? 'Present' : 'Missing');
+    
     const response = await fetch('https://sms.arkesel.com/api/send', {
       method: 'POST',
       headers: {
@@ -43,11 +46,18 @@ async function sendViaArkesel(phoneNumber: string, otp: string, message: string)
       }),
     });
 
+    console.log('[Arkesel] Response status:', response.status);
+    
     const data = await response.json();
-    console.log('[Arkesel Response]', data);
-    return data.status === 'success' || data.code === 200;
+    console.log('[Arkesel Response]', JSON.stringify(data));
+    
+    const success = data.status === 'success' || data.code === 200 || data.code === '200';
+    console.log('[Arkesel] Success result:', success);
+    
+    return success;
   } catch (error) {
     console.error('[Arkesel Error]', error);
+    console.error('[Arkesel Error Details]', error instanceof Error ? error.message : String(error));
     return false;
   }
 }
@@ -177,10 +187,12 @@ serve(async (req: Request) => {
     );
   } catch (error) {
     console.error('[Request Error]', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return new Response(
       JSON.stringify({
-        error: 'Internal server error',
+        error: `Internal server error: ${errorMessage}`,
         success: false,
+        details: errorMessage,
       }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );

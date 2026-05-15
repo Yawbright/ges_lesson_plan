@@ -43,28 +43,56 @@ export async function sendPhoneOtp(phoneNumber: string): Promise<SendOtpResponse
       },
     });
 
+    console.log('[phoneAuth] Function response - error:', error, 'data:', data);
+
     if (error) {
       console.error('[phoneAuth] Send error:', error);
+      const errorMessage = error?.message || error?.msg || JSON.stringify(error);
       return {
         success: false,
-        message: error.message || 'Failed to send OTP',
-        error: error.message,
+        message: errorMessage || 'Failed to send OTP',
+        error: errorMessage,
       };
+    }
+
+    // Check if response has success property or if it's an error response
+    if (data && typeof data === 'object') {
+      if ('error' in data) {
+        console.error('[phoneAuth] Function returned error:', data.error);
+        return {
+          success: false,
+          message: data.error || 'Failed to send OTP',
+          error: data.error,
+        };
+      }
+
+      if (data.success === false) {
+        return {
+          success: false,
+          message: data.error || data.message || 'Failed to send OTP',
+          error: data.error,
+        };
+      }
     }
 
     console.log('[phoneAuth] OTP sent successfully:', data);
     return {
-      success: data.success,
-      message: data.message,
-      otpId: data.otpId,
-      expiresIn: data.expiresIn,
+      success: data?.success || true,
+      message: data?.message || 'OTP sent successfully',
+      otpId: data?.otpId,
+      expiresIn: data?.expiresIn,
     };
   } catch (err) {
     console.error('[phoneAuth] Request error:', err);
     const message = err instanceof Error ? err.message : 'Failed to send OTP';
+    console.error('[phoneAuth] Full error details:', {
+      message,
+      name: err instanceof Error ? err.name : 'Unknown',
+      stack: err instanceof Error ? err.stack : 'N/A',
+    });
     return {
       success: false,
-      message,
+      message: `${message} - Please check your internet connection and try again.`,
       error: message,
     };
   }
