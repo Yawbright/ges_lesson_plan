@@ -91,16 +91,14 @@ async function sendViaArkesel(phoneNumber: string, otp: string, message: string)
     
     console.log('[Arkesel] Parsed response:', JSON.stringify(data));
     
-    // Arkesel returns success when message_id is present and success is true
-    // Sample success: {"success":true,"message":"SMS Sent Successfully","message_id":"1234567"}
-    const success = 
-      response.ok && 
-      (data.success === true || data.message_id);
+    // Arkesel returns success when code is "ok"
+    // Sample success: {"code":"ok","message":"Successfully Sent","balance":8,"main_balance":0.165,"user":"Kekeli Torkpo"}
+    const success = response.ok && data.code === 'ok';
     
     console.log('[Arkesel] Success determination:', {
       statusCode: response.status,
-      dataSuccess: data.success,
-      messageId: data.message_id,
+      responseOk: response.ok,
+      dataCode: data.code,
       message: data.message,
       final: success
     });
