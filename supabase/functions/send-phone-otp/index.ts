@@ -58,34 +58,30 @@ async function sendViaArkesel(phoneNumber: string, otp: string, message: string)
     console.log('[Arkesel] Sending SMS to:', phoneNumber);
     console.log('[Arkesel] Using API Key:', arkeselApiKey ? 'Present' : 'Missing');
     
-    // Arkesel API expects URL-encoded form data, not JSON
-    const payload = new URLSearchParams();
-    payload.append('api_key', arkeselApiKey);
-    payload.append('sms', message);
-    payload.append('recipients', phoneNumber);
+    // Arkesel API uses GET with query parameters
+    const params = new URLSearchParams({
+      action: 'send-sms',
+      api_key: arkeselApiKey,
+      to: phoneNumber,
+      from: 'LessonPlan', // Sender ID
+      sms: message,
+      response: 'json', // Request JSON response
+    });
     
-    console.log('[Arkesel] Sending to endpoint: https://sms.arkesel.com/api/send');
+    const arkeselUrl = `https://sms.arkesel.com/sms/api?${params.toString()}`;
+    console.log('[Arkesel] Sending to:', 'https://sms.arkesel.com/sms/api?...');
     console.log('[Arkesel] With phone:', phoneNumber);
     
-    // Try the correct Arkesel endpoint
-    const arkeselEndpoint = 'https://api.arkesel.com/sms/send';
-    console.log('[Arkesel] Posting to:', arkeselEndpoint);
-    
-    const response = await fetch(arkeselEndpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: payload.toString(),
+    const response = await fetch(arkeselUrl, {
+      method: 'GET',
     });
 
     console.log('[Arkesel] Response status:', response.status);
-    console.log('[Arkesel] Response URL:', response.url);
     
-    let data;
     const text = await response.text();
     console.log('[Arkesel] Raw response:', text);
     
+    let data;
     try {
       data = JSON.parse(text);
     } catch (e) {
@@ -95,20 +91,17 @@ async function sendViaArkesel(phoneNumber: string, otp: string, message: string)
     
     console.log('[Arkesel] Parsed response:', JSON.stringify(data));
     
-    // Check for success indicators - Arkesel returns different formats
+    // Arkesel returns success when message_id is present and success is true
+    // Sample success: {"success":true,"message":"SMS Sent Successfully","message_id":"1234567"}
     const success = 
-      response.ok || 
-      data.status === 'success' || 
-      data.code === 200 || 
-      data.code === '200' ||
-      data.success === true;
+      response.ok && 
+      (data.success === true || data.message_id);
     
     console.log('[Arkesel] Success determination:', {
-      ok: response.ok,
       statusCode: response.status,
-      dataStatus: data.status,
-      dataCode: data.code,
       dataSuccess: data.success,
+      messageId: data.message_id,
+      message: data.message,
       final: success
     });
     
