@@ -66,13 +66,25 @@ serve(async (req: Request) => {
   }
 
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+    return new Response(JSON.stringify({ error: 'Method not allowed', success: false }), {
       status: 405,
       headers: { 'Content-Type': 'application/json' },
     });
   }
 
   try {
+    // Check if ARKESEL_API_KEY is set
+    if (!arkeselApiKey?.trim()) {
+      console.error('[send-phone-otp] ARKESEL_API_KEY is not configured');
+      return new Response(
+        JSON.stringify({
+          error: 'SMS service is not configured. Please contact support. (Missing ARKESEL_API_KEY)',
+          success: false,
+        }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { phoneNumber } = (await req.json()) as SendPhoneOtpRequest;
 
     if (!phoneNumber?.trim()) {
