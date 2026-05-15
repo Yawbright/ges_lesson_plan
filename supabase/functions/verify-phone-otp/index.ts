@@ -7,6 +7,7 @@ const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 interface VerifyPhoneOtpRequest {
   phoneNumber: string;
   otp: string;
+  email?: string;
   password?: string;
   referralCode?: string;
 }
@@ -42,7 +43,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { phoneNumber, otp, password, referralCode } = (await req.json()) as VerifyPhoneOtpRequest;
+    const { phoneNumber, otp, email, password, referralCode } = (await req.json()) as VerifyPhoneOtpRequest;
 
     if (!phoneNumber?.trim() || !otp?.trim()) {
       return new Response(
@@ -131,14 +132,16 @@ serve(async (req: Request) => {
         );
       }
 
-      // Create auth user
+      // Create auth user with email if provided, otherwise use phone-based email
+      const userEmail = email?.trim().toLowerCase() || `phone_${cleanedPhone}@local.lessonplanner`;
+      
       const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: `phone_${cleanedPhone}@local.lessonplanner`,
+        email: userEmail,
         password: password,
-        email_confirm: true,
+        email_confirm: true, // Skip email confirmation
         user_metadata: {
           phone_number: cleanedPhone,
-          signup_method: 'phone',
+          signup_method: email ? 'email_and_phone' : 'phone',
           referral_code: referralCode?.trim().toUpperCase() || null,
         },
       });
@@ -165,13 +168,14 @@ serve(async (req: Request) => {
           .limit(1);
 
         if (referralCodeData && referralCodeData.length > 0) {
-          // Create referral record
+          // Create referral record - email confirmation is skipped since email_confirm=true
           await supabase.from('referrals').insert({
             referrer_user_id: referralCodeData[0].user_id,
             referred_user_id: userId,
             referral_code: referralCode.trim().toUpperCase(),
+            referred_email: email?.trim().toLowerCase(),
             status: 'pending',
-            referred_email_confirmed: false,
+            referred_email_confirmed: true, // Email confirmation is skipped
           });
         }
       }

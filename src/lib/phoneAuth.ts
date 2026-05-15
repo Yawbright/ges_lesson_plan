@@ -15,6 +15,7 @@ export interface SendOtpResponse {
 export interface VerifyOtpRequest {
   phoneNumber: string;
   otp: string;
+  email?: string;
   password?: string;
   referralCode?: string;
 }
@@ -76,7 +77,8 @@ export async function verifyPhoneOtp(
   phoneNumber: string,
   otp: string,
   password?: string,
-  referralCode?: string
+  referralCode?: string,
+  email?: string
 ): Promise<VerifyOtpResponse> {
   try {
     console.log('[phoneAuth] Verifying OTP for:', phoneNumber);
@@ -85,6 +87,7 @@ export async function verifyPhoneOtp(
       body: {
         phoneNumber: phoneNumber.trim(),
         otp: otp.trim(),
+        email,
         password,
         referralCode,
       },
