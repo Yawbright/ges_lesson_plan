@@ -35,30 +35,59 @@ async function sendViaArkesel(phoneNumber: string, otp: string, message: string)
     console.log('[Arkesel] Sending SMS to:', phoneNumber);
     console.log('[Arkesel] Using API Key:', arkeselApiKey ? 'Present' : 'Missing');
     
+    const payload = {
+      api_key: arkeselApiKey,
+      sms: message,
+      recipients: phoneNumber,
+    };
+    
+    console.log('[Arkesel] Payload:', JSON.stringify({ ...payload, api_key: '***' }));
+    
     const response = await fetch('https://sms.arkesel.com/api/send', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        api_key: arkeselApiKey,
-        sms: message,
-        recipients: phoneNumber,
-      }),
+      body: JSON.stringify(payload),
     });
 
     console.log('[Arkesel] Response status:', response.status);
     
-    const data = await response.json();
-    console.log('[Arkesel Response]', JSON.stringify(data));
+    let data;
+    const text = await response.text();
+    console.log('[Arkesel] Raw response:', text);
     
-    const success = data.status === 'success' || data.code === 200 || data.code === '200';
-    console.log('[Arkesel] Success result:', success);
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.error('[Arkesel] Failed to parse response as JSON:', text);
+      return false;
+    }
+    
+    console.log('[Arkesel] Parsed response:', JSON.stringify(data));
+    
+    // Check for success indicators - Arkesel returns different formats
+    const success = 
+      response.ok || 
+      data.status === 'success' || 
+      data.code === 200 || 
+      data.code === '200' ||
+      data.success === true;
+    
+    console.log('[Arkesel] Success determination:', {
+      ok: response.ok,
+      statusCode: response.status,
+      dataStatus: data.status,
+      dataCode: data.code,
+      dataSuccess: data.success,
+      final: success
+    });
     
     return success;
   } catch (error) {
     console.error('[Arkesel Error]', error);
-    console.error('[Arkesel Error Details]', error instanceof Error ? error.message : String(error));
+    console.error('[Arkesel Error Message]', error instanceof Error ? error.message : String(error));
+    console.error('[Arkesel Error Stack]', error instanceof Error ? error.stack : 'No stack');
     return false;
   }
 }
