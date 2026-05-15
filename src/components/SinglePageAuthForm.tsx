@@ -8,7 +8,7 @@ import {
   savePendingReferralCode,
   validateReferralCode,
 } from '@/lib/referrals';
-import { isSupabaseConfigured } from '@/lib/supabase';
+import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { colors } from '@/theme/colors';
 import { sendPhoneOtp, verifyPhoneOtp, validatePhoneNumber, formatPhoneNumber } from '@/lib/phoneAuth';
 import { signInWithEmail, getAuthErrorMessage } from '@/lib/auth';
@@ -80,6 +80,16 @@ export function SinglePageAuthForm({
     }
   }
 
+  async function checkEmailExists(emailToCheck: string): Promise<boolean> {
+    try {
+      const { data } = await supabase.auth.admin.listUsers();
+      return data?.users?.some((u) => u.email?.toLowerCase() === emailToCheck.toLowerCase()) ?? false;
+    } catch {
+      // If we can't check, allow it to proceed
+      return false;
+    }
+  }
+
   async function handleSendOtp() {
     setFieldError(null);
 
@@ -89,10 +99,41 @@ export function SinglePageAuthForm({
       return;
     }
 
+    // Check if email already has an account
+    const emailExists = await checkEmailExists(email.trim());
+    if (emailExists) {
+      setFieldError('This email already has an account. Please sign in instead.');
+      showToast({
+        message: 'Email already registered. Please sign in or use a different email.',
+        type: 'error',
+      });
+      return;
+    }
+
     // Validate phone
     const validation = validatePhoneNumber(phone);
     if (!validation.valid) {
       setFieldError(validation.error || 'Invalid phone number.');
+      return;
+    }
+
+    // Validate referral code if provided
+    if (invitationCode.trim()) {
+      try {
+        await validateReferralCode(invitationCode);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Invalid referral code.';
+        setFieldError(message);
+        showToast({ message, type: 'error' });
+        return;
+      }
+    } else {
+      // Make referral code required
+      setFieldError('Referral / Invitation code is required.');
+      showToast({
+        message: 'Registration is by invitation only. Please enter your referral code.',
+        type: 'error',
+      });
       return;
     }
 
@@ -136,17 +177,10 @@ export function SinglePageAuthForm({
       return;
     }
 
-    // Validate referral code
-    if (!invitationCode.trim()) {
-      setFieldError('Referral / invitation code is required.');
-      return;
-    }
-
     setLoading(true);
     try {
-      // Validate referral code
-      const validatedCode = await validateReferralCode(invitationCode);
-      await savePendingReferralCode(validatedCode);
+      // Save and apply the referral code (already validated in handleSendOtp)
+      await savePendingReferralCode(invitationCode);
 
       // Verify phone OTP and create account
       const validation = validatePhoneNumber(phone);
@@ -154,14 +188,14 @@ export function SinglePageAuthForm({
         validation.normalized!,
         otp,
         password,
-        validatedCode,
+        invitationCode,
         email,
       );
 
       if (result.success) {
         showToast({ message: 'Account created successfully!' });
         // Apply referral immediately
-        await applyReferralCode(validatedCode, result.user?.id);
+        await applyReferralCode(invitationCode, result.user?.id);
         onAccountCreated?.();
       } else {
         setFieldError(result.message || 'Could not create account.');
@@ -277,6 +311,22 @@ export function SinglePageAuthForm({
           editable={!otpSent}
         />
 
+        {/* Referral / Invitation Code */}
+        <Field
+          label="Referral / Invitation Code"
+          value={invitationCode}
+          onChangeText={(value) => {
+            setInvitationCode(value.trim().toUpperCase());
+            setFieldError(null);
+          }}
+          placeholder="8-character code, e.g. A1B2C3D4"
+          autoCapitalize="characters"
+          editable={!otpSent}
+        />
+        <Text style={styles.invitationNotice}>
+          Registration is strictly by invitation. Contact your referrer for a referral code.
+        </Text>
+
         {/* Send OTP Button */}
         {!otpSent ? (
           <View style={styles.buttonContainer}>
@@ -345,19 +395,6 @@ export function SinglePageAuthForm({
               isPasswordField
               autoComplete="new-password"
             />
-            <Field
-              label="Referral / Invitation Code"
-              value={invitationCode}
-              onChangeText={(value) => {
-                setInvitationCode(value.trim().toUpperCase());
-                setFieldError(null);
-              }}
-              placeholder="8-character code, e.g. A1B2C3D4"
-              autoCapitalize="characters"
-            />
-            <Text style={styles.invitationNotice}>
-              Registration is strictly by invitation. Contact your referrer for a referral code.
-            </Text>
           </>
         ) : null}
 
