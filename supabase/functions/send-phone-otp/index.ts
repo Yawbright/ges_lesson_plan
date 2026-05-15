@@ -58,20 +58,21 @@ async function sendViaArkesel(phoneNumber: string, otp: string, message: string)
     console.log('[Arkesel] Sending SMS to:', phoneNumber);
     console.log('[Arkesel] Using API Key:', arkeselApiKey ? 'Present' : 'Missing');
     
-    const payload = {
-      api_key: arkeselApiKey,
-      sms: message,
-      recipients: phoneNumber,
-    };
+    // Arkesel API expects URL-encoded form data, not JSON
+    const payload = new URLSearchParams();
+    payload.append('api_key', arkeselApiKey);
+    payload.append('sms', message);
+    payload.append('recipients', phoneNumber);
     
-    console.log('[Arkesel] Payload:', JSON.stringify({ ...payload, api_key: '***' }));
+    console.log('[Arkesel] Sending to endpoint: https://sms.arkesel.com/api/send');
+    console.log('[Arkesel] With phone:', phoneNumber);
     
     const response = await fetch('https://sms.arkesel.com/api/send', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify(payload),
+      body: payload.toString(),
     });
 
     console.log('[Arkesel] Response status:', response.status);
