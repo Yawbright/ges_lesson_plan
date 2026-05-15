@@ -22,6 +22,28 @@ interface VerifyPhoneOtpResponse {
   error?: string;
 }
 
+// Format phone number for Arkesel (must be 233XXXXXXXXX format)
+function formatPhoneForArkesel(phone: string): string | null {
+  const cleaned = phone.replace(/\D/g, '');
+  
+  // If starts with 0 (local format), replace with 233 (country code)
+  if (cleaned.startsWith('0')) {
+    return '233' + cleaned.substring(1);
+  }
+  
+  // If already has country code (233), return as is
+  if (cleaned.startsWith('233')) {
+    return cleaned;
+  }
+  
+  // If no country code, assume Ghana (233) and prepend
+  if (cleaned.length === 9) {
+    return '233' + cleaned;
+  }
+  
+  return null;
+}
+
 serve(async (req: Request) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
@@ -55,14 +77,22 @@ serve(async (req: Request) => {
     // Initialize Supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Clean phone number
-    const cleanedPhone = phoneNumber.replace(/\D/g, '');
+    // Format phone number properly (same way as send-phone-otp does)
+    const formattedPhone = formatPhoneForArkesel(phoneNumber);
+    if (!formattedPhone) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid phone number format', success: false }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('[verify-phone-otp] Looking up OTP for phone:', formattedPhone);
 
     // Find OTP request
     const { data: otpRequests, error: queryError } = await supabase
       .from('phone_auth_requests')
       .select('*')
-      .eq('phone_number', cleanedPhone)
+      .eq('phone_number', formattedPhone)
       .is('verified_at', null)
       .gt('otp_expires_at', new Date().toISOString())
       .order('created_at', { ascending: false })
@@ -112,7 +142,7 @@ serve(async (req: Request) => {
     const { data: existingPhoneUser } = await supabase
       .from('user_phone_numbers')
       .select('user_id')
-      .eq('phone_number', cleanedPhone)
+      .eq('phone_number', formattedPhone)
       .limit(1);
 
     let userId: string;
@@ -133,14 +163,14 @@ serve(async (req: Request) => {
       }
 
       // Create auth user with email if provided, otherwise use phone-based email
-      const userEmail = email?.trim().toLowerCase() || `phone_${cleanedPhone}@local.lessonplanner`;
+      const userEmail = email?.trim().toLowerCase() || `phone_${formattedPhone}@local.lessonplanner`;
       
       const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email: userEmail,
         password: password,
         email_confirm: true, // Skip email confirmation
         user_metadata: {
-          phone_number: cleanedPhone,
+          phone_number: formattedPhone,
           signup_method: email ? 'email_and_phone' : 'phone',
           referral_code: referralCode?.trim().toUpperCase() || null,
         },
@@ -185,7 +215,7 @@ serve(async (req: Request) => {
     const { error: phoneError } = await supabase.from('user_phone_numbers').upsert(
       {
         user_id: userId,
-        phone_number: cleanedPhone,
+        phone_number: formattedPhone,
         verified_at: new Date().toISOString(),
         is_primary: true,
       },
@@ -215,7 +245,7 @@ serve(async (req: Request) => {
         message: 'Phone number verified successfully',
         user: {
           id: userId,
-          phone_number: cleanedPhone,
+          phone_number: formattedPhone,
         },
       }),
       {
