@@ -99,11 +99,15 @@ export default function SchemeBuilderScreen() {
     [curriculumEntries, detailStrand, detailSubStrand]
   );
   const languageTopicMatches = useMemo(() => {
-    if (!languageSubject || !detailStrand || detailTopicSearch.trim().length < 2) return [];
-    return curriculumEntries
-      .filter((entry) => entry.strand === detailStrand)
-      .filter((entry) => curriculumEntryMatchesTopicSearch(entry, detailTopicSearch))
-      .slice(0, 12);
+    if (!languageSubject || !detailStrand) return [];
+
+    const query = detailTopicSearch.trim();
+    const strandEntries = curriculumEntries.filter((entry) => entry.strand === detailStrand);
+    const matches = query
+      ? strandEntries.filter((entry) => curriculumEntryMatchesTopicSearch(entry, query))
+      : strandEntries;
+
+    return [...matches].sort(compareCurriculumEntriesForPicker);
   }, [curriculumEntries, detailStrand, detailTopicSearch, languageSubject]);
   const weekOptions = useMemo(
     () =>
@@ -336,7 +340,7 @@ export default function SchemeBuilderScreen() {
           <Text style={styles.panelTitle}>Detailed Builder</Text>
           <Text style={styles.helper}>
             {languageSubject
-              ? 'Choose a week and aspect, then search the topic or focus. The system maps it to the matching sub-strand, content standard and indicator.'
+              ? 'Choose a week and aspect, then select a mapped topic or focus. Use the filter only when you want to narrow the list.'
               : 'Choose a week, then choose strand, sub-strand and content standard. The system assigns the next unused indicator.'}
           </Text>
 
@@ -367,16 +371,21 @@ export default function SchemeBuilderScreen() {
           {languageSubject ? (
             <>
               <Field
-                label="Search topic / focus"
+                label="Filter topic / focus (optional)"
                 value={detailTopicSearch}
                 onChangeText={setDetailTopicSearch}
-                placeholder="Try letter writing, reported speech, summary writing..."
+                placeholder="Type to narrow the curriculum list below..."
                 editable={Boolean(detailStrand)}
               />
-              {detailStrand && detailTopicSearch.trim().length >= 2 ? (
+              {detailStrand ? (
                 <View style={styles.matchPanel}>
                   <Text style={styles.matchTitle}>
-                    {languageTopicMatches.length ? 'Mapped Matches' : 'No mapped matches found'}
+                    {languageTopicMatches.length
+                      ? `${languageTopicMatches.length} mapped topic${languageTopicMatches.length === 1 ? '' : 's'}`
+                      : 'No mapped topics found'}
+                  </Text>
+                  <Text style={styles.matchHint}>
+                    Topics are listed from the selected strand/aspect across topic, indicator and exemplar levels.
                   </Text>
                   {languageTopicMatches.map((entry) => (
                     <Pressable
@@ -387,9 +396,12 @@ export default function SchemeBuilderScreen() {
                       <View style={{ flex: 1 }}>
                         <Text style={styles.matchRowTitle}>{entry.topic || entry.indicator}</Text>
                         <Text style={styles.matchRowMeta}>
-                          {entry.sourceTerm} - Week {entry.sourceWeek} | {entry.subStrand || 'No sub-strand'}
+                          {formatSourcePlacement(entry)} | {entry.subStrand || 'No sub-strand'}
                         </Text>
                         <Text style={styles.matchRowMeta}>{entry.indicator || entry.contentStandard}</Text>
+                        {entry.exemplars?.length ? (
+                          <Text style={styles.matchRowMeta}>Exemplar: {entry.exemplars[0]}</Text>
+                        ) : null}
                       </View>
                       <Ionicons name="add-circle-outline" size={22} color={colors.primary} />
                     </Pressable>
@@ -637,6 +649,29 @@ function stripTrailingS(value: string): string {
   return value.endsWith('s') ? value.slice(0, -1) : value;
 }
 
+function compareCurriculumEntriesForPicker(
+  left: CurriculumEntryOption,
+  right: CurriculumEntryOption
+): number {
+  return (
+    getTermSortValue(left.sourceTerm) - getTermSortValue(right.sourceTerm) ||
+    left.sourceWeek - right.sourceWeek ||
+    (left.strand ?? '').localeCompare(right.strand ?? '') ||
+    (left.subStrand ?? '').localeCompare(right.subStrand ?? '') ||
+    (left.topic ?? left.indicator ?? '').localeCompare(right.topic ?? right.indicator ?? '')
+  );
+}
+
+function getTermSortValue(term: string): number {
+  const match = term.match(/\d+/);
+  return match ? Number(match[0]) : 99;
+}
+
+function formatSourcePlacement(entry: CurriculumEntryOption): string {
+  const term = entry.sourceTerm || 'Mapped curriculum';
+  return entry.sourceWeek ? `${term} - Week ${entry.sourceWeek}` : term;
+}
+
 function getEntryKey(entry: { indicator?: string; contentStandard?: string; topic?: string }) {
   return [entry.contentStandard, entry.indicator, entry.topic]
     .join('|')
@@ -788,8 +823,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     color: colors.text,
-    marginBottom: 8,
+    marginBottom: 4,
   },
+  matchHint: { color: colors.textMuted, lineHeight: 18, marginBottom: 8 },
   matchRow: {
     borderTopWidth: 1,
     borderTopColor: colors.border,
