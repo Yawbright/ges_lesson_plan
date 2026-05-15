@@ -67,7 +67,11 @@ async function sendViaArkesel(phoneNumber: string, otp: string, message: string)
     console.log('[Arkesel] Sending to endpoint: https://sms.arkesel.com/api/send');
     console.log('[Arkesel] With phone:', phoneNumber);
     
-    const response = await fetch('https://sms.arkesel.com/api/send', {
+    // Try the correct Arkesel endpoint
+    const arkeselEndpoint = 'https://api.arkesel.com/sms/send';
+    console.log('[Arkesel] Posting to:', arkeselEndpoint);
+    
+    const response = await fetch(arkeselEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -76,6 +80,7 @@ async function sendViaArkesel(phoneNumber: string, otp: string, message: string)
     });
 
     console.log('[Arkesel] Response status:', response.status);
+    console.log('[Arkesel] Response URL:', response.url);
     
     let data;
     const text = await response.text();
