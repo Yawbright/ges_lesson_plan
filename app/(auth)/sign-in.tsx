@@ -1,6 +1,6 @@
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { UnifiedAuthForm } from '@/components/UnifiedAuthForm';
+import { SinglePageAuthForm } from '@/components/SinglePageAuthForm';
 import { colors } from '@/theme/colors';
 
 export default function SignInScreen() {
@@ -22,7 +22,7 @@ export default function SignInScreen() {
         </View>
 
         <View style={styles.formWrapper}>
-          <UnifiedAuthForm
+          <SinglePageAuthForm
             referralCode={referralCode}
             onSignedIn={() => router.replace('/(tabs)/generate')}
             onAccountCreated={() => router.replace('/onboarding')}
