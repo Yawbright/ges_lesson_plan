@@ -208,7 +208,8 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log('[send-phone-otp] SMS sent successfully, storing OTP in database');
+    console.log('[send-phone-otp] SMS sent successfully by Arkesel! Now storing OTP in database');
+    console.log('[send-phone-otp] OTP to store:', otp, 'Phone:', formattedPhone, 'Expires:', expiresAt.toISOString());
 
     // Store OTP in database (use formatted phone number with country code)
     const { data, error } = await supabase.from('phone_auth_requests').insert({
@@ -219,17 +220,19 @@ serve(async (req: Request) => {
     });
 
     if (error) {
-      console.error('[send-phone-otp] DB Error:', error);
+      console.error('[send-phone-otp] DB Insert Error:', error);
+      console.error('[send-phone-otp] Error details:', JSON.stringify(error));
       return new Response(
         JSON.stringify({
-          error: 'Failed to create OTP request',
+          error: 'Failed to create OTP request in database: ' + (error?.message || 'Unknown error'),
           success: false,
         }),
         { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
       );
     }
 
-    console.log('[send-phone-otp] OTP stored successfully');
+    console.log('[send-phone-otp] OTP stored successfully in database');
+    console.log('[send-phone-otp] Inserted data:', JSON.stringify(data));
 
     return new Response(
       JSON.stringify({
