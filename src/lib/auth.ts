@@ -8,14 +8,26 @@ export function useAuthSession() {
 
   useEffect(() => {
     let active = true;
+    let settled = false;
+
+    const timeout = setTimeout(() => {
+      if (!active || settled) return;
+      console.warn('[auth] Session restore timed out. Continuing without a restored session.');
+      setSession(null);
+      setLoading(false);
+    }, 4000);
 
     async function loadSession() {
       try {
         const { data } = await supabase.auth.getSession();
         if (!active) return;
+        settled = true;
+        clearTimeout(timeout);
         setSession(data.session);
       } catch (error) {
         if (active) {
+          settled = true;
+          clearTimeout(timeout);
           console.warn('[auth] Failed to restore session', error);
           setSession(null);
         }
@@ -29,11 +41,15 @@ export function useAuthSession() {
     loadSession();
 
     const { data: sub } = supabase.auth.onAuthStateChange((_evt, s) => {
+      settled = true;
+      clearTimeout(timeout);
       setSession(s);
+      setLoading(false);
     });
 
     return () => {
       active = false;
+      clearTimeout(timeout);
       sub.subscription.unsubscribe();
     };
   }, []);
