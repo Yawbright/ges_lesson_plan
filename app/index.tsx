@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { Redirect } from 'expo-router';
-import { initializeEmailConfirmationFromUrl, useAuthSession } from '@/lib/auth';
+import { Redirect, router } from 'expo-router';
+import LandingPage from './landingpage';
 import { useToast } from '@/components/ToastProvider';
+import { initializeEmailConfirmationFromUrl, useAuthSession } from '@/lib/auth';
 import { colors } from '@/theme/colors';
 
 export default function Entry() {
@@ -50,7 +51,11 @@ export default function Entry() {
     return <Redirect href="/(auth)/sign-in" />;
   }
 
-  return <Redirect href={session ? '/(tabs)/tools' : '/(auth)/sign-in'} />;
+  if (session) {
+    return <Redirect href="/(tabs)/tools" />;
+  }
+
+  return <LandingPage onGetAccess={() => router.push('/(auth)/sign-in')} />;
 }
 
 const styles = StyleSheet.create({

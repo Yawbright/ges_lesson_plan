@@ -6,6 +6,7 @@ export type AdminSection =
   | 'usage'
   | 'referrals'
   | 'logs'
+  | 'faqs'
   | 'settings';
 
 export type PromotionType = 'none' | 'bonus' | 'percent_discount' | 'fixed_discount' | 'custom';
@@ -48,4 +49,20 @@ export type PackageDraft = {
   endsAt: string;
   active: boolean;
   isNew?: boolean;
+};
+
+export type FaqSectionDraft = {
+  id?: string;
+  title: string;
+  sortOrder: string;
+  active: boolean;
+};
+
+export type FaqItemDraft = {
+  id?: string;
+  sectionId: string;
+  question: string;
+  answer: string;
+  sortOrder: string;
+  active: boolean;
 };

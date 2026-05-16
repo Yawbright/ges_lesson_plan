@@ -52,8 +52,10 @@ export default function RootLayout() {
               contentStyle: { backgroundColor: colors.bg },
             }}
           >
+            <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="landingpage" options={{ headerShown: false }} />
             <Stack.Screen
               name="tools/lesson-plan"
               options={{ title: 'Lesson Plan Tool' }}

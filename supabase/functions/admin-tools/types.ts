@@ -10,9 +10,27 @@ export type Body = {
   reason?: string;
   package?: CreditPackageUpdate;
   settings?: Record<string, unknown>;
+  faqSection?: FaqSectionUpdate;
+  faqItem?: FaqItemUpdate;
   page?: number;
   pageSize?: number;
   report?: AdminReportKind;
+};
+
+export type FaqSectionUpdate = {
+  id?: string;
+  title?: string;
+  sortOrder?: number;
+  active?: boolean;
+};
+
+export type FaqItemUpdate = {
+  id?: string;
+  sectionId?: string;
+  question?: string;
+  answer?: string;
+  sortOrder?: number;
+  active?: boolean;
 };
 
 export type AdminReportKind = 'transactions' | 'purchases' | 'referrals' | 'logs';

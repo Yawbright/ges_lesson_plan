@@ -52,7 +52,7 @@ export function PhoneAuthForm({ onSignedUp, referralCode }: PhoneAuthFormProps) 
     // Validate phone number
     const validation = validatePhoneNumber(phoneNumber);
     if (!validation.valid) {
-      setFieldError(validation.error);
+      setFieldError(validation.error ?? 'Invalid phone number');
       showToast({ message: validation.error || 'Invalid phone number', type: 'error' });
       return;
     }
@@ -72,9 +72,10 @@ export function PhoneAuthForm({ onSignedUp, referralCode }: PhoneAuthFormProps) 
           type: 'success',
         });
       } else {
-        setFieldError(result.error || result.message);
+        const message = getPhoneAuthResultMessage(result, 'Failed to send OTP');
+        setFieldError(message);
         showToast({
-          message: result.error || result.message,
+          message,
           type: 'error',
         });
       }
@@ -119,9 +120,10 @@ export function PhoneAuthForm({ onSignedUp, referralCode }: PhoneAuthFormProps) 
           onSignedUp?.();
         }
       } else {
-        setFieldError(result.error || result.message);
+        const message = getPhoneAuthResultMessage(result, 'Failed to verify OTP');
+        setFieldError(message);
         showToast({
-          message: result.error || result.message,
+          message,
           type: 'error',
         });
       }
@@ -164,9 +166,10 @@ export function PhoneAuthForm({ onSignedUp, referralCode }: PhoneAuthFormProps) 
         });
         onSignedUp?.();
       } else {
-        setFieldError(result.error || result.message);
+        const message = getPhoneAuthResultMessage(result, 'Failed to create account');
+        setFieldError(message);
         showToast({
-          message: result.error || result.message,
+          message,
           type: 'error',
         });
       }
@@ -278,6 +281,13 @@ export function PhoneAuthForm({ onSignedUp, referralCode }: PhoneAuthFormProps) 
       )}
     </View>
   );
+}
+
+function getPhoneAuthResultMessage(
+  result: { error?: string; message?: string },
+  fallback: string
+): string {
+  return result.error || result.message || fallback;
 }
 
 const styles = StyleSheet.create({

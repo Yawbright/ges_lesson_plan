@@ -559,7 +559,10 @@ export const socialStudiesExemplarsByIndicator: Record<string, SocialStudiesExem
     exemplars: [
           "Explain the concept of decentralisation.",
           "Describe the structure of the District Assembly as a decentralised arm of government.",
-          "Examine the role of District Assemblies in the development of the districts."
+          "Examine the role of District Assemblies in the development of the districts.",
+          "Discuss how District Assembly representatives are chosen and how they serve local communities.",
+          "Demonstrate how free and fair elections can be conducted using role-play to elect class leaders.",
+          "Assess the role of the Electoral Commission."
     ],
     sourcePage: 132,
   },

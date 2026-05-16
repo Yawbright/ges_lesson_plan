@@ -62,8 +62,7 @@ export const styles = StyleSheet.create({
   metricDanger: { color: colors.danger },
   twoColumn: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
   panel: {
-    flexGrow: 1,
-    flexBasis: 360,
+    width: '100%',
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
@@ -72,6 +71,11 @@ export const styles = StyleSheet.create({
     marginBottom: 14,
     minWidth: 0,
     maxHeight: 1200,
+  },
+  twoColumnPanel: {
+    flexGrow: 1,
+    flexBasis: 360,
+    width: 'auto',
   },
   panelScroll: {
     flex: 1,

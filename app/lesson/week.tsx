@@ -115,6 +115,14 @@ export default function LessonWeekDetailScreen() {
       ) : null}
       <PreviewActions>
         <PreviewActionButton title="Save as PDF" onPress={() => exportLessonPlansPdf(plans)} />
+        {plans.map((plan, index) => (
+          <PreviewActionButton
+            key={plan.id ?? `${plan.week}-${plan.lessonNumber}-${index}`}
+            title={`Notes L${plan.sessionIndex ?? index + 1}`}
+            variant="secondary"
+            onPress={() => router.push(`/tools/teaching-notes?lessonPlanId=${encodeURIComponent(plan.id ?? '')}`)}
+          />
+        ))}
       </PreviewActions>
     </View>
   );

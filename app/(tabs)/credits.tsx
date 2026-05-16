@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { Button } from '@/components/Button';
 import { useToast } from '@/components/ToastProvider';
@@ -147,86 +147,99 @@ export default function CreditsScreen() {
         <Text style={styles.balanceNote}>All generation and parsing actions cost 1 credit.</Text>
       </View>
 
-      <Text style={styles.sectionTitle}>Buy Credits</Text>
-      <View style={styles.packages}>
-        {packages.map((pack) => {
-          const active = pack.id === selectedPackageId;
-          const hasOriginalPrice = !!pack.originalPriceSubunit && pack.originalPriceSubunit > pack.priceSubunit;
-          const totalCredits = pack.credits + Number(pack.bonusCredits ?? 0);
-          return (
-            <Pressable
-              key={pack.id}
-              style={[styles.packageCard, active && styles.packageCardActive]}
-              onPress={() => setSelectedPackageId(pack.id)}
-            >
-              <View>
-                <View style={styles.packageHeader}>
-                  <Text style={styles.packageTitle}>{pack.name}</Text>
-                  {!!pack.badgeText && <Text style={styles.packageBadge}>{pack.badgeText}</Text>}
-                </View>
-                <View style={styles.priceLine}>
-                  <Text style={styles.packageMeta}>{formatCreditPrice(pack.priceSubunit, pack.currency)}</Text>
-                  {hasOriginalPrice ? (
-                    <Text style={styles.originalPrice}>
-                      {formatCreditPrice(Number(pack.originalPriceSubunit), pack.currency)}
-                    </Text>
-                  ) : null}
-                </View>
-                {pack.bonusCredits ? <Text style={styles.bonusText}>You receive {totalCredits} credits</Text> : null}
-              </View>
-              <Text style={styles.packageCredits}>{totalCredits}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      <Button title="Pay with MoMo" onPress={startCheckout} loading={checkoutLoading} />
-
-      {checkoutStatus ? (
-        <View style={styles.statusPanel}>
-          <Text style={styles.statusText}>{checkoutStatus}</Text>
-        </View>
-      ) : null}
-
-      {pendingReference ? (
-        <View style={styles.pendingPanel}>
-          <Text style={styles.pendingTitle}>Payment pending</Text>
-          <Text style={styles.pendingText}>After completing MoMo checkout, verify the payment here.</Text>
-          <Button
-            title="Verify payment"
-            variant="secondary"
-            onPress={verifyCheckout}
-            loading={verifyLoading}
-          />
-        </View>
-      ) : null}
-
-      <Text style={styles.sectionTitle}>Payment Receipts</Text>
-      {purchases.length ? (
-        purchases.map((item) => (
-          <View key={item.id} style={styles.receiptRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.transactionTitle}>{item.credits} credits</Text>
-              <Text style={styles.transactionMeta}>
-                {formatCreditPrice(item.amountSubunit, item.currency)} | {item.status}
-              </Text>
-              <Text style={styles.transactionMeta}>Ref: {item.reference}</Text>
-              <Text style={styles.transactionMeta}>{new Date(item.paidAt ?? item.createdAt).toLocaleString()}</Text>
-            </View>
-            <Pressable
-              onPress={() => {
-                if (typeof navigator !== 'undefined' && navigator.clipboard) {
-                  navigator.clipboard.writeText(item.reference);
-                  showToast({ message: 'Receipt reference copied.' });
-                }
-              }}
-            >
-              <Text style={styles.copyText}>Copy ref</Text>
-            </Pressable>
+      {purchasingEnabled ? (
+        <>
+          <Text style={styles.sectionTitle}>Credit Packages</Text>
+          <View style={styles.packages}>
+            {packages.map((pack) => {
+              const active = pack.id === selectedPackageId;
+              const hasOriginalPrice = !!pack.originalPriceSubunit && pack.originalPriceSubunit > pack.priceSubunit;
+              const totalCredits = pack.credits + Number(pack.bonusCredits ?? 0);
+              return (
+                <Pressable
+                  key={pack.id}
+                  style={[styles.packageCard, active && styles.packageCardActive]}
+                  onPress={() => setSelectedPackageId(pack.id)}
+                >
+                  <View>
+                    <View style={styles.packageHeader}>
+                      <Text style={styles.packageTitle}>{pack.name}</Text>
+                      {!!pack.badgeText && <Text style={styles.packageBadge}>{pack.badgeText}</Text>}
+                    </View>
+                    <View style={styles.priceLine}>
+                      <Text style={styles.packageMeta}>{formatCreditPrice(pack.priceSubunit, pack.currency)}</Text>
+                      {hasOriginalPrice ? (
+                        <Text style={styles.originalPrice}>
+                          {formatCreditPrice(Number(pack.originalPriceSubunit), pack.currency)}
+                        </Text>
+                      ) : null}
+                    </View>
+                    {pack.bonusCredits ? <Text style={styles.bonusText}>You receive {totalCredits} credits</Text> : null}
+                  </View>
+                  <Text style={styles.packageCredits}>{totalCredits}</Text>
+                </Pressable>
+              );
+            })}
           </View>
-        ))
+
+          <Button title="Pay with MoMo" onPress={startCheckout} loading={checkoutLoading} />
+
+          {checkoutStatus ? (
+            <View style={styles.statusPanel}>
+              <Text style={styles.statusText}>{checkoutStatus}</Text>
+            </View>
+          ) : null}
+
+          {pendingReference ? (
+            <View style={styles.pendingPanel}>
+              <Text style={styles.pendingTitle}>Payment pending</Text>
+              <Text style={styles.pendingText}>After completing MoMo checkout, verify the payment here.</Text>
+              <Button
+                title="Verify payment"
+                variant="secondary"
+                onPress={verifyCheckout}
+                loading={verifyLoading}
+              />
+            </View>
+          ) : null}
+
+          <Text style={styles.sectionTitle}>Payment Receipts</Text>
+          {purchases.length ? (
+            purchases.map((item) => (
+              <View key={item.id} style={styles.receiptRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.transactionTitle}>{item.credits} credits</Text>
+                  <Text style={styles.transactionMeta}>
+                    {formatCreditPrice(item.amountSubunit, item.currency)} | {item.status}
+                  </Text>
+                  <Text style={styles.transactionMeta}>Ref: {item.reference}</Text>
+                  <Text style={styles.transactionMeta}>{new Date(item.paidAt ?? item.createdAt).toLocaleString()}</Text>
+                </View>
+                <Pressable
+                  onPress={() => {
+                    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                      navigator.clipboard.writeText(item.reference);
+                      showToast({ message: 'Receipt reference copied.' });
+                    }
+                  }}
+                >
+                  <Text style={styles.copyText}>Copy ref</Text>
+                </Pressable>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.emptyText}>No payments yet.</Text>
+          )}
+        </>
       ) : (
-        <Text style={styles.emptyText}>No payments yet.</Text>
+        <View style={styles.referralPanel}>
+          <Text style={styles.referralTitle}>Need more credits?</Text>
+          <Text style={styles.referralText}>
+            Invite other teachers with your referral link. When a referred teacher signs up and starts generating work,
+            referral rewards can add credits to your account.
+          </Text>
+          <Button title="Open referral details" variant="secondary" onPress={() => router.push('/(tabs)/profile')} />
+        </View>
       )}
 
       <Text style={styles.sectionTitle}>Recent Activity</Text>
@@ -268,6 +281,17 @@ const styles = StyleSheet.create({
   balance: { color: '#fff', fontSize: 46, fontWeight: '700', marginTop: 4 },
   balanceNote: { color: '#EAF2EE', marginTop: 6, lineHeight: 19 },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: colors.primaryDark, marginBottom: 12 },
+  referralPanel: {
+    backgroundColor: colors.accentSoft,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: 8,
+    padding: 14,
+    gap: 10,
+    marginBottom: 22,
+  },
+  referralTitle: { color: colors.primaryDark, fontSize: 16, fontWeight: '800' },
+  referralText: { color: colors.text, lineHeight: 20 },
   packages: { gap: 10, marginBottom: 14 },
   packageCard: {
     backgroundColor: colors.surface,

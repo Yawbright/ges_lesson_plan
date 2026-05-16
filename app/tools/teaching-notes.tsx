@@ -4,20 +4,21 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Field } from '@/components/Field';
 import { Button } from '@/components/Button';
 import { CreditUsagePreview } from '@/components/CreditUsagePreview';
+import { GenerationProgress } from '@/components/GenerationProgress';
 import { TeachingNotesView } from '@/components/TeachingNotesView';
 import { useToast } from '@/components/ToastProvider';
 import { formatAiActionError, generateTeachingNotes, isInsufficientCreditsError } from '@/lib/ai';
 import { loadRuntimeAppSettings } from '@/lib/appSettings';
 import { loadCreditBalance } from '@/lib/credits';
 import { exportTeachingNotesPdf } from '@/lib/export';
-import { loadLessonPlans } from '@/lib/lessonStore';
+import { loadLessonWorks } from '@/lib/lessonStore';
 import { logAppError } from '@/lib/logger';
 import {
   loadTeachingNotesForLesson,
   saveTeachingNotes,
 } from '@/lib/teachingNotesStore';
 import { colors } from '@/theme/colors';
-import type { LessonPlan } from '@/types/lessonPlan';
+import type { LessonPlan, LessonPlanBundle, SavedLessonWork } from '@/types/lessonPlan';
 import type { TeachingNotes } from '@/types/teachingNotes';
 
 export default function TeachingNotesToolScreen() {
@@ -33,12 +34,12 @@ export default function TeachingNotesToolScreen() {
   const [creditCost, setCreditCost] = useState(1);
 
   const refresh = useCallback(async () => {
-    const [lessonPlans, balance, settings] = await Promise.all([
-      loadLessonPlans(),
+    const [lessonWorks, balance, settings] = await Promise.all([
+      loadLessonWorks(),
       loadCreditBalance().catch(() => 0),
       loadRuntimeAppSettings(),
     ]);
-    setPlans(lessonPlans);
+    setPlans(flattenLessonWorks(lessonWorks));
     setCreditBalance(balance);
     setCreditCost(settings.featureCreditCosts.teaching_notes_generation);
   }, []);
@@ -131,7 +132,7 @@ export default function TeachingNotesToolScreen() {
       if (isInsufficientCreditsError(err)) {
         Alert.alert('Not enough credits', message, [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Buy credits', onPress: () => router.push('/(tabs)/credits') },
+          { text: 'Get credits', onPress: () => router.push('/(tabs)/credits') },
         ]);
       } else {
         Alert.alert('Generation failed', message);
@@ -147,7 +148,8 @@ export default function TeachingNotesToolScreen() {
         <View style={styles.previewActions}>
           <Button title="Back to lessons" variant="secondary" onPress={() => setActiveNotes(null)} style={styles.actionButton} />
           <Button title="Save Notes as PDF" onPress={() => exportTeachingNotesPdf(activeNotes)} style={styles.actionButton} />
-          <Button title="Regenerate" variant="secondary" onPress={handleGenerate} loading={loading} style={styles.actionButton} />
+          <Button title="Regenerate" variant="secondary" onPress={handleGenerate} disabled={loading} style={styles.actionButton} />
+          <GenerationProgress active={loading} label="Regenerating teaching notes" estimateMs={85000} />
         </View>
         {versions.length > 1 ? (
           <ScrollView horizontal style={styles.versionStrip} contentContainerStyle={styles.versionStripContent}>
@@ -200,8 +202,13 @@ export default function TeachingNotesToolScreen() {
             {versions[0] ? (
               <Button title="Open latest notes" variant="secondary" onPress={() => setActiveNotes(versions[0])} style={styles.actionButton} />
             ) : null}
-            <Button title={versions.length ? 'Generate new version' : 'Generate teaching notes'} onPress={handleGenerate} loading={loading} style={styles.actionButton} />
+            <Button title={versions.length ? 'Generate new version' : 'Generate teaching notes'} onPress={handleGenerate} disabled={loading} style={styles.actionButton} />
           </View>
+          <GenerationProgress
+            active={loading}
+            label={versions.length ? 'Generating new teaching notes version' : 'Generating teaching notes'}
+            estimateMs={85000}
+          />
         </View>
       ) : null}
 
@@ -227,6 +234,14 @@ export default function TeachingNotesToolScreen() {
 
 function lessonTitle(plan: LessonPlan) {
   return `${plan.subject} - ${plan.classLevel} - Week ${plan.week}${plan.lessonNumber ? ` (${plan.lessonNumber})` : ''}`;
+}
+
+function flattenLessonWorks(works: SavedLessonWork[]): LessonPlan[] {
+  return works.flatMap((work) => (isLessonBundle(work) ? work.plans : [work]));
+}
+
+function isLessonBundle(work: SavedLessonWork): work is LessonPlanBundle {
+  return (work as LessonPlanBundle).kind === 'bundle' && Array.isArray((work as LessonPlanBundle).plans);
 }
 
 const styles = StyleSheet.create({

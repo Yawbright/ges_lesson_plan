@@ -114,9 +114,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     gap: 10,
     flexDirection: 'row',
+    flexWrap: 'wrap',
   },
   actionButton: {
     flex: 1,
-    minWidth: 0,
+    minWidth: 120,
   },
 });

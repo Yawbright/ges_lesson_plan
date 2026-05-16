@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { getDeviceId } from './device';
 
 export interface SendOtpRequest {
   phoneNumber: string;
@@ -18,6 +19,7 @@ export interface VerifyOtpRequest {
   email?: string;
   password?: string;
   referralCode?: string;
+  deviceId?: string;
 }
 
 export interface VerifyOtpResponse {
@@ -110,6 +112,7 @@ export async function verifyPhoneOtp(
 ): Promise<VerifyOtpResponse> {
   try {
     console.log('[phoneAuth] Verifying OTP for:', phoneNumber);
+    const deviceId = await getDeviceId();
 
     const { data, error } = await supabase.functions.invoke('verify-phone-otp', {
       body: {
@@ -118,6 +121,7 @@ export async function verifyPhoneOtp(
         email,
         password,
         referralCode,
+        deviceId,
       },
     });
 

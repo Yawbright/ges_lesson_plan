@@ -5,6 +5,7 @@ import * as FileSystem from 'expo-file-system';
 import { router, useFocusEffect } from 'expo-router';
 import { Button } from '@/components/Button';
 import { CreditUsagePreview } from '@/components/CreditUsagePreview';
+import { GenerationProgress } from '@/components/GenerationProgress';
 import { SelectField } from '@/components/SelectField';
 import { useToast } from '@/components/ToastProvider';
 import {
@@ -180,7 +181,7 @@ export default function SchemesScreen() {
     if (isInsufficientCreditsError(err)) {
       Alert.alert('Not enough credits', message, [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Buy credits', onPress: () => router.push('/(tabs)/credits') },
+        { text: 'Get credits', onPress: () => router.push('/(tabs)/credits') },
       ]);
       return;
     }
@@ -258,8 +259,12 @@ export default function SchemesScreen() {
           title={Platform.OS === 'web' ? 'Analyze Custom Scheme' : 'Choose PDF or DOCX'}
           variant="secondary"
           onPress={handleUpload}
-          loading={uploading}
-          disabled={Platform.OS === 'web' && !webSelectedAsset}
+          disabled={uploading || (Platform.OS === 'web' && !webSelectedAsset)}
+        />
+        <GenerationProgress
+          active={uploading}
+          label="Analyzing scheme document"
+          estimateMs={55000}
         />
       </View>
 
@@ -271,7 +276,8 @@ export default function SchemesScreen() {
           label="Generating a scheme from AI uses 1 credit."
           onBuyCredits={() => router.push('/(tabs)/credits')}
         />
-        <Button title="Generate Scheme From AI" onPress={handleGenerate} loading={generating} />
+        <Button title="Generate Scheme From AI" onPress={handleGenerate} disabled={generating} />
+        <GenerationProgress active={generating} label="Generating scheme of learning" estimateMs={60000} />
       </View>
 
       {latestScheme ? (

@@ -10,6 +10,7 @@ interface VerifyPhoneOtpRequest {
   email?: string;
   password?: string;
   referralCode?: string;
+  deviceId?: string;
 }
 
 interface VerifyPhoneOtpResponse {
@@ -65,7 +66,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { phoneNumber, otp, email, password, referralCode } = (await req.json()) as VerifyPhoneOtpRequest;
+    const { phoneNumber, otp, email, password, referralCode, deviceId } = (await req.json()) as VerifyPhoneOtpRequest;
 
     if (!phoneNumber?.trim() || !otp?.trim()) {
       return new Response(
@@ -172,6 +173,7 @@ serve(async (req: Request) => {
         user_metadata: {
           phone_number: formattedPhone,
           signup_method: email ? 'email_and_phone' : 'phone',
+          invitation_code: referralCode?.trim().toUpperCase() || null,
           referral_code: referralCode?.trim().toUpperCase() || null,
         },
       });
@@ -189,24 +191,46 @@ serve(async (req: Request) => {
 
       userId = authData.user.id;
 
-      // Handle referral code if provided
+      // Handle referral code after phone OTP verification. Phone verification makes
+      // the referred account active immediately, so the referral can be rewarded here.
       if (referralCode) {
-        const { data: referralCodeData } = await supabase
-          .from('referral_codes')
-          .select('user_id')
-          .eq('code', referralCode.trim().toUpperCase())
-          .limit(1);
+        const { data: referralResult, error: referralError } = await supabase.rpc('apply_referral_code', {
+          p_referred_user_id: userId,
+          p_referral_code: referralCode.trim().toUpperCase(),
+          p_referred_device_id: deviceId ?? null,
+          p_referred_ip:
+            req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+            req.headers.get('cf-connecting-ip') ||
+            null,
+          p_referred_user_agent: req.headers.get('user-agent'),
+        });
 
-        if (referralCodeData && referralCodeData.length > 0) {
-          // Create referral record - email confirmation is skipped since email_confirm=true
-          await supabase.from('referrals').insert({
-            referrer_user_id: referralCodeData[0].user_id,
-            referred_user_id: userId,
-            referral_code: referralCode.trim().toUpperCase(),
-            referred_email: email?.trim().toLowerCase(),
-            status: 'pending',
-            referred_email_confirmed: true, // Email confirmation is skipped
+        if (referralError) {
+          console.error('[Referral Error]', referralError);
+          return new Response(
+            JSON.stringify({
+              error: referralError.message || 'Failed to apply referral code',
+              success: false,
+            }),
+            { status: 500, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const appliedReferral = Array.isArray(referralResult) ? referralResult[0] : referralResult;
+        if (appliedReferral?.status === 'pending') {
+          const { error: rewardError } = await supabase.rpc('reward_referral_if_qualified', {
+            p_referred_user_id: userId,
           });
+          if (rewardError) {
+            console.error('[Referral Reward Error]', rewardError);
+            return new Response(
+              JSON.stringify({
+                error: rewardError.message || 'Failed to grant referral reward',
+                success: false,
+              }),
+              { status: 500, headers: { 'Content-Type': 'application/json' } }
+            );
+          }
         }
       }
     }

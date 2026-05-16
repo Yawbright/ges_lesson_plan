@@ -4,8 +4,6 @@ import { Button } from '@/components/Button';
 import { Field } from '@/components/Field';
 import { useToast } from '@/components/ToastProvider';
 import {
-  applyReferralCode,
-  savePendingReferralCode,
   validateReferralCode,
 } from '@/lib/referrals';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
@@ -179,9 +177,6 @@ export function SinglePageAuthForm({
 
     setLoading(true);
     try {
-      // Save and apply the referral code (already validated in handleSendOtp)
-      await savePendingReferralCode(invitationCode);
-
       // Verify phone OTP and create account
       const validation = validatePhoneNumber(phone);
       const result = await verifyPhoneOtp(
@@ -193,9 +188,8 @@ export function SinglePageAuthForm({
       );
 
       if (result.success) {
+        await signInWithEmail(email.trim().toLowerCase(), password);
         showToast({ message: 'Account created successfully!' });
-        // Apply referral immediately
-        await applyReferralCode(invitationCode, result.user?.id);
         onAccountCreated?.();
       } else {
         setFieldError(result.message || 'Could not create account.');

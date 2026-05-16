@@ -21,6 +21,8 @@ export function Button({
   size = 'medium',
 }: Props) {
   const isDisabled = disabled || loading;
+  const textSizeStyle = size === 'small' ? styles.textSmall : size === 'large' ? styles.textLarge : styles.textMedium;
+  const textVariantStyle = textStylesByVariant[variant];
   return (
     <Pressable
       onPress={onPress}
@@ -37,7 +39,7 @@ export function Button({
       {loading ? (
         <ActivityIndicator color={variant === 'primary' || variant === 'danger' ? '#fff' : colors.primary} />
       ) : (
-        <Text style={[styles.text, styles[`text${size.charAt(0).toUpperCase() + size.slice(1)}`], styles[`${variant}Text`]]}>{title}</Text>
+        <Text style={[styles.text, textSizeStyle, textVariantStyle]}>{title}</Text>
       )}
     </Pressable>
   );
@@ -120,3 +122,10 @@ const styles = StyleSheet.create({
   secondaryText: { color: colors.primaryDark },
   ghostText: { color: colors.primary },
 });
+
+const textStylesByVariant = {
+  primary: styles.primaryText,
+  secondary: styles.secondaryText,
+  ghost: styles.ghostText,
+  danger: styles.dangerText,
+};

@@ -2,11 +2,7 @@ import { invokeEdgeFunction } from './edgeFunctions';
 import { buildFallbackLessonPlan } from './fallbackLessonPlan';
 import { getExplicitCurriculumYearWeeks, getExplicitSchemeOfWork } from './curriculum';
 import { buildSchemeContext, findMatchingScheme } from './schemeStore';
-import { buildComputingLessonFocusGuidance } from './computingExemplarGuidance';
-import { buildEnglishLessonSupportGuidance } from './englishExemplarGuidance';
-import { buildMathematicsLessonFocusGuidance } from './mathematicsExemplarGuidance';
-import { buildScienceLessonFocusGuidance } from './scienceExemplarGuidance';
-import { buildSocialStudiesLessonFocusGuidance } from './socialStudiesExemplarGuidance';
+import { buildExemplarLessonGuidance } from './exemplarLessonGuidance';
 import type { LessonPlan, LessonPlanPromptInput } from '@/types/lessonPlan';
 import type { SchemeGenerationInput, SchemeOfWork } from '@/types/scheme';
 import type { TeachingNotes } from '@/types/teachingNotes';
@@ -33,7 +29,7 @@ export function isAiSecretMissingError(err: unknown): boolean {
 
 export function formatAiActionError(err: unknown): string {
   if (isInsufficientCreditsError(err)) {
-    return 'You do not have enough credits for this action. Buy credits to continue.';
+    return 'You do not have enough credits for this action. Refer friends to earn more credits.';
   }
 
   if (isAiSecretMissingError(err)) {
@@ -80,31 +76,7 @@ export async function generateLessonPlan(
   }
 
   const schemeContext = buildSchemeContext(groundingScheme, input.week);
-  const lessonFocusGuidance = buildScienceLessonFocusGuidance({
-    subject: groundingScheme.subject || input.subject,
-    classLevel: groundingScheme.classLevel || input.classLevel,
-    week: schemeContext.selectedWeek,
-    sessionIndex: input.sessionIndex,
-    sessionsPerWeek: input.sessionsPerWeek,
-  }) ?? buildMathematicsLessonFocusGuidance({
-    subject: groundingScheme.subject || input.subject,
-    classLevel: groundingScheme.classLevel || input.classLevel,
-    week: schemeContext.selectedWeek,
-    sessionIndex: input.sessionIndex,
-    sessionsPerWeek: input.sessionsPerWeek,
-  }) ?? buildSocialStudiesLessonFocusGuidance({
-    subject: groundingScheme.subject || input.subject,
-    classLevel: groundingScheme.classLevel || input.classLevel,
-    week: schemeContext.selectedWeek,
-    sessionIndex: input.sessionIndex,
-    sessionsPerWeek: input.sessionsPerWeek,
-  }) ?? buildComputingLessonFocusGuidance({
-    subject: groundingScheme.subject || input.subject,
-    classLevel: groundingScheme.classLevel || input.classLevel,
-    week: schemeContext.selectedWeek,
-    sessionIndex: input.sessionIndex,
-    sessionsPerWeek: input.sessionsPerWeek,
-  }) ?? buildEnglishLessonSupportGuidance({
+  const lessonFocusGuidance = buildExemplarLessonGuidance({
     subject: groundingScheme.subject || input.subject,
     classLevel: groundingScheme.classLevel || input.classLevel,
     week: schemeContext.selectedWeek,

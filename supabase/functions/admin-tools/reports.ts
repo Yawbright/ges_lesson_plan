@@ -59,12 +59,36 @@ export async function loadReferrals(service: ServiceClient, input: ReportInput =
     new Set((data ?? []).flatMap((item) => [item.referrer_user_id, item.referred_user_id]).filter(Boolean)),
   );
   const emailById = await loadEmails(service, ids);
+  const confirmationById = await loadEmailConfirmationByUserId(service, ids);
   const rows = (data ?? []).map((item) => ({
     ...item,
     referrer_email: emailById.get(item.referrer_user_id) ?? '',
     referred_email: emailById.get(item.referred_user_id) ?? '',
+    referred_email_confirmed: confirmationById.has(item.referred_user_id)
+      ? confirmationById.get(item.referred_user_id)
+      : item.referred_email_confirmed,
   }));
   return pageResult(rows, page, pageSize);
+}
+
+async function loadEmailConfirmationByUserId(service: ServiceClient, userIds: string[]) {
+  const confirmedById = new Map<string, boolean>();
+  if (!userIds.length) return confirmedById;
+
+  const { data, error } = await service
+    .from('app_user_directory')
+    .select('user_id,email_confirmed_at')
+    .in('user_id', userIds);
+
+  if (error) {
+    console.error('[loadEmailConfirmationByUserId] Query error:', error.message, error.details);
+    return confirmedById;
+  }
+
+  for (const item of data ?? []) {
+    confirmedById.set(item.user_id, Boolean(item.email_confirmed_at));
+  }
+  return confirmedById;
 }
 
 export async function loadLogs(service: ServiceClient, input: PageInput = {}): Promise<PageResult<any>> {

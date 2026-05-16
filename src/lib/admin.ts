@@ -118,6 +118,27 @@ export type AdminSetting = {
   updated_at: string;
 };
 
+export type AdminFaqItem = {
+  id: string;
+  section_id: string;
+  question: string;
+  answer: string;
+  sort_order: number;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdminFaqSection = {
+  id: string;
+  title: string;
+  sort_order: number;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+  items: AdminFaqItem[];
+};
+
 export type AdminReportKind = 'transactions' | 'purchases' | 'referrals' | 'logs';
 
 export type AdminPage<T> = {
@@ -142,6 +163,7 @@ export type AdminDashboard = {
   };
   packages: AdminCreditPackage[];
   settings: AdminSetting[];
+  faqs: AdminFaqSection[];
 };
 
 export type AdminUserDetail = {
@@ -227,6 +249,36 @@ export async function adminDeletePackage(id: string) {
 export async function adminUpdateSettings(settings: Record<string, unknown>) {
   const data = await invokeAdmin<{ settings: AdminSetting[] }>({ action: 'update-settings', settings });
   return data.settings;
+}
+
+export async function adminUpsertFaqSection(input: {
+  id?: string;
+  title: string;
+  sortOrder: number;
+  active: boolean;
+}) {
+  const data = await invokeAdmin<{ section: AdminFaqSection }>({ action: 'upsert-faq-section', faqSection: input });
+  return data.section;
+}
+
+export async function adminDeleteFaqSection(id: string) {
+  return invokeAdmin<{ deleted: boolean }>({ action: 'delete-faq-section', faqSection: { id } });
+}
+
+export async function adminUpsertFaqItem(input: {
+  id?: string;
+  sectionId: string;
+  question: string;
+  answer: string;
+  sortOrder: number;
+  active: boolean;
+}) {
+  const data = await invokeAdmin<{ item: AdminFaqItem }>({ action: 'upsert-faq-item', faqItem: input });
+  return data.item;
+}
+
+export async function adminDeleteFaqItem(id: string) {
+  return invokeAdmin<{ deleted: boolean }>({ action: 'delete-faq-item', faqItem: { id } });
 }
 
 export async function adminLoadLogs() {

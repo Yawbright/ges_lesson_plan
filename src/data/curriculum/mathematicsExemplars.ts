@@ -309,6 +309,14 @@ export const mathematicsExemplarsByIndicator: Record<string, MathematicsExemplar
     ],
     sourcePage: 73,
   },
+  "B7.2.3.1.3": {
+    indicator: "Model linear equations, then write mathematical expressions and describe the process of solving the equation using algebraic tiles.",
+    exemplars: [
+          "Use algebraic tiles or other concrete materials to model linear equations and write the related mathematical expressions.",
+          "Describe orally and symbolically the process used to solve the modelled equation."
+    ],
+    sourcePage: 75,
+  },
   "B7.2.3.1.4": {
     indicator: "Solve linear equations in one variable",
     exemplars: [
@@ -800,6 +808,14 @@ export const mathematicsExemplarsByIndicator: Record<string, MathematicsExemplar
     ],
     sourcePage: 148,
   },
+  "B8.2.2.1.3": {
+    indicator: "Substitute values to evaluate algebraic expressions including fractions and use these to solve problems.",
+    exemplars: [
+          "Simplify algebraic expressions, then substitute given values to evaluate the expressions.",
+          "Solve problems based on substitution into algebraic expressions including fractions."
+    ],
+    sourcePage: 149,
+  },
   "B8.2.2.1.4": {
     indicator: "Factorise given expressions involving the four operations and use the Critical Thinking and involving algebraic experiences gained to solve problems. Problem solving (CP) expressions (including multiplication of",
     exemplars: [
@@ -1068,6 +1084,14 @@ export const mathematicsExemplarsByIndicator: Record<string, MathematicsExemplar
     indicator: "Solve operations involving addition, subtraction, multiplication Critical Thinking and understanding of and division using word problems. Problem solving (CP) addition, subtraction, multiplication and",
     exemplars: [
           "E.g. Create and solve story problems involving a combination of two or more of the Communication and division of decimal basic operations. Collaboration (CC) numbers to solve problems, and round (×, ÷, ─,+). answers to given decimal i) A trader sells oranges from two baskets, A and B. Basket A contained 85 places and significant oranges and she sold 48. She sold 59 oranges from basket B and was left with the figures same number of oranges as in Basket A. How many oranges were originally in Basket B?"
+    ],
+    sourcePage: 199,
+  },
+  "B9.1.2.2.2": {
+    indicator: "Solve word problems involving the four basic operations and round the answers to the nearest two decimal figures or to some significant figures.",
+    exemplars: [
+          "Solve story problems involving a combination of two or more of the basic operations.",
+          "Calculate totals in money contexts and round answers to two decimal places or three significant figures."
     ],
     sourcePage: 199,
   },

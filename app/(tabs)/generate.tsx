@@ -14,6 +14,7 @@ import { Field } from '@/components/Field';
 import { Button } from '@/components/Button';
 import { CreditUsagePreview } from '@/components/CreditUsagePreview';
 import { DatePickerField } from '@/components/DatePickerField';
+import { GenerationProgress } from '@/components/GenerationProgress';
 import { LessonPlanStack, LessonPlanTable } from '@/components/LessonPlanTable';
 import { PreviewActionButton, PreviewActions, PreviewHeader } from '@/components/PreviewChrome';
 import { SelectField } from '@/components/SelectField';
@@ -218,7 +219,7 @@ export default function GenerateScreen() {
           showToast({ message, type: 'error' });
           Alert.alert('Not enough credits', message, [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Buy credits', onPress: () => router.push('/(tabs)/credits') },
+            { text: 'Get credits', onPress: () => router.push('/(tabs)/credits') },
           ]);
           return;
         }
@@ -300,7 +301,7 @@ export default function GenerateScreen() {
       if (isInsufficientCreditsError(err)) {
         Alert.alert('Not enough credits', message, [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Buy credits', onPress: () => router.push('/(tabs)/credits') },
+          { text: 'Get credits', onPress: () => router.push('/(tabs)/credits') },
         ]);
       } else {
         Alert.alert('Generation failed', message);
@@ -537,7 +538,12 @@ export default function GenerateScreen() {
         <Button
           title={sessionIndex === 'all' ? `Generate all ${sessionsPerWeek} lesson plans` : 'Generate lesson plan'}
           onPress={handleGenerate}
-          loading={loading}
+          disabled={loading}
+        />
+        <GenerationProgress
+          active={loading}
+          label={sessionIndex === 'all' ? 'Generating full-week lesson plans' : 'Generating lesson plan'}
+          estimateMs={sessionIndex === 'all' ? 45000 * selectedLessonNumbers.length : 40000}
         />
       </ScrollView>
     </KeyboardAvoidingView>

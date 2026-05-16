@@ -132,6 +132,12 @@ export default function SchemeBuilderScreen() {
   }, [classLevel, subject, subjectOptions]);
 
   useEffect(() => {
+    if (languageSubject && mode === 'quick') {
+      setMode('detailed');
+    }
+  }, [languageSubject, mode]);
+
+  useEffect(() => {
     setWeeks(createEmptyWeeks(numberOfWeeks));
     setActiveWeek(1);
     setSelectedStrands([]);
@@ -153,6 +159,11 @@ export default function SchemeBuilderScreen() {
   }, [detailSubStrand]);
 
   function handleBuildQuickDraft() {
+    if (languageSubject) {
+      setMode('detailed');
+      return;
+    }
+
     if (!curriculumEntries.length) {
       Alert.alert('No mapped curriculum', 'No mapped curriculum entries were found for this selection.');
       return;
@@ -281,11 +292,13 @@ export default function SchemeBuilderScreen() {
         </View>
 
         <View style={styles.modeRow}>
-          <ModeButton
-            title="Quick Builder"
-            active={mode === 'quick'}
-            onPress={() => setMode('quick')}
-          />
+          {!languageSubject ? (
+            <ModeButton
+              title="Quick Builder"
+              active={mode === 'quick'}
+              onPress={() => setMode('quick')}
+            />
+          ) : null}
           <ModeButton
             title="Detailed Builder"
             active={mode === 'detailed'}

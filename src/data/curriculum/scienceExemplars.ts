@@ -1074,6 +1074,14 @@ export const scienceExemplarsByIndicator: Record<string, ScienceExemplarRecord> 
     ],
     sourcePage: 147,
   },
+  "B9/JHS3.4.3.1.2": {
+    indicator: "Describe how conversion and conservation of energy are applied in life.",
+    exemplars: [
+          "Distinguish between energy conversion and conservation using everyday examples.",
+          "Identify opportunities to conserve energy and produce a report of your work."
+    ],
+    sourcePage: 147,
+  },
   "B9/JHS3.4.4.1.1": {
     indicator: "Explain the concept of pressure and show how pressure relates to force; perform activities that work on the principle of pressure in the daily lives of humans",
     exemplars: [
@@ -1153,6 +1161,14 @@ export const scienceExemplarsByIndicator: Record<string, ScienceExemplarRecord> 
     ],
     sourcePage: 154,
   },
+  "B9/JHS3.5.2.2.2": {
+    indicator: "Explain the concept of common diseases in an environment.",
+    exemplars: [
+          "Conduct a survey about common diseases and analyse the findings to show what constitutes a common disease in a community.",
+          "Identify causes, symptoms and prevention of common diseases."
+    ],
+    sourcePage: 153,
+  },
   "B9/JHS3.5.3.2.1": {
     indicator: "Explain the concept of industry and distinguish between modern and indigenous industries",
     exemplars: [
@@ -1160,6 +1176,14 @@ export const scienceExemplarsByIndicator: Record<string, ScienceExemplarRecord> 
           "Describe how technology affects industry and compare the technologies in indigenous and modern industries."
     ],
     sourcePage: 155,
+  },
+  "B9/JHS3.5.3.2.2": {
+    indicator: "Examine indigenous industries in their communities and show the scientific processes in the stages of production.",
+    exemplars: [
+          "Discuss indigenous industries in their communities and identify the scientific processes, concepts and principles underlying the stages of production in the industries.",
+          "Identify indigenous practices at home, school and the community and the science involved in the practices."
+    ],
+    sourcePage: 156,
   },
   "B9/JHS3.5.4.1.1": {
     indicator: "Examine various natural and human factors that influence climate change and green economy in their localities",
@@ -1244,6 +1268,14 @@ export const scienceExemplarsByIndicator: Record<string, ScienceExemplarRecord> 
           "Search for the causes, symptoms and prevention of hepatitis and develop a plan to minimise the disease."
     ],
     sourcePage: 115,
+  },
+  "B8/JHS2.5.2.1.2": {
+    indicator: "Analyse the risk factors of communicable diseases.",
+    exemplars: [
+          "Search for information that is associated with communicable diseases.",
+          "Create awareness about risk factors of communicable diseases such as hepatitis, HIV, measles and others in order to prevent the diseases in schools and communities."
+    ],
+    sourcePage: 116,
   },
   "B8/JHS2.5.2.2.1": {
     indicator: "Explain the nature of bacterial diseases with special emphasis on food poisoning, gonorrhoea and meningitis, their causes, symptoms, effects on humans and prevention.",

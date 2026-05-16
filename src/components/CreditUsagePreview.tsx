@@ -23,10 +23,10 @@ export function CreditUsagePreview({
       <Text style={[styles.text, !enough && styles.warningText]}>
         {enough
           ? `Balance after this: ${balanceAfter} ${balanceAfter === 1 ? 'credit' : 'credits'}.`
-          : `You have ${balance} ${balance === 1 ? 'credit' : 'credits'}. Add credits to continue.`}
+          : `You have ${balance} ${balance === 1 ? 'credit' : 'credits'}. Refer friends to earn more credits.`}
       </Text>
       {!enough ? (
-        <Button title="Buy credits" variant="secondary" onPress={onBuyCredits} style={styles.button} />
+        <Button title="Get credits" variant="secondary" onPress={onBuyCredits} style={styles.button} />
       ) : null}
     </View>
   );

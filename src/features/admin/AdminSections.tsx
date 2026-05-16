@@ -14,6 +14,7 @@ import { styles } from './adminStyles';
 import type {
   AdminCreditPackage,
   AdminDashboard,
+  AdminFaqSection,
   AdminLog,
   AdminPurchase,
   AdminReferral,
@@ -21,7 +22,7 @@ import type {
   AdminUser,
   AdminUserDetail,
 } from '@/lib/admin';
-import type { AppSettingsDraft, PackageDraft, PromotionType, ReportFilter } from './adminTypes';
+import type { AppSettingsDraft, FaqItemDraft, FaqSectionDraft, PackageDraft, PromotionType, ReportFilter } from './adminTypes';
 import {
   cleanWholeNumber,
   emptyFilter,
@@ -93,7 +94,7 @@ function ReportFilters(props: {
   filter: ReportFilter;
   setFilter: (patch: Partial<ReportFilter>) => void;
   statusLabel: string;
-  statusOptions: Array<{ label: string; value: string }>;
+  statusOptions: { label: string; value: string }[];
   searchPlaceholder: string;
 }) {
   return (
@@ -150,14 +151,14 @@ export function Overview({ dashboard, openUser }: { dashboard: AdminDashboard; o
         <Metric title="Errors" value={String(overview.errors)} tone="danger" />
       </View>
       <View style={styles.twoColumn}>
-        <Panel title="Recent Users">
+        <Panel title="Recent Users" style={styles.twoColumnPanel}>
           {dashboard.users.length ? (
             dashboard.users.slice(0, 6).map((user) => <UserRow key={user.user_id} user={user} onPress={() => openUser(user)} />)
           ) : (
             <Text style={styles.emptyText}>No users are available yet.</Text>
           )}
         </Panel>
-        <Panel title="Recent Payments">
+        <Panel title="Recent Payments" style={styles.twoColumnPanel}>
           {dashboard.purchases.length ? (
             dashboard.purchases.slice(0, 6).map((item) => <PaymentRow key={item.id} purchase={item} />)
           ) : (
@@ -641,7 +642,7 @@ export function SettingsSection(props: {
             <View style={styles.switchRow}>
               <View style={{ flex: 1, paddingRight: 10 }}>
                 <Text style={styles.rowTitle}>Credit purchasing</Text>
-                <Text style={styles.meta}>When off, users can view packages but cannot start MoMo checkout.</Text>
+                <Text style={styles.meta}>When off, the Credits tab hides packages and points users to referrals. When on, MoMo packages return.</Text>
               </View>
               <Switch
                 value={props.appSettings.purchasingEnabled}
@@ -657,6 +658,119 @@ export function SettingsSection(props: {
         <View style={styles.editActionPanel}>
           <Button title="Save app settings" onPress={props.saveAppSettings} loading={props.savingAppSettings} />
         </View>
+      </Panel>
+    </View>
+  );
+}
+
+export function FaqsSection(props: {
+  faqs: AdminFaqSection[];
+  sectionDraft: FaqSectionDraft;
+  setSectionDraft: (patch: Partial<FaqSectionDraft>) => void;
+  itemDraft: FaqItemDraft;
+  setItemDraft: (patch: Partial<FaqItemDraft>) => void;
+  saveSection: () => void;
+  deleteSection: (id: string) => void;
+  editSection: (section: AdminFaqSection) => void;
+  newSection: () => void;
+  saveItem: () => void;
+  deleteItem: (id: string) => void;
+  editItem: (item: AdminFaqSection['items'][number]) => void;
+  newItem: (sectionId?: string) => void;
+  saving: boolean;
+}) {
+  return (
+    <View style={styles.settingsStack}>
+      <View style={styles.settingsIntro}>
+        <Text style={styles.settingsIntroTitle}>Landing Page FAQs</Text>
+        <Text style={styles.settingsIntroText}>
+          Edit the FAQ sections and answers shown on the public landing page. Turn a section or answer off to hide it
+          without deleting it.
+        </Text>
+      </View>
+
+      <Panel title={props.sectionDraft.id ? 'Edit FAQ Section' : 'Add FAQ Section'} style={styles.settingsPanel}>
+        <View style={styles.formGrid}>
+          <Field label="Section title" value={props.sectionDraft.title} onChangeText={(value) => props.setSectionDraft({ title: value })} />
+          <Field
+            label="Sort order"
+            value={props.sectionDraft.sortOrder}
+            onChangeText={(value) => props.setSectionDraft({ sortOrder: cleanWholeNumber(value) })}
+            keyboardType="number-pad"
+          />
+        </View>
+        <View style={styles.switchRow}>
+          <Text style={styles.rowTitle}>Visible on landing page</Text>
+          <Switch value={props.sectionDraft.active} onValueChange={(value) => props.setSectionDraft({ active: value })} />
+        </View>
+        <View style={styles.buttonRow}>
+          <Button title="Save section" onPress={props.saveSection} loading={props.saving} />
+          <Button title="New section" variant="secondary" onPress={props.newSection} />
+        </View>
+      </Panel>
+
+      <Panel title={props.itemDraft.id ? 'Edit FAQ Answer' : 'Add FAQ Answer'} style={styles.settingsPanel}>
+        <View style={styles.formGrid}>
+          <View style={styles.formField}>
+            <SelectField
+              label="Section"
+              value={props.itemDraft.sectionId}
+              options={props.faqs.map((section) => ({ label: section.title, value: section.id }))}
+              onChange={(value) => props.setItemDraft({ sectionId: value })}
+              placeholder="Choose a section"
+            />
+          </View>
+          <Field label="Sort order" value={props.itemDraft.sortOrder} onChangeText={(value) => props.setItemDraft({ sortOrder: cleanWholeNumber(value) })} keyboardType="number-pad" />
+        </View>
+        <Field label="Question" value={props.itemDraft.question} onChangeText={(value) => props.setItemDraft({ question: value })} />
+        <Field
+          label="Answer"
+          value={props.itemDraft.answer}
+          onChangeText={(value) => props.setItemDraft({ answer: value })}
+          multiline
+          style={{ minHeight: 110, textAlignVertical: 'top' }}
+        />
+        <View style={styles.switchRow}>
+          <Text style={styles.rowTitle}>Visible on landing page</Text>
+          <Switch value={props.itemDraft.active} onValueChange={(value) => props.setItemDraft({ active: value })} />
+        </View>
+        <View style={styles.buttonRow}>
+          <Button title="Save answer" onPress={props.saveItem} loading={props.saving} />
+          <Button title="New answer" variant="secondary" onPress={() => props.newItem(props.itemDraft.sectionId)} />
+        </View>
+      </Panel>
+
+      <Panel title="Current FAQs" style={styles.settingsPanel}>
+        {props.faqs.length ? (
+          props.faqs.map((section) => (
+            <View key={section.id} style={styles.packageAdminCard}>
+              <View style={styles.packageAdminMain}>
+                <Text style={styles.packageAdminTitle}>{section.title}</Text>
+                <Text style={styles.meta}>Sort: {section.sort_order} | {section.active ? 'Visible' : 'Hidden'} | {section.items.length} answers</Text>
+                <View style={styles.buttonRow}>
+                  <Button title="Edit section" variant="secondary" size="small" onPress={() => props.editSection(section)} />
+                  <Button title="Add answer" variant="secondary" size="small" onPress={() => props.newItem(section.id)} />
+                  <Button title="Delete section" variant="danger" size="small" onPress={() => props.deleteSection(section.id)} />
+                </View>
+                {section.items.map((item) => (
+                  <View key={item.id} style={styles.dataRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.rowTitle}>{item.question}</Text>
+                      <Text style={styles.bodyText}>{item.answer}</Text>
+                      <Text style={styles.meta}>Sort: {item.sort_order} | {item.active ? 'Visible' : 'Hidden'}</Text>
+                    </View>
+                    <View style={styles.packageAdminActions}>
+                      <Button title="Edit" variant="secondary" size="small" onPress={() => props.editItem(item)} />
+                      <Button title="Delete" variant="danger" size="small" onPress={() => props.deleteItem(item.id)} />
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ))
+        ) : (
+          <Text style={styles.emptyText}>No FAQs have been created yet.</Text>
+        )}
       </Panel>
     </View>
   );

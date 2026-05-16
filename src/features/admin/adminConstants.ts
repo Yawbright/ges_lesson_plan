@@ -1,11 +1,11 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { AdminSection } from './adminTypes';
 
-export const adminSections: Array<{
+export const adminSections: {
   id: AdminSection;
   label: string;
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
-}> = [
+}[] = [
   { id: 'overview', label: 'Overview', icon: 'view-dashboard-outline' },
   { id: 'users', label: 'Users', icon: 'account-group-outline' },
   { id: 'credits', label: 'Credits', icon: 'wallet-outline' },
@@ -13,6 +13,7 @@ export const adminSections: Array<{
   { id: 'usage', label: 'Usage', icon: 'chart-timeline-variant' },
   { id: 'referrals', label: 'Referrals', icon: 'share-variant-outline' },
   { id: 'logs', label: 'Error Logs', icon: 'alert-circle-outline' },
+  { id: 'faqs', label: 'FAQs', icon: 'frequently-asked-questions' },
   { id: 'settings', label: 'Settings', icon: 'cog-outline' },
 ];
 

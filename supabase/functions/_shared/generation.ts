@@ -143,6 +143,20 @@ Rules:
 - For Computing, treat exemplar guidance as practical ICT guidance: include demonstration, hands-on tool
   exploration, troubleshooting, safe/responsible use, and where useful a small digital artefact or lab task
   around the current lesson focus.
+- For Science, treat exemplar guidance as investigation guidance: include observation, prediction,
+  demonstration, practical activity, explanation, recording findings, and assessment around the focus.
+- For Career Technology, treat exemplar guidance as practical production guidance: include safety, tools,
+  materials, design process, workshop/food-lab practice, enterprise thinking, and product evaluation where relevant.
+- For RME, treat exemplar guidance as religious and moral application guidance: include respectful discussion,
+  scripture or tradition references where appropriate, values reflection, role-play, and daily-life application.
+- For Creative Arts and Design, treat exemplar guidance as creative-process guidance: include exploration,
+  sketching/design thinking, media and technique practice, making/performance, display, appreciation and appraisal.
+- For Ghanaian Language, treat exemplar guidance like language support: use it for oral practice, reading,
+  language usage, writing, cultural context, literature response and assessment cues without replacing the selected
+  weekly aspect or strand.
+- For French Language, treat exemplar guidance like communicative language support: use it for listening,
+  speaking, reading, writing, vocabulary, pronunciation, role-play, culture and assessment cues without replacing
+  the selected weekly communicative function.
 - For English Language, do not split exemplar points as separate weekly topics. Keep the selected scheme entry
   or aspect as the lesson focus, and use exemplar points only as supporting teaching points, practice moves,
   text-response prompts, language-use prompts, or assessment cues.

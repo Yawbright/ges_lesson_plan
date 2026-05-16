@@ -4,9 +4,6 @@ import { Button } from '@/components/Button';
 import { Field } from '@/components/Field';
 import { useToast } from '@/components/ToastProvider';
 import {
-  applyReferralCode,
-  consumePendingReferralCode,
-  savePendingReferralCode,
   validateReferralCode,
 } from '@/lib/referrals';
 import { isSupabaseConfigured } from '@/lib/supabase';
@@ -157,7 +154,6 @@ export function UnifiedAuthForm({
     try {
       // Validate referral code
       const validatedCode = await validateReferralCode(invitationCode);
-      await savePendingReferralCode(validatedCode);
 
       // Verify phone OTP and create account
       const validation = validatePhoneNumber(phone);
@@ -170,9 +166,8 @@ export function UnifiedAuthForm({
       );
 
       if (result.success) {
+        await signInWithEmail(email.trim().toLowerCase(), password);
         showToast({ message: 'Account created successfully!' });
-        // Apply referral immediately
-        await applyReferralCode(validatedCode, result.user?.id);
         onAccountCreated?.();
       } else {
         setFieldError(result.message || 'Could not create account.');

@@ -14,6 +14,7 @@
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "audit:english-curriculum": "node scripts/audit-english-curriculum.mjs",
+    "audit:curriculum-sources": "node scripts/audit-curriculum-sources.mjs",
     "verify:refactor": "node scripts/verify-admin-refactor.mjs"
   },
   "dependencies": {

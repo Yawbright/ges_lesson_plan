@@ -2,6 +2,7 @@ import { corsHeaders } from '../_shared/claude.ts';
 import { createServiceClient, getAuthenticatedUser, HttpError } from '../_shared/supabase.ts';
 import { emptyOverviewMetrics, loadOverviewMetrics } from './overview.ts';
 import { createPackage, deletePackage, loadPackages, updatePackage } from './packages.ts';
+import { deleteFaqItem, deleteFaqSection, loadFaqs, upsertFaqItem, upsertFaqSection } from './faqs.ts';
 import { loadLogs, loadPurchases, loadReferrals, loadTransactions } from './reports.ts';
 import { json, safeLoad } from './shared.ts';
 import { loadSettings, updateSettings } from './settings.ts';
@@ -88,6 +89,24 @@ Deno.serve(async (req) => {
       return json({ settings }, 200);
     }
 
+    if (body.action === 'upsert-faq-section') {
+      const section = await upsertFaqSection(service, body.faqSection ?? {});
+      return json({ section }, 200);
+    }
+
+    if (body.action === 'delete-faq-section') {
+      return json(await deleteFaqSection(service, body.faqSection?.id), 200);
+    }
+
+    if (body.action === 'upsert-faq-item') {
+      const item = await upsertFaqItem(service, body.faqItem ?? {});
+      return json({ item }, 200);
+    }
+
+    if (body.action === 'delete-faq-item') {
+      return json(await deleteFaqItem(service, body.faqItem?.id), 200);
+    }
+
     return json({ error: 'Unknown admin action' }, 400);
   } catch (err) {
     if (err instanceof HttpError) {
@@ -98,7 +117,7 @@ Deno.serve(async (req) => {
 });
 
 async function loadDashboard(service: ReturnType<typeof createServiceClient>, adminUserId: string) {
-  const [overviewMetrics, users, transactions, purchases, referrals, logs, packages, settings] = await Promise.all([
+  const [overviewMetrics, users, transactions, purchases, referrals, logs, packages, settings, faqs] = await Promise.all([
     safeLoad(() => loadOverviewMetrics(service, adminUserId), emptyOverviewMetrics()),
     safeLoad(() => loadUsers(service, '', 20), [] as AdminUser[]),
     safeLoad(() => loadTransactions(service), { items: [], page: 0, pageSize: 80, hasMore: false }),
@@ -107,6 +126,7 @@ async function loadDashboard(service: ReturnType<typeof createServiceClient>, ad
     safeLoad(() => loadLogs(service), { items: [], page: 0, pageSize: 80, hasMore: false }),
     safeLoad(() => loadPackages(service), []),
     safeLoad(() => loadSettings(service), []),
+    safeLoad(() => loadFaqs(service), []),
   ]);
 
   return {
@@ -124,6 +144,7 @@ async function loadDashboard(service: ReturnType<typeof createServiceClient>, ad
     },
     packages,
     settings,
+    faqs,
   };
 }
 

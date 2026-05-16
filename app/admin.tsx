@@ -14,11 +14,15 @@ import { supabase } from '@/lib/supabase';
 import {
   adminAdjustCredits,
   adminCreatePackage,
+  adminDeleteFaqItem,
+  adminDeleteFaqSection,
   adminDeletePackage,
   adminListReport,
   adminLoadDashboard,
   adminLoadUserDetail,
   adminSearchUsers,
+  adminUpsertFaqItem,
+  adminUpsertFaqSection,
   adminUpdateSettings,
   adminUpdatePackage,
   type AdminDashboard,
@@ -39,6 +43,7 @@ import {
   PaymentsSection,
   ReferralsSection,
   SettingsSection,
+  FaqsSection,
   UsageSection,
   UsersSection,
 } from '@/features/admin/AdminSections';
@@ -47,6 +52,8 @@ import { styles } from '@/features/admin/adminStyles';
 import type {
   AdminSection,
   AppSettingsDraft,
+  FaqItemDraft,
+  FaqSectionDraft,
   PackageDraft,
   ReportFilter,
 } from '@/features/admin/adminTypes';
@@ -80,6 +87,9 @@ export default function AdminScreen() {
   const [amount, setAmount] = useState('10');
   const [reason, setReason] = useState('Admin credit adjustment');
   const [editingPackage, setEditingPackage] = useState<PackageDraft | null>(null);
+  const [faqSectionDraft, setFaqSectionDraft] = useState<FaqSectionDraft>(emptyFaqSectionDraft());
+  const [faqItemDraft, setFaqItemDraft] = useState<FaqItemDraft>(emptyFaqItemDraft());
+  const [savingFaq, setSavingFaq] = useState(false);
   const [appSettingsDraft, setAppSettingsDraft] = useState<AppSettingsDraft>(emptyAppSettingsDraft());
   const [savingAppSettings, setSavingAppSettings] = useState(false);
   const [reportFilters, setReportFilters] = useState<Record<string, ReportFilter>>({
@@ -270,6 +280,90 @@ export default function AdminScreen() {
     } finally {
       setSavingAppSettings(false);
     }
+  }
+
+  async function saveFaqSection() {
+    if (!faqSectionDraft.title.trim()) {
+      Alert.alert('Section required', 'Enter the FAQ section title.');
+      return;
+    }
+    setSavingFaq(true);
+    try {
+      await adminUpsertFaqSection({
+        id: faqSectionDraft.id,
+        title: faqSectionDraft.title.trim(),
+        sortOrder: toWhole(faqSectionDraft.sortOrder),
+        active: faqSectionDraft.active,
+      });
+      setFaqSectionDraft(emptyFaqSectionDraft());
+      await load();
+      Alert.alert('FAQ section saved');
+    } catch (err: unknown) {
+      Alert.alert('Could not save FAQ section', getMessage(err));
+    } finally {
+      setSavingFaq(false);
+    }
+  }
+
+  async function saveFaqItem() {
+    if (!faqItemDraft.sectionId || !faqItemDraft.question.trim() || !faqItemDraft.answer.trim()) {
+      Alert.alert('Answer incomplete', 'Choose a section and enter both the question and answer.');
+      return;
+    }
+    setSavingFaq(true);
+    try {
+      await adminUpsertFaqItem({
+        id: faqItemDraft.id,
+        sectionId: faqItemDraft.sectionId,
+        question: faqItemDraft.question.trim(),
+        answer: faqItemDraft.answer.trim(),
+        sortOrder: toWhole(faqItemDraft.sortOrder),
+        active: faqItemDraft.active,
+      });
+      setFaqItemDraft(emptyFaqItemDraft(faqItemDraft.sectionId));
+      await load();
+      Alert.alert('FAQ answer saved');
+    } catch (err: unknown) {
+      Alert.alert('Could not save FAQ answer', getMessage(err));
+    } finally {
+      setSavingFaq(false);
+    }
+  }
+
+  function deleteFaqSection(id: string) {
+    Alert.alert('Delete FAQ section', 'This will delete the section and all answers inside it.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await adminDeleteFaqSection(id);
+            await load();
+          } catch (err: unknown) {
+            Alert.alert('Could not delete FAQ section', getMessage(err));
+          }
+        },
+      },
+    ]);
+  }
+
+  function deleteFaqItem(id: string) {
+    Alert.alert('Delete FAQ answer', 'Delete this question and answer?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await adminDeleteFaqItem(id);
+            await load();
+          } catch (err: unknown) {
+            Alert.alert('Could not delete FAQ answer', getMessage(err));
+          }
+        },
+      },
+    ]);
   }
 
   function updateReportFilter(key: string, patch: Partial<ReportFilter>) {
@@ -477,6 +571,40 @@ export default function AdminScreen() {
                   loadMore={() => loadMoreReport('logs')}
                 />
               ) : null}
+              {section === 'faqs' ? (
+                <FaqsSection
+                  faqs={dashboard.faqs ?? []}
+                  sectionDraft={faqSectionDraft}
+                  setSectionDraft={(patch) => setFaqSectionDraft((current) => ({ ...current, ...patch }))}
+                  itemDraft={faqItemDraft}
+                  setItemDraft={(patch) => setFaqItemDraft((current) => ({ ...current, ...patch }))}
+                  saveSection={saveFaqSection}
+                  deleteSection={deleteFaqSection}
+                  editSection={(faqSection) =>
+                    setFaqSectionDraft({
+                      id: faqSection.id,
+                      title: faqSection.title,
+                      sortOrder: String(faqSection.sort_order),
+                      active: faqSection.active,
+                    })
+                  }
+                  newSection={() => setFaqSectionDraft(emptyFaqSectionDraft())}
+                  saveItem={saveFaqItem}
+                  deleteItem={deleteFaqItem}
+                  editItem={(item) =>
+                    setFaqItemDraft({
+                      id: item.id,
+                      sectionId: item.section_id,
+                      question: item.question,
+                      answer: item.answer,
+                      sortOrder: String(item.sort_order),
+                      active: item.active,
+                    })
+                  }
+                  newItem={(sectionId) => setFaqItemDraft(emptyFaqItemDraft(sectionId))}
+                  saving={savingFaq}
+                />
+              ) : null}
               {section === 'settings' ? (
                 <SettingsSection
                   packages={dashboard.packages}
@@ -508,4 +636,12 @@ export default function AdminScreen() {
       </View>
     </View>
   );
+}
+
+function emptyFaqSectionDraft(): FaqSectionDraft {
+  return { title: '', sortOrder: '0', active: true };
+}
+
+function emptyFaqItemDraft(sectionId = ''): FaqItemDraft {
+  return { sectionId, question: '', answer: '', sortOrder: '0', active: true };
 }

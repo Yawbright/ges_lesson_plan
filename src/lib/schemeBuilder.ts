@@ -4,6 +4,12 @@ import { englishExemplarsByIndicator } from '@/data/curriculum/englishExemplars'
 import { mathematicsExemplarsByIndicator } from '@/data/curriculum/mathematicsExemplars';
 import { scienceExemplarsByIndicator } from '@/data/curriculum/scienceExemplars';
 import { socialStudiesExemplarsByIndicator } from '@/data/curriculum/socialStudiesExemplars';
+import { computingExemplarsByIndicator } from '@/data/curriculum/computingExemplars';
+import { careerTechnologyExemplarsByIndicator } from '@/data/curriculum/careerTechnologyExemplars';
+import { rmeExemplarsByIndicator } from '@/data/curriculum/rmeExemplars';
+import { creativeArtsDesignExemplarsByIndicator } from '@/data/curriculum/creativeArtsDesignExemplars';
+import { ghanaianLanguageExemplarsByIndicator } from '@/data/curriculum/ghanaianLanguageExemplars';
+import { frenchLanguageExemplarsByIndicator } from '@/data/curriculum/frenchLanguageExemplars';
 import type { ClassLevel } from '@/types/lessonPlan';
 import type { SchemeOfWork, SchemeWeek, SchemeWeekEntry } from '@/types/scheme';
 
@@ -67,10 +73,8 @@ export function getBuilderCurriculumEntries(input: {
     )
     .filter((entry) => entry.strand || entry.subStrand || entry.contentStandard);
 
-  const supplementalEntries = isEnglishSubject(input.subject)
-    ? getEnglishSupplementalEntries(input.subject, input.classLevel, weeks)
-        .filter((entry) => input.includeFullYear || normalizeTerm(entry.sourceTerm) === normalizedTerm)
-    : [];
+  const supplementalEntries = getSourceSupplementalEntries(input.subject, input.classLevel, weeks)
+    .filter((entry) => input.includeFullYear || normalizeTerm(entry.sourceTerm) === normalizedTerm);
 
   return mergeCurriculumEntries([...mappedEntries, ...supplementalEntries]);
 }
@@ -371,6 +375,50 @@ function getEnglishSupplementalEntries(
     .filter((entry) => Boolean(entry.strand));
 }
 
+function getSourceSupplementalEntries(
+  subject: string,
+  classLevel: ClassLevel,
+  pacingWeeks: Array<SchemeWeek & { sourceTerm?: string }>
+): CurriculumEntryOption[] {
+  if (isEnglishSubject(subject)) {
+    return getEnglishSupplementalEntries(subject, classLevel, pacingWeeks);
+  }
+  if (isGhanaianLanguageSubject(subject)) {
+    return getGhanaianLanguageSupplementalEntries(subject, classLevel, pacingWeeks);
+  }
+  if (isFrenchLanguageSubject(subject)) {
+    return getFrenchLanguageSupplementalEntries(subject, classLevel, pacingWeeks);
+  }
+
+  const source = getExemplarSource(subject);
+  if (!source) return [];
+
+  return Object.entries(source)
+    .filter(([code]) => codeMatchesClassLevel(code, classLevel))
+    .map(([code, record]) => {
+      const placement = getSuggestedSourcePlacement({
+        code,
+        indicator: record.indicator,
+        pacingWeeks,
+      });
+      const standardCode = getContentStandardCodeFromIndicatorCode(code);
+
+      return {
+        id: `source-exemplar|${slugify(subject)}|${code}`,
+        strand: placement.match?.entry.strand ?? getFallbackStrandFromCode(code),
+        subStrand: placement.match?.entry.subStrand ?? getFallbackSubStrandFromCode(code),
+        contentStandard:
+          placement.match?.entry.contentStandard ?? `${standardCode} Curriculum content standard.`,
+        indicator: `${code} ${cleanIndicatorText(record.indicator)}`,
+        topic: cleanIndicatorText(record.indicator),
+        resources: getSubjectResources(subject),
+        exemplars: record.exemplars,
+        sourceWeek: placement.week,
+        sourceTerm: placement.term,
+      };
+    });
+}
+
 function getSuggestedEnglishPlacement(input: {
   code: string;
   strand: string;
@@ -433,6 +481,130 @@ function getSuggestedEnglishPlacement(input: {
   return fallbackEnglishPlacement(input.code);
 }
 
+function getGhanaianLanguageSupplementalEntries(
+  subject: string,
+  classLevel: ClassLevel,
+  pacingWeeks: Array<SchemeWeek & { sourceTerm?: string }>
+): CurriculumEntryOption[] {
+  return Object.entries(ghanaianLanguageExemplarsByIndicator)
+    .filter(([code]) => codeMatchesClassLevel(code, classLevel))
+    .map(([code, record]) => {
+      const strand = getGhanaianLanguageStrandFromCode(code);
+      const subStrand = getGhanaianLanguageSubStrandFromCode(code, record.indicator);
+      const placement = getSuggestedSourcePlacement({
+        code,
+        indicator: record.indicator,
+        pacingWeeks,
+      });
+      const standardCode = getContentStandardCodeFromIndicatorCode(code);
+
+      return {
+        id: `ghanaian-language-exemplar|${code}`,
+        strand,
+        subStrand,
+        contentStandard: `${standardCode} Ghanaian Language curriculum content standard.`,
+        indicator: `${code} ${cleanIndicatorText(record.indicator)}`,
+        topic: cleanIndicatorText(record.indicator),
+        resources: getLanguageResourcesForStrand(strand),
+        exemplars: record.exemplars,
+        sourceWeek: placement.week,
+        sourceTerm: placement.term,
+      };
+    });
+}
+
+function getFrenchLanguageSupplementalEntries(
+  subject: string,
+  classLevel: ClassLevel,
+  pacingWeeks: Array<SchemeWeek & { sourceTerm?: string }>
+): CurriculumEntryOption[] {
+  return Object.entries(frenchLanguageExemplarsByIndicator)
+    .filter(([code]) => codeMatchesClassLevel(code, classLevel))
+    .map(([code, record]) => {
+      const strand = getFrenchStrandFromCode(code);
+      const subStrand = getFrenchSubStrandFromCode(code, record.indicator);
+      const placement = getSuggestedSourcePlacement({
+        code,
+        indicator: record.indicator,
+        pacingWeeks,
+      });
+      const standardCode = getContentStandardCodeFromIndicatorCode(code);
+
+      return {
+        id: `french-language-exemplar|${code}`,
+        strand,
+        subStrand,
+        contentStandard: `${standardCode} French Language curriculum content standard.`,
+        indicator: `${code} ${cleanIndicatorText(record.indicator)}`,
+        topic: cleanIndicatorText(record.indicator),
+        resources: getLanguageResourcesForStrand(strand),
+        exemplars: record.exemplars,
+        sourceWeek: placement.week,
+        sourceTerm: placement.term,
+      };
+    });
+}
+
+function getSuggestedSourcePlacement(input: {
+  code: string;
+  indicator: string;
+  pacingWeeks: Array<SchemeWeek & { sourceTerm?: string }>;
+}): { term: string; week: number; match?: { entry: SchemeWeekEntry } } {
+  const standardCode = getContentStandardCodeFromIndicatorCode(input.code);
+  const candidates = getPlacementCandidates(input.pacingWeeks);
+
+  const exactMatch = candidates.find((candidate) => candidate.codes.includes(input.code));
+  if (exactMatch) {
+    return {
+      term: exactMatch.week.sourceTerm || 'Term 1',
+      week: exactMatch.week.week,
+      match: { entry: exactMatch.entry },
+    };
+  }
+
+  const standardMatches = candidates.filter((candidate) =>
+    normalizeCurriculumCodeSpacing(
+      [candidate.entry.contentStandard, candidate.entry.indicator].join(' ')
+    ).includes(standardCode)
+  );
+  if (standardMatches.length) {
+    const scored = standardMatches
+      .map((candidate) => ({
+        ...candidate,
+        score: countTokenOverlap(
+          tokenizeForMatch(input.indicator),
+          tokenizeForMatch(candidate.text)
+        ),
+      }))
+      .sort((left, right) => right.score - left.score || left.week.week - right.week.week);
+    return {
+      term: scored[0].week.sourceTerm || 'Term 1',
+      week: scored[0].week.week,
+      match: { entry: scored[0].entry },
+    };
+  }
+
+  return fallbackSourcePlacement(input.code);
+}
+
+function getPlacementCandidates(pacingWeeks: Array<SchemeWeek & { sourceTerm?: string }>) {
+  return pacingWeeks
+    .map((week) => ({
+      week,
+      entries: getWeekEntries(week),
+    }))
+    .flatMap(({ week, entries }) =>
+      entries.map((entry) => ({
+        week,
+        entry,
+        codes: extractIndicatorCodes(entry.indicator),
+        text: normalizeCurriculumCodeSpacing(
+          [entry.contentStandard, entry.indicator, entry.topic, entry.subStrand, entry.strand].join(' ')
+        ),
+      }))
+    );
+}
+
 function fallbackEnglishPlacement(code: string): { term: string; week: number } {
   const parts = code.split('.');
   const strandNumber = Number(parts[1]) || 1;
@@ -445,6 +617,17 @@ function fallbackEnglishPlacement(code: string): { term: string; week: number } 
   return {
     term: `Term ${termIndex + 1}`,
     week,
+  };
+}
+
+function fallbackSourcePlacement(code: string): { term: string; week: number } {
+  const parts = code.split('.').map((part) => Number(part.replace(/\D+/g, '')) || 1);
+  const sequence = ((parts[1] ?? 1) - 1) * 8 + ((parts[2] ?? 1) - 1) * 3 + (parts[4] ?? 1);
+  const termIndex = Math.min(2, Math.floor((sequence - 1) / 12));
+
+  return {
+    term: `Term ${termIndex + 1}`,
+    week: ((sequence - 1) % 12) + 1,
   };
 }
 
@@ -629,12 +812,20 @@ function getBestEnglishExemplarsForEntry(entry: SchemeWeekEntry): string[] {
   return best && best.score > 0 ? best.exemplars : [];
 }
 
-function getExemplarSource(subject: string): Record<string, { exemplars: string[] }> | null {
+function getExemplarSource(
+  subject: string
+): Record<string, { indicator: string; exemplars: string[] }> | null {
   const normalized = normalizeText(subject);
   if (normalized.includes('english')) return englishExemplarsByIndicator;
   if (normalized.includes('mathematics') || normalized.includes('math')) return mathematicsExemplarsByIndicator;
   if (normalized.includes('science')) return scienceExemplarsByIndicator;
   if (normalized.includes('social studies')) return socialStudiesExemplarsByIndicator;
+  if (normalized.includes('computing')) return computingExemplarsByIndicator;
+  if (normalized.includes('career technology')) return careerTechnologyExemplarsByIndicator;
+  if (normalized === 'rme' || normalized.includes('religious and moral')) return rmeExemplarsByIndicator;
+  if (normalized.includes('creative arts')) return creativeArtsDesignExemplarsByIndicator;
+  if (normalized.includes('ghanaian language')) return ghanaianLanguageExemplarsByIndicator;
+  if (normalized.includes('french')) return frenchLanguageExemplarsByIndicator;
   return null;
 }
 
@@ -643,7 +834,7 @@ function isEnglishSubject(subject: string): boolean {
 }
 
 function extractIndicatorCodes(value?: string): string[] {
-  const text = value ?? '';
+  const text = normalizeCurriculumCodeSpacing(value ?? '');
   const directCodes = text.match(/B\d(?:\/JHS\d)?(?:\.\d+){4}/g) ?? [];
   const expanded = [...directCodes];
 
@@ -667,7 +858,160 @@ function extractIndicatorCodes(value?: string): string[] {
 }
 
 function extractStandardCode(value?: string): string {
-  return value?.match(/B\d(?:\/JHS\d)?(?:\.\d+){3}/)?.[0] ?? '';
+  return normalizeCurriculumCodeSpacing(value ?? '').match(/B\d(?:\/JHS\d)?(?:\.\d+){3}/)?.[0] ?? '';
+}
+
+function normalizeCurriculumCodeSpacing(value: string): string {
+  return value
+    .replace(/(JHS\d)\s+(\d)/g, '$1.$2')
+    .replace(/(B\d\/JHS\d)\s*\.\s*/g, '$1.')
+    .replace(/\s+\./g, '.')
+    .replace(/\.\s+/g, '.');
+}
+
+function codeMatchesClassLevel(code: string, classLevel: ClassLevel): boolean {
+  const numericLevel = classLevel.replace(/\D+/g, '');
+  if (!numericLevel) return false;
+  return code.startsWith(`B${numericLevel}`) || code.startsWith(`B${numericLevel}/`);
+}
+
+function getFallbackStrandFromCode(code: string): string {
+  const strandNumber = code.split('.')[1]?.replace(/\D+/g, '');
+  return strandNumber ? `Strand ${strandNumber}` : 'Mapped Curriculum';
+}
+
+function getFallbackSubStrandFromCode(code: string): string {
+  const parts = code.split('.');
+  const strandNumber = parts[1]?.replace(/\D+/g, '');
+  const subStrandNumber = parts[2]?.replace(/\D+/g, '');
+  if (strandNumber && subStrandNumber) return `Sub-strand ${strandNumber}.${subStrandNumber}`;
+  return 'Curriculum Focus';
+}
+
+function getSubjectResources(subject: string): string[] {
+  const normalized = normalizeText(subject);
+  if (normalized.includes('mathematics') || normalized.includes('math')) {
+    return ['Textbook', 'Exercise book', 'Manipulatives', 'Graph book'];
+  }
+  if (normalized.includes('science')) {
+    return ['Science textbook', 'Charts', 'Activity materials', 'Observation sheets'];
+  }
+  if (normalized.includes('social studies')) {
+    return ['Social Studies textbook', 'Maps', 'Charts', 'Community resources'];
+  }
+  if (normalized.includes('computing')) {
+    return ['Computer', 'Projector', 'Digital device', 'Activity worksheet'];
+  }
+  if (normalized.includes('career technology')) {
+    return ['Career Technology textbook', 'Tools and materials', 'Charts', 'Activity worksheet'];
+  }
+  if (normalized === 'rme' || normalized.includes('religious and moral')) {
+    return ['RME textbook', 'Scripture references', 'Case studies', 'Role-play cards'];
+  }
+  if (normalized.includes('creative arts')) {
+    return ['Sketchbook', 'Colour tools', 'Local art examples', 'Performance space'];
+  }
+  if (normalized.includes('ghanaian language')) {
+    return ['Ghanaian Language textbook', 'Oral texts', 'Reading passages', 'Writing frame'];
+  }
+  if (normalized.includes('french')) {
+    return ['French textbook', 'Dialogue cards', 'Audio clips', 'Vocabulary list'];
+  }
+  return ['Textbook', 'Exercise book'];
+}
+
+function isGhanaianLanguageSubject(subject: string): boolean {
+  return normalizeText(subject).includes('ghanaian language');
+}
+
+function getGhanaianLanguageStrandFromCode(code: string): string {
+  const strandNumber = code.split('.')[1];
+  if (strandNumber === '1') return 'Customs and Institutions';
+  if (strandNumber === '2') return 'Listening and Speaking';
+  if (strandNumber === '3') return 'Reading';
+  if (strandNumber === '4') return 'Language and Usage';
+  if (strandNumber === '5') return 'Composition Writing';
+  if (strandNumber === '6') return 'Literature';
+  return 'Ghanaian Language';
+}
+
+function getGhanaianLanguageSubStrandFromCode(code: string, indicator: string): string {
+  const parts = code.split('.');
+  const strand = parts[1];
+  const subStrand = parts[2];
+  const key = `${strand}.${subStrand}`;
+  const normalizedIndicator = cleanIndicatorText(indicator);
+
+  const labels: Record<string, string> = {
+    '1.1': 'Rites of Passage',
+    '1.2': 'Naming Systems',
+    '1.3': 'The Clan System',
+    '1.4': 'Chieftaincy',
+    '2.1': 'Listening Comprehension',
+    '2.2': 'Conversation/Everyday Discourse',
+    '2.3': 'Speech Sounds and Tone',
+    '3.1': 'Reading',
+    '3.2': 'Translation',
+    '4.1': 'Sentences',
+    '4.2': 'Vocabulary and Usage',
+    '4.3': 'Language Conventions',
+    '5.1': 'Composition Writing',
+    '6.1': 'Literature',
+  };
+
+  return labels[key] ?? normalizedIndicator.split(' ').slice(0, 6).join(' ') ?? 'Ghanaian Language Focus';
+}
+
+function isFrenchLanguageSubject(subject: string): boolean {
+  return normalizeText(subject).includes('french');
+}
+
+function getFrenchStrandFromCode(code: string): string {
+  const strandNumber = code.split('.')[1];
+  const labels: Record<string, string> = {
+    '1': 'Faire connaissance',
+    '2': "L'environnement",
+    '3': 'La localisation, les horaires et les deplacements',
+    '4': 'Les achats',
+    '5': 'Les services',
+    '6': 'Les loisirs',
+    '7': "Les projets d'avenir",
+    '8': 'Les sentiments et les opinions',
+    '9': 'La vie sociale',
+    '10': 'Revision et integration',
+  };
+  return labels[strandNumber] ?? 'French Language';
+}
+
+function getFrenchSubStrandFromCode(code: string, indicator: string): string {
+  const parts = code.split('.');
+  const key = `${parts[1]}.${parts[2]}`;
+  const labels: Record<string, string> = {
+    '1.1': 'Saluer et prendre conge',
+    '1.2': 'Se presenter et presenter quelqu’un',
+    '1.3': 'Exprimer ses gouts et ses preferences',
+    '1.4': 'Decrire quelqu’un',
+    '1.5': 'Parler de sa famille',
+    '2.1': 'Parler de son lieu d’habitation',
+    '2.2': 'Parler de son ecole',
+    '2.3': 'Comprendre et s’exprimer sur les plats',
+    '2.4': 'Parler de l’hygiene et de la sante',
+    '3.1': 'Situer dans l’espace',
+    '3.2': 'Demander et indiquer l’itineraire',
+    '3.3': 'Demander et donner l’heure',
+    '3.4': 'Parler de son agenda',
+    '4.1': 'Compter et faire des calculs',
+    '4.2': 'Faire des achats',
+    '5.1': 'Faire une reservation',
+    '6.1': 'Parler des loisirs',
+    '7.1': 'Situer un evenement dans le futur',
+    '8.1': 'Donner des ordres et permissions',
+    '9.1': 'Interactions sociales',
+    '10.1': 'Integration orale',
+    '10.2': 'Integration ecrite',
+  };
+
+  return labels[key] ?? cleanIndicatorText(indicator).split(' ').slice(0, 6).join(' ') ?? 'French Language Focus';
 }
 
 function tokenizeForMatch(value: string): string[] {
