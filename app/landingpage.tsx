@@ -82,17 +82,20 @@ interface Scheme {
 }
 
 interface LessonPhase {
-  phase: string;
-  teacherActivity: string;
-  learnerActivity: string;
-  assessment: string;
+  phase: 1 | 2 | 3;
+  title: string;
+  duration?: string;
+  activities: string[];
+  resources?: string[];
+  assessment?: string[];
 }
 
 interface LessonPlan {
-  title: string;
+  termTitle: string;
+  subjectClassTitle: string;
+  weekTitle: string;
   subject: string;
   classLevel: string;
-  term: string;
   date: string;
   period: string;
   duration: string;
@@ -101,11 +104,11 @@ interface LessonPlan {
   contentStandard: string;
   indicator: string;
   performanceIndicator: string;
-  coreCompetencies: string;
+  coreCompetencies: string[];
   references: string;
   classSize: string;
+  lessonNumber: string;
   week: number;
-  lesson: number;
   topic: string;
   phases: LessonPhase[];
 }
@@ -487,10 +490,11 @@ function DemoSection(): JSX.Element {
       const lNum = parseInt(lesson.replace("Lesson ", ""));
       const sw = scheme.weeks.find((w) => w.week === wNum) ?? scheme.weeks[0];
       setLessonPlan({
-        title: `${scheme.subject} Lesson Plan – Week ${wNum}`,
+        termTitle: `${scheme.term} Lesson Plan`,
+        subjectClassTitle: `${scheme.subject} - ${scheme.classLevel}`,
+        weekTitle: `Week ${wNum}`,
         subject: scheme.subject,
         classLevel: scheme.classLevel,
-        term: scheme.term,
         date: "Demo week ending",
         period: "1",
         duration: "60 mins",
@@ -499,16 +503,48 @@ function DemoSection(): JSX.Element {
         contentStandard: buildContentStandard(scheme.subject, scheme.classLevel),
         indicator: buildIndicator(scheme.subject, wNum),
         performanceIndicator: "Learners can explain the main idea and apply it in a guided classroom task.",
-        coreCompetencies: "Critical Thinking | Communication | Collaboration",
+        coreCompetencies: ["Critical Thinking", "Communication", "Collaboration"],
         references: "Teacher resource pack, learner textbook, and locally available teaching materials.",
         classSize: "45",
+        lessonNumber: `${lNum} of ${lessonsPerWeek}`,
         week: wNum,
-        lesson: lNum,
         topic: sw.topic,
         phases: [
-          { phase: "Starter", teacherActivity: "Review prior knowledge and introduce " + sw.topic.toLowerCase() + " with familiar examples.", learnerActivity: "Respond to questions, share examples, and connect the topic to daily life.", assessment: "Observe responses and identify misconceptions for quick correction." },
-          { phase: "Main Activity", teacherActivity: "Guide learners through examples, group tasks, and short practice activities.", learnerActivity: "Work in pairs or groups, discuss solutions, and present findings to the class.", assessment: "Check group work and ask probing questions linked to the lesson objective." },
-          { phase: "Plenary", teacherActivity: "Summarize key points and give a short exit task.", learnerActivity: "Complete the exit task and state one thing learned from the lesson.", assessment: "Use exit responses to plan reinforcement for the next lesson." },
+          {
+            phase: 1,
+            title: "STARTER",
+            duration: "10 mins",
+            activities: [
+              "Guide learners to recall previous knowledge through quick oral questions.",
+              "Let learners share familiar examples connected to " + sw.topic.toLowerCase() + ".",
+            ],
+            resources: ["Chalkboard", "Learners' responses"],
+          },
+          {
+            phase: 2,
+            title: "NEW LEARNING",
+            duration: "40 mins",
+            activities: [
+              "Introduce the lesson objective and demonstrate the main idea with clear examples.",
+              "Guide learners to work in pairs or groups, discuss solutions, and present findings.",
+              "Support learners with prompts, corrections, and additional practice activities.",
+            ],
+            resources: ["Textbook", "Chart", "Local materials"],
+            assessment: [
+              "Explain the main idea in your own words.",
+              "Apply the lesson idea to solve one guided classroom task.",
+            ],
+          },
+          {
+            phase: 3,
+            title: "REFLECTION",
+            duration: "10 mins",
+            activities: [
+              "Summarize the key points with learners and correct remaining misconceptions.",
+              "Let learners complete a short exit task and state one thing learned.",
+            ],
+            resources: ["Exercise books", "Exit task"],
+          },
         ],
       });
       setLoadingLesson(false);
@@ -635,65 +671,88 @@ interface LessonPreviewProps {
 }
 
 function LessonPreview({ lp }: LessonPreviewProps): JSX.Element {
+  const { width } = useWindowDimensions();
+  const compact = width < 760;
+  const title = `${lp.subjectClassTitle} - ${lp.weekTitle}`;
+
   return (
-    <View style={s.previewPanel}>
+    <View style={[s.previewPanel, compact && s.previewPanelCompact]}>
       <Watermark />
       <Text style={s.previewKicker}>Generated demo lesson plan</Text>
-      <View style={s.lessonTitleBlock}>
-        <Text style={s.lessonTitleMain}>{lp.term.toUpperCase()} LESSON PLAN</Text>
-        <Text style={s.lessonTitleSub}>{lp.subject.toUpperCase()} - {lp.classLevel.toUpperCase()} - WEEK {lp.week}</Text>
+      <View style={[s.lessonTitleBlock, compact && s.lessonTitleBlockCompact]}>
+        <Text style={[s.lessonTitleMain, compact && s.lessonTitleMainCompact]}>{lp.termTitle.toUpperCase()}</Text>
+        <Text style={[s.lessonTitleSub, compact && s.lessonTitleSubCompact]}>{title.toUpperCase()}</Text>
       </View>
 
       <View style={s.lessonTable}>
         <View style={s.lessonInfoRow}>
           <LessonInfoCell label="Week ending" value={lp.date} flex={1.2} />
-          <LessonInfoCell label="Period" value={lp.period} flex={0.7} />
+          <LessonInfoCell label="Period" value={lp.period} flex={0.8} />
           <LessonInfoCell label="Subject" value={lp.subject} flex={1} last />
         </View>
         <View style={[s.lessonInfoRow, s.lessonAltRow]}>
-          <LessonInfoCell label="Duration" value={lp.duration} flex={0.8} />
-          <LessonInfoCell label="Strand" value={lp.strand} flex={1.4} />
-          <LessonInfoCell label="Class" value={lp.classLevel} flex={0.7} last />
+          <LessonInfoCell label="Duration" value={lp.duration} flex={1.2} />
+          <LessonInfoCell label="Strand" value={lp.strand} flex={1.8} last />
         </View>
         <View style={s.lessonInfoRow}>
+          <LessonInfoCell label="Class" value={lp.classLevel} flex={1.2} />
           <LessonInfoCell label="Class Size" value={lp.classSize} flex={0.8} />
-          <LessonInfoCell label="Sub Strand" value={lp.subStrand} flex={1.4} />
-          <LessonInfoCell label="Lesson" value={`${lp.lesson}`} flex={0.7} last />
+          <LessonInfoCell label="Sub Strand" value={lp.subStrand} flex={1} last />
         </View>
         <View style={[s.lessonInfoRow, s.lessonAltRow]}>
-          <LessonInfoCell label="Topic" value={lp.topic} flex={1} last />
+          <LessonInfoCell label="Topic" value={lp.topic} flex={1.5} />
+          <LessonInfoCell label="Lesson in Week" value={lp.lessonNumber} flex={0.8} last />
         </View>
       </View>
 
       <View style={s.lessonTable}>
         <View style={s.lessonInfoRow}>
-          <LessonTextCell label="Content Standard" value={lp.contentStandard} flex={1.2} />
-          <LessonTextCell label="Indicator" value={lp.indicator} flex={1} last />
+          <LessonTextCell label="Content Standard:" value={lp.contentStandard} flex={1.5} />
+          <LessonTextCell label="Indicator:" value={lp.indicator} flex={1.3} />
+          <LessonTextCell label="Lesson:" value={lp.lessonNumber} flex={0.5} last />
         </View>
         <View style={[s.lessonInfoRow, s.lessonAltRow]}>
-          <LessonTextCell label="Performance Indicator" value={lp.performanceIndicator} flex={1.2} />
-          <LessonTextCell label="Core Competencies" value={lp.coreCompetencies} flex={1} last />
+          <LessonTextCell label="Performance Indicator:" value={lp.performanceIndicator} flex={1.5} />
+          <LessonTextCell label="Core Competencies:" value={lp.coreCompetencies.join(": ")} flex={1.8} last />
         </View>
         <View style={s.lessonInfoRow}>
-          <LessonTextCell label="References" value={lp.references} flex={1} last />
+          <LessonTextCell label="References:" value={lp.references} flex={1} last />
         </View>
       </View>
 
       <View style={s.lessonTable}>
         <View style={[s.lessonInfoRow, s.lessonPhaseHeader]}>
-          <Text style={[s.lessonPhaseHeadText, { flex: 0.7 }]}>Phase/Duration</Text>
-          <Text style={[s.lessonPhaseHeadText, { flex: 2.2 }]}>Learners Activities</Text>
-          <Text style={[s.lessonPhaseHeadText, { flex: 0.8 }]}>Resources</Text>
+          <Text style={[s.lessonPhaseHeadText, { flex: compact ? 0.7 : 0.45 }]}>Phase/Duration</Text>
+          <Text style={[s.lessonPhaseHeadText, { flex: compact ? 1.8 : 2.8 }]}>Learners Activities</Text>
+          <Text style={[s.lessonPhaseHeadText, { flex: compact ? 0.55 : 0.45 }, s.lessonLastCell]}>Resources</Text>
         </View>
         {lp.phases.map((p, index) => (
           <View key={p.phase} style={[s.lessonInfoRow, index % 2 === 1 && s.lessonAltRow]}>
-            <Text style={[s.lessonPhaseCell, s.lessonPhaseName, { flex: 0.7 }]}>{p.phase}{"\n"}{index === 0 ? "10 mins" : index === 1 ? "40 mins" : "10 mins"}</Text>
-            <View style={[s.lessonPhaseCellWrap, { flex: 2.2 }]}>
-              <Text style={s.lessonActivityText}>Teacher: {p.teacherActivity}</Text>
-              <Text style={s.lessonActivityText}>Learners: {p.learnerActivity}</Text>
-              <Text style={s.lessonAssessmentText}>Assessment: {p.assessment}</Text>
+            <View style={[s.lessonPhaseCellWrap, { flex: compact ? 0.7 : 0.45 }]}>
+              <Text style={s.lessonPhaseLabel}>PHASE {p.phase}:</Text>
+              <Text style={s.lessonPhaseName}>{p.title}</Text>
+              {p.duration ? <Text style={s.lessonPhaseDuration}>{p.duration}</Text> : null}
             </View>
-            <Text style={[s.lessonPhaseCell, { flex: 0.8 }]}>Board{"\n"}Textbook{"\n"}Local materials</Text>
+            <View style={[s.lessonPhaseCellWrap, { flex: compact ? 1.8 : 2.8 }]}>
+              {p.activities.map((activity, activityIndex) => (
+                <Text key={activityIndex} style={s.lessonActivityText}>{activity}</Text>
+              ))}
+              {p.assessment?.length ? (
+                <View style={s.lessonAssessmentBlock}>
+                  <Text style={s.lessonAssessmentTitle}>Assessment</Text>
+                  {p.assessment.map((question, questionIndex) => (
+                    <Text key={questionIndex} style={s.lessonAssessmentText}>
+                      {questionIndex + 1}. {question}
+                    </Text>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+            <View style={[s.lessonPhaseCellWrap, { flex: compact ? 0.55 : 0.45 }, s.lessonLastCell]}>
+              {p.resources?.map((resource, resourceIndex) => (
+                <Text key={resourceIndex} style={s.lessonResourceText}>{resource}</Text>
+              ))}
+            </View>
           </View>
         ))}
       </View>
@@ -718,8 +777,10 @@ function LessonInfoCell({
 }) {
   return (
     <View style={[s.lessonCell, { flex }, last && s.lessonLastCell]}>
-      <Text style={s.lessonCellLabel}>{label}</Text>
-      <Text style={s.lessonCellValue}>{value}</Text>
+      <Text style={s.lessonInlineText}>
+        <Text style={s.lessonInlineLabel}>{label}: </Text>
+        {value}
+      </Text>
     </View>
   );
 }
@@ -735,10 +796,11 @@ function LessonTextCell({
   flex: number;
   last?: boolean;
 }) {
+  const separator = label.trim().endsWith(":") ? " " : ": ";
   return (
     <View style={[s.lessonCell, { flex }, last && s.lessonLastCell]}>
       <Text style={s.lessonInlineText}>
-        <Text style={s.lessonInlineLabel}>{label}: </Text>
+        <Text style={s.lessonInlineLabel}>{label}{separator}</Text>
         {value}
       </Text>
     </View>
@@ -1056,6 +1118,7 @@ const s = StyleSheet.create({
 
   // PREVIEW / SCHEME / LESSON
   previewPanel: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderRadius: 12, padding: 20, flex: 1, overflow: "hidden", shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 20, elevation: 2 },
+  previewPanelCompact: { padding: 10 },
   watermarkWrap: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, alignItems: "center", justifyContent: "center", zIndex: 0 },
   watermarkText: { fontSize: 22, fontWeight: "900", color: C.red, opacity: 0.07, transform: [{ rotate: "-15deg" }], letterSpacing: 0.4, fontFamily: Platform.OS === "web" ? "Georgia, serif" : "serif" },
   previewKicker: { fontSize: 10, fontWeight: "500", textTransform: "uppercase", letterSpacing: 1, color: C.yellow, marginBottom: 4, fontFamily: Platform.OS === "web" ? "monospace" : "monospace" },
@@ -1070,25 +1133,32 @@ const s = StyleSheet.create({
   phaseDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.yellow, flexShrink: 0 },
   phaseLineLabel: { fontWeight: "700", color: C.forestLight, flexShrink: 0, fontSize: 11, minWidth: 72 },
   phaseLineText: { flex: 1, fontSize: 12, lineHeight: 19, color: C.ink70 },
-  lessonTitleBlock: { backgroundColor: C.forest, borderRadius: 8, padding: 14, marginTop: 8, marginBottom: 10, alignItems: "center" },
-  lessonTitleMain: { color: C.white, fontSize: 13, fontWeight: "800", letterSpacing: 0.8 },
-  lessonTitleSub: { color: C.yellow, fontSize: 12, fontWeight: "700", marginTop: 4, textAlign: "center" },
-  lessonTable: { borderWidth: 1, borderColor: C.border, borderRadius: 8, overflow: "hidden", marginTop: 8, backgroundColor: C.surface },
-  lessonInfoRow: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: C.border },
+  lessonTitleBlock: { alignItems: "center", paddingVertical: 12, marginTop: 8, marginBottom: 8 },
+  lessonTitleBlockCompact: { paddingVertical: 8, marginBottom: 6 },
+  lessonTitleMain: { color: C.forest, fontSize: 15, fontWeight: "800", textAlign: "center" },
+  lessonTitleMainCompact: { fontSize: 12 },
+  lessonTitleSub: { color: C.forest, fontSize: 13, fontWeight: "700", marginTop: 2, textAlign: "center" },
+  lessonTitleSubCompact: { fontSize: 11 },
+  lessonTable: { borderWidth: 1, borderColor: C.border, borderRadius: 6, overflow: "hidden", marginTop: 8, backgroundColor: C.surface },
+  lessonInfoRow: { flexDirection: "row", borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border, minHeight: 32 },
   lessonAltRow: { backgroundColor: C.yellowPale },
-  lessonCell: { padding: 8, borderRightWidth: 1, borderRightColor: C.border, minHeight: 44 },
+  lessonCell: { padding: 5, borderRightWidth: StyleSheet.hairlineWidth, borderRightColor: C.border, justifyContent: "flex-start" },
   lessonLastCell: { borderRightWidth: 0 },
   lessonCellLabel: { color: C.ink40, fontSize: 9, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 3 },
   lessonCellValue: { color: C.ink, fontSize: 11, lineHeight: 16, fontWeight: "600" },
-  lessonInlineText: { color: C.ink70, fontSize: 11, lineHeight: 17 },
+  lessonInlineText: { color: C.ink, fontSize: 11, lineHeight: 16 },
   lessonInlineLabel: { color: C.forest, fontWeight: "800" },
   lessonPhaseHeader: { backgroundColor: C.forest },
-  lessonPhaseHeadText: { color: C.white, fontSize: 10, lineHeight: 15, fontWeight: "800", padding: 8, borderRightWidth: 1, borderRightColor: "rgba(255,255,255,0.3)" },
-  lessonPhaseCell: { color: C.ink70, fontSize: 10, lineHeight: 15, padding: 8, borderRightWidth: 1, borderRightColor: C.border },
-  lessonPhaseName: { color: C.forest, fontWeight: "800" },
-  lessonPhaseCellWrap: { padding: 8, borderRightWidth: 1, borderRightColor: C.border },
-  lessonActivityText: { color: C.ink70, fontSize: 10, lineHeight: 16, marginBottom: 4 },
-  lessonAssessmentText: { color: C.forest, fontSize: 10, lineHeight: 16, fontWeight: "700" },
+  lessonPhaseHeadText: { color: C.white, fontSize: 9, lineHeight: 13, fontWeight: "800", padding: 6, borderRightWidth: StyleSheet.hairlineWidth, borderRightColor: "rgba(255,255,255,0.3)" },
+  lessonPhaseLabel: { color: C.forest, fontSize: 8, fontWeight: "800" },
+  lessonPhaseName: { color: C.ink, fontSize: 9, fontWeight: "700", lineHeight: 12, marginTop: 2 },
+  lessonPhaseDuration: { color: C.ink40, fontSize: 8, lineHeight: 12, marginTop: 2 },
+  lessonPhaseCellWrap: { padding: 6, borderRightWidth: StyleSheet.hairlineWidth, borderRightColor: C.border },
+  lessonActivityText: { color: C.ink, fontSize: 10, lineHeight: 15, marginBottom: 3 },
+  lessonAssessmentBlock: { marginTop: 6, paddingTop: 6, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
+  lessonAssessmentTitle: { color: C.forest, fontSize: 9, fontWeight: "800", marginBottom: 3 },
+  lessonAssessmentText: { color: C.ink, fontSize: 10, lineHeight: 15, marginBottom: 2 },
+  lessonResourceText: { color: C.ink, fontSize: 9, lineHeight: 13, marginBottom: 2 },
   demoOnlyStrip: { backgroundColor: C.yellowPale, borderWidth: 1, borderColor: "rgba(255,230,0,0.35)", borderRadius: 7, padding: 10, marginTop: 10 },
   demoOnlyText: { color: C.ink70, fontSize: 11, lineHeight: 17, textAlign: "center" },
 

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -330,40 +331,34 @@ export default function AdminScreen() {
     }
   }
 
-  function deleteFaqSection(id: string) {
-    Alert.alert('Delete FAQ section', 'This will delete the section and all answers inside it.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await adminDeleteFaqSection(id);
-            await load();
-          } catch (err: unknown) {
-            Alert.alert('Could not delete FAQ section', getMessage(err));
-          }
-        },
-      },
-    ]);
+  async function deleteFaqSection(id: string) {
+    const confirmed = await confirmRemoval(
+      'Delete FAQ section',
+      'This will delete the section and all answers inside it.',
+    );
+    if (!confirmed) return;
+    try {
+      await adminDeleteFaqSection(id);
+      if (faqSectionDraft.id === id) setFaqSectionDraft(emptyFaqSectionDraft());
+      if (faqItemDraft.sectionId === id) setFaqItemDraft(emptyFaqItemDraft());
+      await load();
+      Alert.alert('FAQ section deleted');
+    } catch (err: unknown) {
+      Alert.alert('Could not delete FAQ section', getMessage(err));
+    }
   }
 
-  function deleteFaqItem(id: string) {
-    Alert.alert('Delete FAQ answer', 'Delete this question and answer?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await adminDeleteFaqItem(id);
-            await load();
-          } catch (err: unknown) {
-            Alert.alert('Could not delete FAQ answer', getMessage(err));
-          }
-        },
-      },
-    ]);
+  async function deleteFaqItem(id: string) {
+    const confirmed = await confirmRemoval('Delete FAQ answer', 'Delete this question and answer?');
+    if (!confirmed) return;
+    try {
+      await adminDeleteFaqItem(id);
+      if (faqItemDraft.id === id) setFaqItemDraft(emptyFaqItemDraft(faqItemDraft.sectionId));
+      await load();
+      Alert.alert('FAQ answer deleted');
+    } catch (err: unknown) {
+      Alert.alert('Could not delete FAQ answer', getMessage(err));
+    }
   }
 
   function updateReportFilter(key: string, patch: Partial<ReportFilter>) {
@@ -644,4 +639,17 @@ function emptyFaqSectionDraft(): FaqSectionDraft {
 
 function emptyFaqItemDraft(sectionId = ''): FaqItemDraft {
   return { sectionId, question: '', answer: '', sortOrder: '0', active: true };
+}
+
+function confirmRemoval(title: string, message: string): Promise<boolean> {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    return Promise.resolve(window.confirm(message));
+  }
+
+  return new Promise((resolve) => {
+    Alert.alert(title, message, [
+      { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+      { text: 'Delete', style: 'destructive', onPress: () => resolve(true) },
+    ]);
+  });
 }

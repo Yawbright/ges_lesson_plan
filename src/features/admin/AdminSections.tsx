@@ -679,19 +679,16 @@ export function FaqsSection(props: {
   newItem: (sectionId?: string) => void;
   saving: boolean;
 }) {
-  return (
-    <View style={styles.settingsStack}>
-      <View style={styles.settingsIntro}>
-        <Text style={styles.settingsIntroTitle}>Landing Page FAQs</Text>
-        <Text style={styles.settingsIntroText}>
-          Edit the FAQ sections and answers shown on the public landing page. Turn a section or answer off to hide it
-          without deleting it.
-        </Text>
-      </View>
-
-      <Panel title={props.sectionDraft.id ? 'Edit FAQ Section' : 'Add FAQ Section'} style={styles.settingsPanel}>
+  function SectionEditor({ title }: { title: string }) {
+    return (
+      <View style={styles.previewBox}>
+        <Text style={styles.rowTitle}>{title}</Text>
         <View style={styles.formGrid}>
-          <Field label="Section title" value={props.sectionDraft.title} onChangeText={(value) => props.setSectionDraft({ title: value })} />
+          <Field
+            label="Section title"
+            value={props.sectionDraft.title}
+            onChangeText={(value) => props.setSectionDraft({ title: value })}
+          />
           <Field
             label="Sort order"
             value={props.sectionDraft.sortOrder}
@@ -704,29 +701,34 @@ export function FaqsSection(props: {
           <Switch value={props.sectionDraft.active} onValueChange={(value) => props.setSectionDraft({ active: value })} />
         </View>
         <View style={styles.buttonRow}>
-          <Button title="Save section" onPress={props.saveSection} loading={props.saving} />
-          <Button title="New section" variant="secondary" onPress={props.newSection} />
+          <Button title="Save section" onPress={props.saveSection} loading={props.saving} size="small" />
+          <Button title="Cancel" variant="ghost" onPress={props.newSection} size="small" />
         </View>
-      </Panel>
+      </View>
+    );
+  }
 
-      <Panel title={props.itemDraft.id ? 'Edit FAQ Answer' : 'Add FAQ Answer'} style={styles.settingsPanel}>
+  function AnswerEditor({ sectionId }: { sectionId: string }) {
+    return (
+      <View style={styles.previewBox}>
+        <Text style={styles.rowTitle}>{props.itemDraft.id ? 'Edit question' : 'Add question'}</Text>
         <View style={styles.formGrid}>
-          <View style={styles.formField}>
-            <SelectField
-              label="Section"
-              value={props.itemDraft.sectionId}
-              options={props.faqs.map((section) => ({ label: section.title, value: section.id }))}
-              onChange={(value) => props.setItemDraft({ sectionId: value })}
-              placeholder="Choose a section"
-            />
-          </View>
-          <Field label="Sort order" value={props.itemDraft.sortOrder} onChangeText={(value) => props.setItemDraft({ sortOrder: cleanWholeNumber(value) })} keyboardType="number-pad" />
+          <Field
+            label="Sort order"
+            value={props.itemDraft.sortOrder}
+            onChangeText={(value) => props.setItemDraft({ sortOrder: cleanWholeNumber(value) })}
+            keyboardType="number-pad"
+          />
         </View>
-        <Field label="Question" value={props.itemDraft.question} onChangeText={(value) => props.setItemDraft({ question: value })} />
+        <Field
+          label="Question"
+          value={props.itemDraft.question}
+          onChangeText={(value) => props.setItemDraft({ question: value, sectionId })}
+        />
         <Field
           label="Answer"
           value={props.itemDraft.answer}
-          onChangeText={(value) => props.setItemDraft({ answer: value })}
+          onChangeText={(value) => props.setItemDraft({ answer: value, sectionId })}
           multiline
           style={{ minHeight: 110, textAlignVertical: 'top' }}
         />
@@ -735,12 +737,25 @@ export function FaqsSection(props: {
           <Switch value={props.itemDraft.active} onValueChange={(value) => props.setItemDraft({ active: value })} />
         </View>
         <View style={styles.buttonRow}>
-          <Button title="Save answer" onPress={props.saveItem} loading={props.saving} />
-          <Button title="New answer" variant="secondary" onPress={() => props.newItem(props.itemDraft.sectionId)} />
+          <Button title="Save answer" onPress={props.saveItem} loading={props.saving} size="small" />
+          <Button title="Cancel" variant="ghost" onPress={() => props.newItem()} size="small" />
         </View>
-      </Panel>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.settingsStack}>
+      <View style={styles.settingsIntro}>
+        <Text style={styles.settingsIntroTitle}>Landing Page FAQs</Text>
+        <Text style={styles.settingsIntroText}>
+          Edit the FAQ sections and answers shown on the public landing page. Turn a section or answer off to hide it
+          without deleting it.
+        </Text>
+      </View>
 
       <Panel title="Current FAQs" style={styles.settingsPanel}>
+        {!props.sectionDraft.id ? <SectionEditor title="Add section" /> : null}
         {props.faqs.length ? (
           props.faqs.map((section) => (
             <View key={section.id} style={styles.packageAdminCard}>
@@ -752,17 +767,27 @@ export function FaqsSection(props: {
                   <Button title="Add answer" variant="secondary" size="small" onPress={() => props.newItem(section.id)} />
                   <Button title="Delete section" variant="danger" size="small" onPress={() => props.deleteSection(section.id)} />
                 </View>
+                {props.sectionDraft.id === section.id ? <SectionEditor title="Edit section" /> : null}
+                {props.itemDraft.sectionId === section.id && !props.itemDraft.id ? <AnswerEditor sectionId={section.id} /> : null}
                 {section.items.map((item) => (
                   <View key={item.id} style={styles.dataRow}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.rowTitle}>{item.question}</Text>
-                      <Text style={styles.bodyText}>{item.answer}</Text>
-                      <Text style={styles.meta}>Sort: {item.sort_order} | {item.active ? 'Visible' : 'Hidden'}</Text>
+                      {props.itemDraft.id === item.id ? (
+                        <AnswerEditor sectionId={section.id} />
+                      ) : (
+                        <>
+                          <Text style={styles.rowTitle}>{item.question}</Text>
+                          <Text style={styles.bodyText}>{item.answer}</Text>
+                          <Text style={styles.meta}>Sort: {item.sort_order} | {item.active ? 'Visible' : 'Hidden'}</Text>
+                        </>
+                      )}
                     </View>
-                    <View style={styles.packageAdminActions}>
-                      <Button title="Edit" variant="secondary" size="small" onPress={() => props.editItem(item)} />
-                      <Button title="Delete" variant="danger" size="small" onPress={() => props.deleteItem(item.id)} />
-                    </View>
+                    {props.itemDraft.id === item.id ? null : (
+                      <View style={styles.packageAdminActions}>
+                        <Button title="Edit" variant="secondary" size="small" onPress={() => props.editItem(item)} />
+                        <Button title="Delete" variant="danger" size="small" onPress={() => props.deleteItem(item.id)} />
+                      </View>
+                    )}
                   </View>
                 ))}
               </View>

@@ -5,8 +5,18 @@ import { englishExemplarsByIndicator } from '@/data/curriculum/englishExemplars'
 import { frenchLanguageExemplarsByIndicator } from '@/data/curriculum/frenchLanguageExemplars';
 import { ghanaianLanguageExemplarsByIndicator } from '@/data/curriculum/ghanaianLanguageExemplars';
 import { mathematicsExemplarsByIndicator } from '@/data/curriculum/mathematicsExemplars';
+import { primaryCreativeArtsExemplarsByIndicator } from '@/data/curriculum/primaryCreativeArtsExemplars';
+import { primaryComputingExemplarsByIndicator } from '@/data/curriculum/primaryComputingExemplars';
+import { primaryEnglishExemplarsByIndicator } from '@/data/curriculum/primaryEnglishExemplars';
+import { primaryFrenchExemplarsByIndicator } from '@/data/curriculum/primaryFrenchExemplars';
+import { primaryGhanaianLanguageExemplarsByIndicator } from '@/data/curriculum/primaryGhanaianLanguageExemplars';
+import { primaryHistoryExemplarsByIndicator } from '@/data/curriculum/primaryHistoryExemplars';
+import { primaryMathematicsExemplarsByIndicator } from '@/data/curriculum/primaryMathematicsExemplars';
+import { primaryPhysicalEducationExemplarsByIndicator } from '@/data/curriculum/primaryPhysicalEducationExemplars';
+import { primaryRmeExemplarsByIndicator } from '@/data/curriculum/primaryRmeExemplars';
 import { rmeExemplarsByIndicator } from '@/data/curriculum/rmeExemplars';
 import { scienceExemplarsByIndicator } from '@/data/curriculum/scienceExemplars';
+import { primaryScienceExemplarsByIndicator } from '@/data/curriculum/primaryScienceExemplars';
 import { socialStudiesExemplarsByIndicator } from '@/data/curriculum/socialStudiesExemplars';
 import { getWeekEntries } from './schemeWeek';
 import type { SchemeWeek, SchemeWeekEntry } from '@/types/scheme';
@@ -25,7 +35,9 @@ export function buildExemplarLessonGuidance(input: {
   sessionIndex?: number;
   sessionsPerWeek?: number;
 }): LessonFocusGuidance | undefined {
-  if (!['B7', 'B8', 'B9'].includes(input.classLevel) || !input.week) return undefined;
+  if (!['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9'].includes(input.classLevel) || !input.week) {
+    return undefined;
+  }
 
   const source = getExemplarSource(input.subject);
   if (!source) return undefined;
@@ -208,16 +220,40 @@ function normalizeCurriculumCodeSpacing(value: string): string {
 
 function getExemplarSource(subject: string): ExemplarSource | null {
   const normalized = subject.trim().toLowerCase();
-  if (normalized.includes('english')) return englishExemplarsByIndicator;
-  if (normalized.includes('mathematics') || normalized.includes('math')) return mathematicsExemplarsByIndicator;
-  if (normalized.includes('science')) return scienceExemplarsByIndicator;
+  if (normalized.includes('english')) {
+    return { ...primaryEnglishExemplarsByIndicator, ...englishExemplarsByIndicator };
+  }
+  if (normalized.includes('mathematics') || normalized.includes('math')) {
+    return { ...primaryMathematicsExemplarsByIndicator, ...mathematicsExemplarsByIndicator };
+  }
+  if (normalized.includes('science')) {
+    return { ...primaryScienceExemplarsByIndicator, ...scienceExemplarsByIndicator };
+  }
   if (normalized.includes('social studies')) return socialStudiesExemplarsByIndicator;
-  if (normalized.includes('computing')) return computingExemplarsByIndicator;
+  if (normalized.includes('history')) return primaryHistoryExemplarsByIndicator;
+  if (normalized.includes('computing')) {
+    return { ...primaryComputingExemplarsByIndicator, ...computingExemplarsByIndicator };
+  }
   if (normalized.includes('career technology')) return careerTechnologyExemplarsByIndicator;
-  if (normalized === 'rme' || normalized.includes('religious and moral')) return rmeExemplarsByIndicator;
-  if (normalized.includes('creative arts')) return creativeArtsDesignExemplarsByIndicator;
-  if (normalized.includes('ghanaian language')) return ghanaianLanguageExemplarsByIndicator;
-  if (normalized.includes('french')) return frenchLanguageExemplarsByIndicator;
+  if (normalized === 'rme' || normalized.includes('religious and moral')) {
+    return { ...primaryRmeExemplarsByIndicator, ...rmeExemplarsByIndicator };
+  }
+  if (normalized.includes('creative arts')) {
+    return { ...primaryCreativeArtsExemplarsByIndicator, ...creativeArtsDesignExemplarsByIndicator };
+  }
+  if (normalized.includes('ghanaian language')) {
+    return { ...primaryGhanaianLanguageExemplarsByIndicator, ...ghanaianLanguageExemplarsByIndicator };
+  }
+  if (normalized.includes('french')) {
+    return { ...primaryFrenchExemplarsByIndicator, ...frenchLanguageExemplarsByIndicator };
+  }
+  if (
+    normalized === 'pe' ||
+    normalized.includes('phys ed') ||
+    normalized.includes('physical education')
+  ) {
+    return primaryPhysicalEducationExemplarsByIndicator;
+  }
   return null;
 }
 
@@ -227,7 +263,15 @@ function getSubjectMode(subject: string): string {
   if (normalized.includes('mathematics') || normalized.includes('math')) return 'mathematics';
   if (normalized.includes('science')) return 'science';
   if (normalized.includes('social studies')) return 'social-studies';
+  if (normalized.includes('history')) return 'history';
   if (normalized.includes('computing')) return 'computing';
+  if (
+    normalized === 'pe' ||
+    normalized.includes('phys ed') ||
+    normalized.includes('physical education')
+  ) {
+    return 'physical-education';
+  }
   if (normalized.includes('career technology')) return 'career-technology';
   if (normalized === 'rme' || normalized.includes('religious and moral')) return 'rme';
   if (normalized.includes('creative arts')) return 'creative-arts-design';

@@ -1,15 +1,25 @@
 import { getExplicitCurriculumYearWeeks } from '@/lib/curriculum';
 import { getWeekEntries } from '@/lib/schemeWeek';
 import { englishExemplarsByIndicator } from '@/data/curriculum/englishExemplars';
+import { primaryEnglishExemplarsByIndicator } from '@/data/curriculum/primaryEnglishExemplars';
 import { mathematicsExemplarsByIndicator } from '@/data/curriculum/mathematicsExemplars';
+import { primaryMathematicsExemplarsByIndicator } from '@/data/curriculum/primaryMathematicsExemplars';
 import { scienceExemplarsByIndicator } from '@/data/curriculum/scienceExemplars';
+import { primaryScienceExemplarsByIndicator } from '@/data/curriculum/primaryScienceExemplars';
+import { primaryHistoryExemplarsByIndicator } from '@/data/curriculum/primaryHistoryExemplars';
 import { socialStudiesExemplarsByIndicator } from '@/data/curriculum/socialStudiesExemplars';
 import { computingExemplarsByIndicator } from '@/data/curriculum/computingExemplars';
+import { primaryComputingExemplarsByIndicator } from '@/data/curriculum/primaryComputingExemplars';
 import { careerTechnologyExemplarsByIndicator } from '@/data/curriculum/careerTechnologyExemplars';
 import { rmeExemplarsByIndicator } from '@/data/curriculum/rmeExemplars';
+import { primaryRmeExemplarsByIndicator } from '@/data/curriculum/primaryRmeExemplars';
 import { creativeArtsDesignExemplarsByIndicator } from '@/data/curriculum/creativeArtsDesignExemplars';
+import { primaryCreativeArtsExemplarsByIndicator } from '@/data/curriculum/primaryCreativeArtsExemplars';
 import { ghanaianLanguageExemplarsByIndicator } from '@/data/curriculum/ghanaianLanguageExemplars';
+import { primaryGhanaianLanguageExemplarsByIndicator } from '@/data/curriculum/primaryGhanaianLanguageExemplars';
 import { frenchLanguageExemplarsByIndicator } from '@/data/curriculum/frenchLanguageExemplars';
+import { primaryFrenchExemplarsByIndicator } from '@/data/curriculum/primaryFrenchExemplars';
+import { primaryPhysicalEducationExemplarsByIndicator } from '@/data/curriculum/primaryPhysicalEducationExemplars';
 import type { ClassLevel } from '@/types/lessonPlan';
 import type { SchemeOfWork, SchemeWeek, SchemeWeekEntry } from '@/types/scheme';
 
@@ -816,16 +826,40 @@ function getExemplarSource(
   subject: string
 ): Record<string, { indicator: string; exemplars: string[] }> | null {
   const normalized = normalizeText(subject);
-  if (normalized.includes('english')) return englishExemplarsByIndicator;
-  if (normalized.includes('mathematics') || normalized.includes('math')) return mathematicsExemplarsByIndicator;
-  if (normalized.includes('science')) return scienceExemplarsByIndicator;
+  if (normalized.includes('english')) {
+    return { ...primaryEnglishExemplarsByIndicator, ...englishExemplarsByIndicator };
+  }
+  if (normalized.includes('mathematics') || normalized.includes('math')) {
+    return { ...primaryMathematicsExemplarsByIndicator, ...mathematicsExemplarsByIndicator };
+  }
+  if (normalized.includes('science')) {
+    return { ...primaryScienceExemplarsByIndicator, ...scienceExemplarsByIndicator };
+  }
   if (normalized.includes('social studies')) return socialStudiesExemplarsByIndicator;
-  if (normalized.includes('computing')) return computingExemplarsByIndicator;
+  if (normalized.includes('history')) return primaryHistoryExemplarsByIndicator;
+  if (normalized.includes('computing')) {
+    return { ...primaryComputingExemplarsByIndicator, ...computingExemplarsByIndicator };
+  }
   if (normalized.includes('career technology')) return careerTechnologyExemplarsByIndicator;
-  if (normalized === 'rme' || normalized.includes('religious and moral')) return rmeExemplarsByIndicator;
-  if (normalized.includes('creative arts')) return creativeArtsDesignExemplarsByIndicator;
-  if (normalized.includes('ghanaian language')) return ghanaianLanguageExemplarsByIndicator;
-  if (normalized.includes('french')) return frenchLanguageExemplarsByIndicator;
+  if (normalized === 'rme' || normalized.includes('religious and moral')) {
+    return { ...primaryRmeExemplarsByIndicator, ...rmeExemplarsByIndicator };
+  }
+  if (normalized.includes('creative arts')) {
+    return { ...primaryCreativeArtsExemplarsByIndicator, ...creativeArtsDesignExemplarsByIndicator };
+  }
+  if (normalized.includes('ghanaian language')) {
+    return { ...primaryGhanaianLanguageExemplarsByIndicator, ...ghanaianLanguageExemplarsByIndicator };
+  }
+  if (normalized.includes('french')) {
+    return { ...primaryFrenchExemplarsByIndicator, ...frenchLanguageExemplarsByIndicator };
+  }
+  if (
+    normalized === 'pe' ||
+    normalized.includes('phys ed') ||
+    normalized.includes('physical education')
+  ) {
+    return primaryPhysicalEducationExemplarsByIndicator;
+  }
   return null;
 }
 
