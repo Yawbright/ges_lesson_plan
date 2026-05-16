@@ -923,30 +923,6 @@ export default function LandingPage({ onGetAccess }: LandingPageProps): JSX.Elem
   const demoY = useRef<number>(0);
   const handleGetAccess = onGetAccess ?? (() => router.push("/(auth)/sign-in"));
 
-  useEffect(() => {
-    if (Platform.OS !== "web" || typeof document === "undefined") return undefined;
-
-    const preventDefault = (event: Event) => event.preventDefault();
-    const blockShortcuts = (event: KeyboardEvent) => {
-      const key = event.key.toLowerCase();
-      const command = event.ctrlKey || event.metaKey;
-      if (command && ["a", "c", "p", "s"].includes(key)) {
-        event.preventDefault();
-      }
-    };
-
-    document.addEventListener("contextmenu", preventDefault);
-    document.addEventListener("copy", preventDefault);
-    document.addEventListener("cut", preventDefault);
-    document.addEventListener("keydown", blockShortcuts);
-    return () => {
-      document.removeEventListener("contextmenu", preventDefault);
-      document.removeEventListener("copy", preventDefault);
-      document.removeEventListener("cut", preventDefault);
-      document.removeEventListener("keydown", blockShortcuts);
-    };
-  }, []);
-
   return (
     <View style={{ flex: 1, backgroundColor: C.cream }}>
       <NavBar

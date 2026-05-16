@@ -18,6 +18,7 @@ const anonKey = (
 
 export const supabaseUrl = url;
 export const supabaseAnonKey = anonKey;
+export const isSupabaseConfigured = Boolean(url && anonKey);
 
 if (!url || !anonKey) {
   console.warn(
@@ -27,7 +28,10 @@ if (!url || !anonKey) {
   );
 }
 
-export const supabase = createClient(url, anonKey, {
+const clientUrl = isSupabaseConfigured ? url : 'https://placeholder.supabase.co';
+const clientAnonKey = isSupabaseConfigured ? anonKey : 'placeholder-anon-key';
+
+export const supabase = createClient(clientUrl, clientAnonKey, {
   auth: {
     storage: appStorage,
     autoRefreshToken: Platform.OS !== 'web',
@@ -35,5 +39,3 @@ export const supabase = createClient(url, anonKey, {
     detectSessionInUrl: false,
   },
 });
-
-export const isSupabaseConfigured = Boolean(url && anonKey);

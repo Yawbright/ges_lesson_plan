@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { isSupabaseConfigured, supabase } from './supabase';
 
 export type LandingFaqItem = {
   id?: string;
@@ -88,6 +88,8 @@ export const fallbackLandingFaqGroups: LandingFaqGroup[] = [
 ];
 
 export async function loadLandingFaqGroups(): Promise<LandingFaqGroup[]> {
+  if (!isSupabaseConfigured) return fallbackLandingFaqGroups;
+
   const { data, error } = await supabase
     .from('landing_faq_sections')
     .select('id,title,sort_order,active,landing_faq_items(id,section_id,question,answer,sort_order,active)')
