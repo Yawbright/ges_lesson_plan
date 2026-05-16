@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Ghana Lesson Planner",
+    "name": "GES Lesson Planner",
     "slug": "ghana-lesson-planner",
     "scheme": "ghlessonplanner",
     "version": "0.1.0",
@@ -16,14 +16,14 @@
       "package": "com.ghanalessonplanner.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0F4C3A"
+        "backgroundColor": "#0E3D31"
       }
     },
     "web": {
       "bundler": "metro",
       "output": "static",
       "favicon": "./public/favicon.png",
-      "name": "Ghana Lesson Planner",
+      "name": "GES Lesson Planner",
       "shortName": "GES Planner"
     },
     "plugins": [

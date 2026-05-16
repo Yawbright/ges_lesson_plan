@@ -1,92 +1,140 @@
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, TextInputProps, View, Pressable } from 'react-native';
-import { colors } from '@/theme/colors';
+import { Pressable, StyleSheet, Text, TextInput, type TextInputProps, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, radii, spacing, typography } from '@/theme/colors';
 
 interface Props extends TextInputProps {
   label: string;
   error?: string;
   isPasswordField?: boolean;
+  helperText?: string;
 }
 
-export function Field({ label, error, style, isPasswordField, ...rest }: Props) {
+export function Field({
+  label,
+  error,
+  style,
+  isPasswordField,
+  helperText,
+  multiline,
+  ...rest
+}: Props) {
   const [showPassword, setShowPassword] = useState(false);
+  const [focused, setFocused] = useState(false);
   const isPassword = isPasswordField || rest.secureTextEntry;
 
   return (
     <View style={styles.wrap}>
       <Text style={styles.label}>{label}</Text>
-      <View style={styles.inputContainer}>
+      <View
+        style={[
+          styles.inputShell,
+          focused && styles.inputShellFocused,
+          !!error && styles.inputShellError,
+          multiline && styles.inputShellMultiline,
+        ]}
+      >
         <TextInput
-          placeholderTextColor={colors.textMuted}
-          style={[styles.input, !!error && styles.inputError, isPassword && styles.inputWithIcon, style]}
-          secureTextEntry={isPassword && !showPassword}
+          placeholderTextColor={colors.textSubtle}
           {...rest}
+          multiline={multiline}
+          onFocus={(event) => {
+            setFocused(true);
+            rest.onFocus?.(event);
+          }}
+          onBlur={(event) => {
+            setFocused(false);
+            rest.onBlur?.(event);
+          }}
+          secureTextEntry={isPassword && !showPassword}
+          style={[
+            styles.input,
+            multiline && styles.inputMultiline,
+            isPassword && styles.inputWithIcon,
+            style,
+          ]}
         />
-        {isPassword && (
+        {isPassword ? (
           <Pressable
-            onPress={() => setShowPassword(!showPassword)}
+            accessibilityRole="button"
+            accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+            onPress={() => setShowPassword((value) => !value)}
             style={styles.iconButton}
+            hitSlop={8}
           >
-            <Text style={styles.icon}>{showPassword ? '👁️' : '👁️‍🗨️'}</Text>
+            <Ionicons
+              name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+              size={18}
+              color={colors.textMuted}
+            />
           </Pressable>
-        )}
+        ) : null}
       </View>
-      {!!error && <Text style={styles.error}>{error}</Text>}
+      {error ? (
+        <Text style={styles.error}>{error}</Text>
+      ) : helperText ? (
+        <Text style={styles.helper}>{helperText}</Text>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginBottom: 18 },
+  wrap: { marginBottom: spacing[6] },
   label: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.text,
-    marginBottom: 8,
-    letterSpacing: 0.2,
+    marginBottom: spacing[3],
   },
-  inputContainer: {
-    position: 'relative',
+  inputShell: {
     flexDirection: 'row',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing[5],
+    minHeight: 48,
+  },
+  inputShellMultiline: {
+    alignItems: 'flex-start',
+    paddingVertical: spacing[4],
+  },
+  inputShellFocused: {
+    borderColor: colors.primary,
+    backgroundColor: colors.surface,
+  },
+  inputShellError: {
+    borderColor: colors.danger,
   },
   input: {
     flex: 1,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
+    paddingVertical: spacing[4],
+    ...typography.bodyLg,
     color: colors.text,
-    backgroundColor: colors.surface,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+  },
+  inputMultiline: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+    paddingVertical: 0,
   },
   inputWithIcon: {
-    paddingRight: 48,
-  },
-  inputError: {
-    borderColor: colors.danger,
+    paddingRight: spacing[7],
   },
   iconButton: {
-    position: 'absolute',
-    right: 12,
-    padding: 8,
-    justifyContent: 'center',
+    paddingHorizontal: spacing[2],
+    paddingVertical: spacing[2],
     alignItems: 'center',
-  },
-  icon: {
-    fontSize: 18,
+    justifyContent: 'center',
   },
   error: {
+    ...typography.caption,
     color: colors.danger,
-    fontSize: 13,
-    marginTop: 6,
-    fontWeight: '500',
-    letterSpacing: 0.2,
+    marginTop: spacing[3],
+  },
+  helper: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: spacing[3],
   },
 });

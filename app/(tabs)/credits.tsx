@@ -36,6 +36,8 @@ export default function CreditsScreen() {
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [checkoutStatus, setCheckoutStatus] = useState<string | null>(null);
   const [purchasingEnabled, setPurchasingEnabled] = useState(defaultRuntimeSettings.creditPurchasing.enabled);
+  const [referralRewardCredits, setReferralRewardCredits] = useState(defaultRuntimeSettings.referralReward.credits);
+  const [referralRewardActive, setReferralRewardActive] = useState(defaultRuntimeSettings.referralReward.active);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -52,6 +54,8 @@ export default function CreditsScreen() {
       setTransactions(nextTransactions);
       setPurchases(nextPurchases);
       setPurchasingEnabled(settings.creditPurchasing.enabled);
+      setReferralRewardCredits(settings.referralReward.credits);
+      setReferralRewardActive(settings.referralReward.active);
       setSelectedPackageId((current) => current ?? nextPackages[0]?.id ?? null);
     } catch (err: unknown) {
       Alert.alert('Credits unavailable', getMessage(err));
@@ -235,8 +239,9 @@ export default function CreditsScreen() {
         <View style={styles.referralPanel}>
           <Text style={styles.referralTitle}>Need more credits?</Text>
           <Text style={styles.referralText}>
-            Invite other teachers with your referral link. When a referred teacher signs up and starts generating work,
-            referral rewards can add credits to your account.
+            {referralRewardActive
+              ? `Invite other teachers with your referral link. When a referred teacher signs up and starts generating work, you can earn ${referralRewardCredits} ${referralRewardCredits === 1 ? 'credit' : 'credits'} per referral.`
+              : 'Referral rewards are currently inactive. Check back later for more ways to earn credits.'}
           </Text>
           <Button title="Open referral details" variant="secondary" onPress={() => router.push('/(tabs)/profile')} />
         </View>

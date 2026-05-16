@@ -44,6 +44,9 @@ Deno.serve(async (req) => {
       .eq('key', 'referral_reward')
       .maybeSingle();
     const monthlyLimit = Number(referralSetting?.value?.monthly_limit ?? 5);
+    const rewardCredits = Number(referralSetting?.value?.credits ?? 5);
+    const rewardActive =
+      typeof referralSetting?.value?.active === 'boolean' ? referralSetting.value.active : true;
 
     const stats = {
       pending: 0,
@@ -51,6 +54,8 @@ Deno.serve(async (req) => {
       rejected: 0,
       rewardsThisMonth: 0,
       monthlyLimit: Number.isFinite(monthlyLimit) ? monthlyLimit : 5,
+      rewardCredits: Number.isFinite(rewardCredits) ? rewardCredits : 5,
+      active: rewardActive,
     };
 
     for (const referral of referrals ?? []) {

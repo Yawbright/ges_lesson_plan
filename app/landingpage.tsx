@@ -1,5 +1,5 @@
-// Ghana Lesson Planner — Expo / React Native Web
-// Gold → Bright Yellow (#FFE600)
+// GES Lesson Planner — Expo / React Native Web
+// Refined evergreen + warm gold (modernized 2026)
 // Run with: npx expo start (web target)
 
 import { useState, useEffect, useRef } from "react";
@@ -20,21 +20,23 @@ import {
   type LandingFaqGroup,
 } from "@/lib/landingFaqs";
 
-// ─── Design Tokens ────────────────────────────────────────────────
+// ─── Design Tokens (modernized) ───────────────────────────────────
 const C = {
-  yellow: "#FFE600",
-  yellowLight: "#FFF176",
-  yellowPale: "#FFFDE7",
-  forest: "#1A3A2A",
-  forestMid: "#2B5440",
-  forestLight: "#3D7A5C",
-  red: "#C0392B",
-  cream: "#FAF7F2",
-  warmWhite: "#FFFDF8",
-  ink: "#111008",
-  ink70: "rgba(17,16,8,0.7)",
-  ink40: "rgba(17,16,8,0.4)",
-  border: "rgba(17,16,8,0.1)",
+  // Warm gold accent (more refined than pure yellow)
+  yellow: "#E0A82E",
+  yellowLight: "#F0BD55",
+  yellowPale: "#FDF4DE",
+  // Refined evergreen — matches the new brand palette in src/theme/tokens.ts
+  forest: "#0E3D31",
+  forestMid: "#125243",
+  forestLight: "#1F8A6F",
+  red: "#C2122A",
+  cream: "#FBFBFA",
+  warmWhite: "#FFFFFF",
+  ink: "#0B1410",
+  ink70: "rgba(11,20,16,0.72)",
+  ink40: "rgba(11,20,16,0.42)",
+  border: "rgba(11,20,16,0.10)",
   surface: "#FFFFFF",
   white: "#FFFFFF",
 } as const;
@@ -112,7 +114,7 @@ const FAQ_GROUPS: FaqGroup[] = [
   {
     title: "General",
     items: [
-      { q: "What is Ghana Lesson Planner?", a: "An AI-powered tool that helps Ghanaian teachers create lesson plans, schemes of work, and teaching notes faster." },
+      { q: "What is GES Lesson Planner?", a: "An AI-powered tool that helps Ghanaian teachers create lesson plans, schemes of work, and teaching notes faster." },
       { q: "Who is it for?", a: "Teachers in Ghanaian basic schools, especially those handling B1 to B9 classes." },
       { q: "Which class levels are supported?", a: "B1, B2, B3, B4, B5, B6, B7, B8, and B9 are all supported." },
       { q: "Is it designed for the Ghana curriculum?", a: "Yes. Built around Ghanaian class levels, subjects, terms, lesson structure, and scheme-of-work planning." },
@@ -121,7 +123,7 @@ const FAQ_GROUPS: FaqGroup[] = [
   {
     title: "Lesson Plans",
     items: [
-      { q: "How does lesson plan generation work?", a: "Select class, subject, term, week, and lesson number. Ghana Lesson Planner creates a structured plan based on your selected scheme." },
+      { q: "How does lesson plan generation work?", a: "Select class, subject, term, week, and lesson number. GES Lesson Planner creates a structured plan based on your selected scheme." },
       { q: "Can I export plans as PDF?", a: "Yes. Lesson plans can be saved or exported as PDF for printing, sharing, or record keeping." },
       { q: "Do plans include my teacher details?", a: "Yes. Save your teacher name, school name, district, and class sizes in your profile, and they appear on new lesson plans." },
     ],
@@ -129,7 +131,7 @@ const FAQ_GROUPS: FaqGroup[] = [
   {
     title: "Schemes of Work",
     items: [
-      { q: "Can Ghana Lesson Planner generate a scheme of work?", a: "Yes — a full 12-week scheme for any selected subject, class, and term." },
+      { q: "Can GES Lesson Planner generate a scheme of work?", a: "Yes — a full 12-week scheme for any selected subject, class, and term." },
       { q: "Can I upload my own scheme?", a: "Yes. Upload a PDF or DOCX scheme and the app analyses it into week-by-week scheme rows." },
     ],
   },
@@ -146,7 +148,7 @@ const FAQ_GROUPS: FaqGroup[] = [
     items: [
       { q: "Is my work private?", a: "Yes. Each teacher can only access their own saved work and credit data through protected account access." },
       { q: "Can I use it on mobile and web?", a: "Yes. The app works on both mobile and web browsers." },
-      { q: "Are the generated plans always perfect?", a: "No AI tool is perfect. Ghana Lesson Planner provides a strong draft; teachers should review before classroom use." },
+      { q: "Are the generated plans always perfect?", a: "No AI tool is perfect. GES Lesson Planner provides a strong draft; teachers should review before classroom use." },
     ],
   },
 ];
@@ -255,7 +257,7 @@ function NavBar({ onTryDemo, onGetAccess }: NavBarProps): JSX.Element {
             <Text style={{ fontSize: 18 }}>📋</Text>
           </View>
           <View>
-            <Text style={s.brandName}>Ghana Lesson Planner</Text>
+            <Text style={s.brandName}>GES Lesson Planner</Text>
             <Text style={s.brandSub}>For B1–B9 classrooms</Text>
           </View>
         </View>
@@ -504,7 +506,7 @@ function DemoSection(): JSX.Element {
       <View style={s.sectionInner}>
         <Text style={s.eyebrow}>Interactive Demo</Text>
         <Text style={s.sectionTitle}>Generate a test scheme,{"\n"}then a lesson plan.</Text>
-        <Text style={s.sectionBody}>Try Ghana Lesson Planner with a sample run. All demo previews are watermarked. Sign up to save, print, and export full documents.</Text>
+        <Text style={s.sectionBody}>Try GES Lesson Planner with a sample run. All demo previews are watermarked. Sign up to save, print, and export full documents.</Text>
 
         <View style={s.demoGrid}>
           {/* Controls */}
@@ -891,7 +893,7 @@ function CtaSection({ onGetAccess }: CtaSectionProps): JSX.Element {
         <Text style={[s.eyebrow, { color: C.yellowLight }]}>Get started today</Text>
         <Text style={[s.sectionTitle, { color: C.white, textAlign: "center" }]}>Ready to plan faster?</Text>
         <Text style={[s.sectionBody, { color: "rgba(255,255,255,0.65)", textAlign: "center", marginBottom: 28 }]}>
-          Create your Ghana Lesson Planner account and start building full lesson plans, schemes, teaching notes, and PDFs.
+          Create your GES Lesson Planner account and start building full lesson plans, schemes, teaching notes, and PDFs.
         </Text>
         <TouchableOpacity style={[s.btnYellow, s.btnXl]} onPress={onGetAccess}>
           <Text style={s.btnYellowText}>Get Access — It's Free →</Text>
@@ -905,10 +907,10 @@ function Footer(): JSX.Element {
   return (
     <View style={s.footer}>
       <Text style={s.footerText}>
-        <Text style={{ color: "rgba(255,255,255,0.8)", fontWeight: "700" }}>Ghana Lesson Planner</Text>
+        <Text style={{ color: "rgba(255,255,255,0.8)", fontWeight: "700" }}>GES Lesson Planner</Text>
         {" — AI planning support for B1–B9 Ghanaian teachers."}
       </Text>
-      <Text style={s.footerSub}>© 2025 Ghana Lesson Planner. All rights reserved.</Text>
+      <Text style={s.footerSub}>© 2026 GES Lesson Planner. All rights reserved.</Text>
     </View>
   );
 }

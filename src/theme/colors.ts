@@ -1,22 +1,32 @@
-// Professional Ghana-inspired palette with restrained neutrals.
+/**
+ * Backwards-compatible color export.
+ *
+ * The app's older screens import `colors` from this module and use specific keys
+ * (primary, primaryDark, primarySoft, accent, danger, bg, surface, surfaceMuted,
+ * border, borderStrong, text, textMuted, tableHeader, tableHeaderText,
+ * tableRowAlt, dangerSoft, accentSoft). All of those keys are preserved here and
+ * now resolve to the modernized GES Lesson Planner palette (see `./tokens.ts`).
+ *
+ * New code should prefer `useTheme()` from `./ThemeProvider` to support dark mode.
+ */
+
+import { lightPalette } from './tokens';
+
 export const colors = {
-  primary: '#0E5F47',
-  primaryDark: '#063B2D',
-  primarySoft: '#EAF5F0',
-  accent: '#DFA617',
-  accentSoft: '#FFF7DD',
-  danger: '#CE1126',
-  dangerSoft: '#FFF1F1',
-  bg: '#F6F7F5',
-  surface: '#FFFFFF',
-  surfaceMuted: '#F0F3F1',
-  border: '#DDE3DF',
-  borderStrong: '#C7D0CB',
-  text: '#17211C',
-  textMuted: '#66736C',
-  tableHeader: '#0E5F47',
-  tableHeaderText: '#FFFFFF',
-  tableRowAlt: '#F1F4F2',
+  ...lightPalette,
 } as const;
 
 export type Colors = typeof colors;
+
+// Re-export design tokens for convenience.
+export {
+  brandIdentity,
+  darkPalette,
+  lightPalette,
+  radii,
+  shadows,
+  spacing,
+  typography,
+} from './tokens';
+export { useTheme, ThemeProvider } from './ThemeProvider';
+export type { Theme, ThemeMode } from './ThemeProvider';

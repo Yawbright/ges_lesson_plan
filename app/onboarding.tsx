@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
+import { Card } from '@/components/Card';
 import { Field } from '@/components/Field';
 import { SelectField } from '@/components/SelectField';
 import { CLASS_LEVEL_OPTIONS } from '@/lib/options';
 import { loadTeacherProfile, saveTeacherProfile } from '@/lib/teacherProfile';
-import { colors } from '@/theme/colors';
+import { brandIdentity, colors, radii, spacing, typography } from '@/theme/colors';
 
 export default function OnboardingScreen() {
+  const insets = useSafeAreaInsets();
   const [teacherName, setTeacherName] = useState('');
   const [schoolName, setSchoolName] = useState('');
   const [schoolDistrict, setSchoolDistrict] = useState('');
@@ -38,7 +42,10 @@ export default function OnboardingScreen() {
   async function finish() {
     const cleanedClassSizes = cleanClassSizes(classSizes);
     if (!teacherName.trim() || !schoolName.trim() || !Object.keys(cleanedClassSizes).length) {
-      Alert.alert('Setup required', 'Add your teacher name, school, and at least one class with class size.');
+      Alert.alert(
+        'Setup required',
+        'Add your teacher name, school, and at least one class with class size.',
+      );
       return;
     }
     setSaving(true);
@@ -67,7 +74,6 @@ export default function OnboardingScreen() {
       Alert.alert('Class size required', 'Select a class and enter its class size.');
       return;
     }
-
     const next = { ...classSizes, [classToAdd]: classSizeToAdd.trim() };
     setClassSizes(next);
     setClassSizeToAdd('');
@@ -84,20 +90,39 @@ export default function OnboardingScreen() {
   }
 
   return (
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-      <Text style={styles.heading}>Complete Teacher Setup</Text>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={[
+        styles.content,
+        { paddingTop: insets.top + spacing[7], paddingBottom: insets.bottom + spacing[10] },
+      ]}
+      keyboardShouldPersistTaps="handled"
+    >
+      <View style={styles.heroRow}>
+        <View style={styles.heroIcon}>
+          <Ionicons name="school-outline" size={22} color={colors.primary} />
+        </View>
+        <Text style={styles.eyebrow}>Step 1 of 1</Text>
+      </View>
+      <Text style={styles.heading}>Welcome to {brandIdentity.name}</Text>
       <Text style={styles.sub}>
-        These details will appear on your generated lesson plans. You can skip this for now and complete it later from Profile.
+        These details appear on every lesson plan you generate. You can edit them anytime from your
+        Profile.
       </Text>
-      <View style={styles.card}>
-        <Field label="Teacher Full Name" value={teacherName} onChangeText={setTeacherName} />
-        <Field label="Name of School" value={schoolName} onChangeText={setSchoolName} />
-        <Field label="School District" value={schoolDistrict} onChangeText={setSchoolDistrict} />
-        <View style={styles.classPanel}>
-          <Text style={styles.subTitle}>Classes Teaching</Text>
-          <Text style={styles.meta}>Add every class you teach and its size.</Text>
-          <View style={styles.row}>
-            <View style={{ flex: 1 }}>
+
+      <Card padding="lg" style={styles.formCard}>
+        <Field label="Teacher full name" value={teacherName} onChangeText={setTeacherName} placeholder="e.g. Ama Mensah" />
+        <Field label="Name of school" value={schoolName} onChangeText={setSchoolName} placeholder="e.g. Adenta M/A Basic School" />
+        <Field label="School district" value={schoolDistrict} onChangeText={setSchoolDistrict} placeholder="e.g. Adenta Municipal" />
+
+        <View style={styles.subhead}>
+          <Text style={styles.sectionTitle}>Classes you teach</Text>
+          <Text style={styles.sectionMeta}>Add every class with its size.</Text>
+        </View>
+
+        <Card variant="muted" padding="md" style={styles.addRowCard}>
+          <View style={styles.addRow}>
+            <View style={styles.addCol}>
               <SelectField
                 label="Class"
                 value={classToAdd}
@@ -108,31 +133,43 @@ export default function OnboardingScreen() {
                 }}
               />
             </View>
-            <View style={{ flex: 1 }}>
+            <View style={styles.addCol}>
               <Field
                 label="Class size"
                 value={classSizeToAdd}
                 onChangeText={(value) => setClassSizeToAdd(value.replace(/[^0-9]/g, '').slice(0, 3))}
                 keyboardType="number-pad"
+                placeholder="42"
               />
             </View>
           </View>
           <Button
             title={classSizes[classToAdd] !== undefined ? 'Update class size' : 'Add class'}
             variant="secondary"
+            icon="add-circle-outline"
             onPress={addClassSize}
           />
-        </View>
+        </Card>
 
         {Object.entries(classSizes).length ? (
           <View style={styles.classList}>
             {Object.entries(classSizes).map(([classLevel, size]) => (
               <View key={classLevel} style={styles.classRow}>
+                <View style={styles.classBadge}>
+                  <Text style={styles.classBadgeText}>{classLevel}</Text>
+                </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.className}>{classLevel}</Text>
-                  <Text style={styles.meta}>Class size: {size || 'Not set'}</Text>
+                  <Text style={styles.classMeta}>Class size: {size || 'Not set'}</Text>
                 </View>
-                <Pressable onPress={() => removeClassSize(classLevel)} style={styles.removeButton}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove ${classLevel}`}
+                  onPress={() => removeClassSize(classLevel)}
+                  style={styles.removeButton}
+                  hitSlop={6}
+                >
+                  <Ionicons name="trash-outline" size={16} color={colors.danger} />
                   <Text style={styles.removeText}>Remove</Text>
                 </Pressable>
               </View>
@@ -141,10 +178,10 @@ export default function OnboardingScreen() {
         ) : null}
 
         <View style={styles.actionStack}>
-          <Button title="Finish setup" onPress={finish} loading={saving} />
+          <Button title="Finish setup" onPress={finish} loading={saving} icon="checkmark-circle-outline" />
           <Button title="Skip for now" variant="ghost" onPress={skipSetup} disabled={saving} />
         </View>
-      </View>
+      </Card>
     </ScrollView>
   );
 }
@@ -159,38 +196,113 @@ function cleanClassSizes(classSizes: Record<string, string>) {
 
 const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 20, paddingBottom: 60 },
-  heading: { fontSize: 24, fontWeight: '900', color: colors.primaryDark, marginBottom: 6 },
-  sub: { color: colors.textMuted, marginBottom: 20, lineHeight: 20 },
-  card: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    padding: 14,
+  content: {
+    paddingHorizontal: spacing[6],
   },
-  classPanel: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    padding: 12,
-    backgroundColor: '#F7F9F4',
-    marginBottom: 14,
+  heroRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[4],
+    marginBottom: spacing[5],
   },
-  subTitle: { color: colors.text, fontWeight: '800', fontSize: 15 },
-  meta: { color: colors.textMuted, marginTop: 3 },
-  row: { flexDirection: 'row', gap: 10, marginTop: 12 },
-  classList: { marginBottom: 14, borderTopWidth: 1, borderTopColor: colors.border },
-  actionStack: { gap: 8 },
+  heroIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radii.md,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  eyebrow: {
+    ...typography.eyebrow,
+    color: colors.primary,
+  },
+  heading: {
+    ...typography.h1,
+    color: colors.primaryDark,
+    marginBottom: spacing[3],
+  },
+  sub: {
+    ...typography.body,
+    color: colors.textMuted,
+    marginBottom: spacing[7],
+    maxWidth: 560,
+  },
+  formCard: {},
+  subhead: {
+    marginTop: spacing[5],
+    marginBottom: spacing[4],
+  },
+  sectionTitle: {
+    ...typography.h4,
+    color: colors.text,
+  },
+  sectionMeta: {
+    ...typography.bodySm,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  addRowCard: {
+    marginBottom: spacing[5],
+  },
+  addRow: {
+    flexDirection: 'row',
+    gap: spacing[4],
+    flexWrap: 'wrap',
+  },
+  addCol: { flex: 1, minWidth: 140 },
+  classList: {
+    gap: spacing[3],
+    marginBottom: spacing[6],
+  },
   classRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    gap: spacing[4],
+    padding: spacing[4],
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.bgElevated,
   },
-  className: { color: colors.text, fontWeight: '800' },
-  removeButton: { paddingHorizontal: 10, paddingVertical: 8 },
-  removeText: { color: colors.danger, fontWeight: '700' },
+  classBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: radii.md,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  classBadgeText: {
+    color: colors.primary,
+    fontWeight: '800',
+    fontSize: 12,
+  },
+  className: {
+    ...typography.h4,
+    color: colors.text,
+  },
+  classMeta: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  removeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[3],
+    borderRadius: radii.md,
+    backgroundColor: colors.dangerSoft,
+  },
+  removeText: {
+    color: colors.danger,
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  actionStack: {
+    gap: spacing[3],
+    marginTop: spacing[3],
+  },
 });

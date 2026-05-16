@@ -12,6 +12,8 @@ export type ReferralDashboard = {
     rejected: number;
     rewardsThisMonth: number;
     monthlyLimit: number;
+    rewardCredits?: number;
+    active?: boolean;
   };
   referrals: Array<{
     id: string;

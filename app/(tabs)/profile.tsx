@@ -6,6 +6,7 @@ import { EmailPasswordAuthForm } from '@/components/EmailPasswordAuthForm';
 import { Field } from '@/components/Field';
 import { SelectField } from '@/components/SelectField';
 import { useToast } from '@/components/ToastProvider';
+import { defaultRuntimeSettings, loadRuntimeAppSettings } from '@/lib/appSettings';
 import { signOut, useAuthSession } from '@/lib/auth';
 import { CLASS_LEVEL_OPTIONS } from '@/lib/options';
 import { buildReferralLink, loadReferralDashboard, type ReferralDashboard } from '@/lib/referrals';
@@ -25,6 +26,8 @@ export default function ProfileScreen() {
   const [referral, setReferral] = useState<ReferralDashboard | null>(null);
   const [referralLoading, setReferralLoading] = useState(false);
   const [referralError, setReferralError] = useState<string | null>(null);
+  const [referralRewardCredits, setReferralRewardCredits] = useState(defaultRuntimeSettings.referralReward.credits);
+  const [referralRewardActive, setReferralRewardActive] = useState(defaultRuntimeSettings.referralReward.active);
 
   const referralLink = useMemo(
     () => (referral?.code ? buildReferralLink(referral.code) : ''),
@@ -62,7 +65,13 @@ export default function ProfileScreen() {
     setReferralLoading(true);
     setReferralError(null);
     try {
-      setReferral(await loadReferralDashboard());
+      const [dashboard, settings] = await Promise.all([
+        loadReferralDashboard(),
+        loadRuntimeAppSettings(),
+      ]);
+      setReferral(dashboard);
+      setReferralRewardCredits(dashboard.stats.rewardCredits ?? settings.referralReward.credits);
+      setReferralRewardActive(dashboard.stats.active ?? settings.referralReward.active);
     } catch (err: unknown) {
       setReferralError(getMessage(err));
     } finally {
@@ -125,7 +134,7 @@ export default function ProfileScreen() {
       return;
     }
     await Share.share({
-      message: `Join Ghana Lesson Planner with my referral link: ${referralLink}`,
+      message: `Join GES Lesson Planner with my referral link: ${referralLink}`,
     });
     showToast({ message: 'Referral link shared.' });
   }
@@ -150,7 +159,7 @@ export default function ProfileScreen() {
           Sign in with your Supabase account to use cloud lesson and scheme generation.
         </Text>
         <EmailPasswordAuthForm
-          subtitle="Use the same email and password as your Ghana Lesson Planner account."
+          subtitle="Use the same email and password as your GES Lesson Planner account."
           onAccountCreated={() => router.replace('/onboarding')}
         />
       </ScrollView>
@@ -245,7 +254,11 @@ export default function ProfileScreen() {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Referral Rewards</Text>
-          <Text style={styles.sectionMeta}>5 credits after a referred teacher generates a lesson</Text>
+          <Text style={styles.sectionMeta}>
+            {referralRewardActive
+              ? `${referralRewardCredits} ${referralRewardCredits === 1 ? 'credit' : 'credits'} after a referred teacher generates a lesson`
+              : 'Referral rewards are currently inactive'}
+          </Text>
         </View>
 
         {referralLoading && !referral ? (
@@ -397,23 +410,26 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   headerPanel: {
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    padding: 16,
+    backgroundColor: colors.primaryDark,
+    borderRadius: 14,
+    padding: 20,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.primaryDark,
   },
   headerEyebrow: {
-    color: '#DDEBE5',
-    fontSize: 12,
-    fontWeight: '700',
+    color: 'rgba(255,255,255,0.72)',
+    fontSize: 11,
+    fontWeight: '800',
     textTransform: 'uppercase',
-    marginBottom: 4,
+    letterSpacing: 0.8,
+    marginBottom: 6,
   },
-  headerTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  headerTitle: { color: '#fff', fontSize: 18, fontWeight: '800', letterSpacing: 0.1 },
   section: {
     backgroundColor: colors.surface,
-    borderRadius: 8,
-    padding: 16,
+    borderRadius: 14,
+    padding: 18,
     borderWidth: 1,
     borderColor: colors.border,
     marginBottom: 16,

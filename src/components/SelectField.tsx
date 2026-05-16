@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useMemo, useState } from 'react';
-import { colors } from '@/theme/colors';
+import { colors, radii, shadows, spacing, typography } from '@/theme/colors';
 import type { SelectOption } from '@/lib/options';
 
 interface Props {
@@ -34,6 +34,8 @@ export function SelectField({
     <View style={styles.wrap}>
       <Text style={styles.label}>{label}</Text>
       <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ disabled: !!disabled, expanded: open }}
         disabled={disabled}
         onPress={() => setOpen(true)}
         style={({ pressed }) => [
@@ -42,23 +44,36 @@ export function SelectField({
           pressed && !disabled && styles.triggerPressed,
         ]}
       >
-        <Text style={[styles.triggerText, !selectedLabel && styles.placeholder]}>
+        <Text style={[styles.triggerText, !selectedLabel && styles.placeholder]} numberOfLines={1}>
           {selectedLabel || placeholder}
         </Text>
-        <Ionicons name="chevron-down" size={17} color={colors.textMuted} />
+        <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
       </Pressable>
       {helperText ? <Text style={styles.helperText}>{helperText}</Text> : null}
 
       <Modal transparent animationType="fade" visible={open} onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.overlay} onPress={() => setOpen(false)}>
           <Pressable style={styles.sheet} onPress={() => undefined}>
-            <Text style={styles.sheetTitle}>{label}</Text>
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>{label}</Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                onPress={() => setOpen(false)}
+                hitSlop={10}
+                style={styles.sheetClose}
+              >
+                <Ionicons name="close" size={20} color={colors.textMuted} />
+              </Pressable>
+            </View>
             <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
               {options.map((option) => {
                 const active = option.value === value;
                 return (
                   <Pressable
                     key={option.value}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
                     onPress={() => {
                       onChange(option.value);
                       setOpen(false);
@@ -69,9 +84,12 @@ export function SelectField({
                       pressed && styles.optionRowPressed,
                     ]}
                   >
-                    <Text style={[styles.optionText, active && styles.optionTextActive]}>
+                    <Text style={[styles.optionText, active && styles.optionTextActive]} numberOfLines={2}>
                       {option.label}
                     </Text>
+                    {active ? (
+                      <Ionicons name="checkmark" size={18} color={colors.primary} />
+                    ) : null}
                   </Pressable>
                 );
               })}
@@ -84,90 +102,106 @@ export function SelectField({
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginBottom: 16 },
+  wrap: { marginBottom: spacing[6] },
   label: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.text,
-    marginBottom: 6,
+    marginBottom: spacing[3],
   },
   trigger: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderRadius: radii.md,
+    paddingHorizontal: spacing[5],
+    paddingVertical: spacing[4],
     minHeight: 48,
     backgroundColor: colors.surface,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: spacing[4],
   },
   triggerDisabled: {
     opacity: 0.55,
   },
   triggerPressed: {
-    opacity: 0.85,
+    borderColor: colors.primary,
   },
   triggerText: {
-    fontSize: 16,
+    ...typography.bodyLg,
     color: colors.text,
     flex: 1,
   },
   placeholder: {
-    color: colors.textMuted,
+    color: colors.textSubtle,
   },
-  chevron: { marginLeft: 10 },
   helperText: {
-    marginTop: 6,
-    fontSize: 12,
+    ...typography.caption,
     color: colors.textMuted,
-    lineHeight: 18,
+    marginTop: spacing[3],
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.28)',
+    backgroundColor: colors.overlay,
     justifyContent: 'center',
-    padding: 20,
+    padding: spacing[6],
   },
   sheet: {
-    backgroundColor: colors.surface,
-    borderRadius: 10,
+    backgroundColor: colors.bgElevated,
+    borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    maxHeight: '70%',
+    maxHeight: '78%',
     overflow: 'hidden',
+    ...shadows.lg,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing[6],
+    paddingTop: spacing[6],
+    paddingBottom: spacing[4],
   },
   sheetTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+    ...typography.h4,
     color: colors.text,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 10,
+  },
+  sheetClose: {
+    width: 32,
+    height: 32,
+    borderRadius: radii.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceMuted,
   },
   list: {
-    maxHeight: 420,
+    maxHeight: 460,
   },
   listContent: {
-    paddingHorizontal: 10,
-    paddingBottom: 12,
+    paddingHorizontal: spacing[4],
+    paddingBottom: spacing[5],
   },
   optionRow: {
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    marginTop: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing[4],
+    borderRadius: radii.md,
+    paddingHorizontal: spacing[5],
+    paddingVertical: spacing[5],
+    marginTop: spacing[2],
   },
   optionRowActive: {
     backgroundColor: colors.primarySoft,
   },
   optionRowPressed: {
-    opacity: 0.85,
+    backgroundColor: colors.surfaceMuted,
   },
   optionText: {
-    fontSize: 15,
+    ...typography.body,
     color: colors.text,
+    flex: 1,
   },
   optionTextActive: {
     color: colors.primary,

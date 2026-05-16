@@ -1,34 +1,52 @@
 import { Ionicons } from '@expo/vector-icons';
 import type React from 'react';
+import type { ComponentProps } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
-import { colors } from '@/theme/colors';
+import { colors, radii, shadows, spacing, typography } from '@/theme/colors';
 
-type PreviewIcon = keyof typeof Ionicons.glyphMap;
+type PreviewIcon = ComponentProps<typeof Ionicons>['name'];
 
 export function PreviewHeader({
   title,
+  subtitle,
   onBack,
   onShare,
 }: {
   title: string;
+  subtitle?: string;
   onBack: () => void;
   onShare?: () => void;
 }) {
+  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.header}>
-      <View style={styles.iconGroup}>
-        <PreviewIconButton icon="arrow-back" label="Back" onPress={onBack} />
-        {onShare ? <PreviewIconButton icon="share-social-outline" label="Share" onPress={onShare} /> : null}
+    <View style={[styles.header, { paddingTop: insets.top + spacing[3] }]}>
+      <PreviewIconButton icon="arrow-back" label="Back" onPress={onBack} />
+      <View style={styles.titleWrap}>
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text style={styles.headerSubtitle} numberOfLines={1}>
+            {subtitle}
+          </Text>
+        ) : null}
       </View>
-      <Text style={styles.headerTitle} numberOfLines={1}>{title}</Text>
-      <View style={styles.headerSpacer} />
+      {onShare ? (
+        <PreviewIconButton icon="share-social-outline" label="Share" onPress={onShare} />
+      ) : (
+        <View style={styles.spacer} />
+      )}
     </View>
   );
 }
 
 export function PreviewActions({ children }: { children: React.ReactNode }) {
-  return <View style={styles.actions}>{children}</View>;
+  const insets = useSafeAreaInsets();
+  return (
+    <View style={[styles.actions, { paddingBottom: insets.bottom + spacing[5] }]}>{children}</View>
+  );
 }
 
 export function PreviewActionButton({
@@ -36,11 +54,13 @@ export function PreviewActionButton({
   onPress,
   variant,
   loading,
+  icon,
 }: {
   title: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'accent';
   loading?: boolean;
+  icon?: PreviewIcon;
 }) {
   return (
     <Button
@@ -48,6 +68,7 @@ export function PreviewActionButton({
       onPress={onPress}
       variant={variant}
       loading={loading}
+      icon={icon}
       style={styles.actionButton}
     />
   );
@@ -67,57 +88,64 @@ function PreviewIconButton({
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={onPress}
+      hitSlop={6}
       style={({ pressed }) => [styles.iconButton, pressed && styles.iconButtonPressed]}
     >
-      <Ionicons name={icon} size={20} color="#fff" />
+      <Ionicons name={icon} size={20} color={colors.textOnPrimary} />
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   header: {
-    minHeight: 52,
-    backgroundColor: colors.primary,
-    paddingHorizontal: 12,
+    minHeight: 56,
+    backgroundColor: colors.primaryDark,
+    paddingHorizontal: spacing[5],
+    paddingBottom: spacing[4],
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 10,
+    gap: spacing[4],
   },
-  iconGroup: {
-    flexDirection: 'row',
+  titleWrap: {
+    flex: 1,
     alignItems: 'center',
-    gap: 8,
-    minWidth: 88,
   },
   iconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: radii.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: 'rgba(255,255,255,0.14)',
   },
-  iconButtonPressed: { opacity: 0.82 },
+  iconButtonPressed: { opacity: 0.7 },
   headerTitle: {
-    flex: 1,
-    color: '#fff',
-    fontSize: 15,
+    ...typography.h4,
+    color: colors.textOnPrimary,
     fontWeight: '700',
     textAlign: 'center',
   },
-  headerSpacer: { minWidth: 88 },
+  headerSubtitle: {
+    ...typography.caption,
+    color: 'rgba(255,255,255,0.78)',
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  spacer: { width: 38 },
   actions: {
-    padding: 16,
+    paddingHorizontal: spacing[6],
+    paddingTop: spacing[5],
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    backgroundColor: colors.surface,
-    gap: 10,
+    backgroundColor: colors.bgElevated,
+    gap: spacing[4],
     flexDirection: 'row',
     flexWrap: 'wrap',
+    ...shadows.sm,
   },
   actionButton: {
     flex: 1,
-    minWidth: 120,
+    minWidth: 132,
   },
 });

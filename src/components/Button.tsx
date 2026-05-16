@@ -1,14 +1,21 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, ViewStyle } from 'react-native';
-import { colors } from '@/theme/colors';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import type { ComponentProps } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, radii, shadows, spacing, typography } from '@/theme/colors';
+
+type IconName = ComponentProps<typeof Ionicons>['name'];
 
 interface Props {
   title: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'accent';
   disabled?: boolean;
   loading?: boolean;
   style?: ViewStyle;
   size?: 'small' | 'medium' | 'large';
+  icon?: IconName;
+  iconPosition?: 'left' | 'right';
+  fullWidth?: boolean;
 }
 
 export function Button({
@@ -19,113 +26,146 @@ export function Button({
   loading,
   style,
   size = 'medium',
+  icon,
+  iconPosition = 'left',
+  fullWidth,
 }: Props) {
   const isDisabled = disabled || loading;
-  const textSizeStyle = size === 'small' ? styles.textSmall : size === 'large' ? styles.textLarge : styles.textMedium;
   const textVariantStyle = textStylesByVariant[variant];
+  const isFilled = variant === 'primary' || variant === 'danger' || variant === 'accent';
+  const iconColor = isFilled
+    ? variant === 'accent'
+      ? colors.accentOn
+      : colors.textOnPrimary
+    : variant === 'ghost'
+      ? colors.primary
+      : colors.primaryDark;
+
+  const sizeBoxStyle = sizeBox[size];
+  const sizeTextStyle = sizeText[size];
+
   return (
     <Pressable
       onPress={onPress}
       disabled={isDisabled}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: isDisabled }}
       style={({ pressed }) => [
         styles.base,
-        styles[size],
-        styles[variant],
+        sizeBoxStyle,
+        variantStyles[variant],
+        fullWidth && styles.fullWidth,
         isDisabled && styles.disabled,
         pressed && !isDisabled && styles.pressed,
         style,
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'primary' || variant === 'danger' ? '#fff' : colors.primary} />
+        <ActivityIndicator color={iconColor} size="small" />
       ) : (
-        <Text style={[styles.text, textSizeStyle, textVariantStyle]}>{title}</Text>
+        <View style={styles.inner}>
+          {icon && iconPosition === 'left' ? (
+            <Ionicons name={icon} size={sizeIcon[size]} color={iconColor} />
+          ) : null}
+          <Text style={[styles.text, sizeTextStyle, textVariantStyle]}>{title}</Text>
+          {icon && iconPosition === 'right' ? (
+            <Ionicons name={icon} size={sizeIcon[size]} color={iconColor} />
+          ) : null}
+        </View>
       )}
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  base: {
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
-  },
+const sizeBox = StyleSheet.create({
   small: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    minHeight: 40,
+    paddingVertical: spacing[4],
+    paddingHorizontal: spacing[6],
+    minHeight: 36,
   },
   medium: {
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    minHeight: 52,
+    paddingVertical: spacing[5],
+    paddingHorizontal: spacing[7],
+    minHeight: 48,
   },
   large: {
-    paddingVertical: 16,
-    paddingHorizontal: 28,
+    paddingVertical: spacing[6],
+    paddingHorizontal: spacing[8],
     minHeight: 56,
   },
+});
+
+const sizeText = StyleSheet.create({
+  small: { ...typography.bodySm, fontWeight: '700' },
+  medium: { ...typography.button },
+  large: { ...typography.button, fontSize: 16 },
+});
+
+const sizeIcon: Record<'small' | 'medium' | 'large', number> = {
+  small: 16,
+  medium: 18,
+  large: 20,
+};
+
+const variantStyles = StyleSheet.create({
   primary: {
     backgroundColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
+    ...shadows.sm,
   },
   danger: {
     backgroundColor: colors.danger,
-    shadowColor: colors.danger,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
+    ...shadows.sm,
+  },
+  accent: {
+    backgroundColor: colors.accent,
+    ...shadows.sm,
   },
   secondary: {
     backgroundColor: colors.surface,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
   },
   ghost: {
     backgroundColor: 'transparent',
+  },
+});
+
+const styles = StyleSheet.create({
+  base: {
+    borderRadius: radii.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+  },
+  fullWidth: {
+    alignSelf: 'stretch',
+  },
+  inner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[4],
   },
   disabled: {
     opacity: 0.5,
   },
   pressed: {
-    opacity: 0.9,
-    shadowOpacity: 0.2,
+    opacity: 0.88,
+    transform: [{ scale: 0.99 }],
   },
   text: {
-    fontWeight: '600',
-    letterSpacing: 0.3,
+    textAlign: 'center',
   },
-  textSmall: {
-    fontSize: 13,
-  },
-  textMedium: {
-    fontSize: 15,
-  },
-  textLarge: {
-    fontSize: 17,
-  },
-  primaryText: { color: '#fff' },
-  dangerText: { color: '#fff' },
+  primaryText: { color: colors.textOnPrimary },
+  dangerText: { color: colors.dangerOn },
+  accentText: { color: colors.accentOn },
   secondaryText: { color: colors.primaryDark },
   ghostText: { color: colors.primary },
 });
 
-const textStylesByVariant = {
+const textStylesByVariant: Record<NonNullable<Props['variant']>, { color: string }> = {
   primary: styles.primaryText,
   secondary: styles.secondaryText,
   ghost: styles.ghostText,
   danger: styles.dangerText,
+  accent: styles.accentText,
 };
