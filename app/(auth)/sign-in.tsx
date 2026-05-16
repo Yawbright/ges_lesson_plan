@@ -1,11 +1,17 @@
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { SinglePageAuthForm } from '@/components/SinglePageAuthForm';
+import { useAuthSession } from '@/lib/auth';
 import { colors } from '@/theme/colors';
 
 export default function SignInScreen() {
   const params = useLocalSearchParams<{ ref?: string }>();
+  const { session } = useAuthSession();
   const referralCode = typeof params.ref === 'string' ? params.ref : undefined;
+
+  if (session) {
+    return <Redirect href="/(tabs)/generate" />;
+  }
 
   return (
     <KeyboardAvoidingView
