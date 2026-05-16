@@ -12,6 +12,7 @@ import {
   Animated,
   Easing,
   Platform,
+  useWindowDimensions,
   type DimensionValue,
 } from "react-native";
 import { router } from "expo-router";
@@ -115,6 +116,7 @@ const FAQ_GROUPS: FaqGroup[] = [
     title: "General",
     items: [
       { q: "What is GES Lesson Planner?", a: "An AI-powered tool that helps Ghanaian teachers create lesson plans, schemes of work, and teaching notes faster." },
+      { q: "Is GES Lesson Planner free?", a: "Yes. Teachers can create a free account and start using the platform without making any payment." },
       { q: "Who is it for?", a: "Teachers in Ghanaian basic schools, especially those handling B1 to B9 classes." },
       { q: "Which class levels are supported?", a: "B1, B2, B3, B4, B5, B6, B7, B8, and B9 are all supported." },
       { q: "Is it designed for the Ghana curriculum?", a: "Yes. Built around Ghanaian class levels, subjects, terms, lesson structure, and scheme-of-work planning." },
@@ -163,17 +165,18 @@ const FEATURES: Feature[] = [
 ];
 
 const VALUE_PROPS: string[] = [
+  "Free account for teachers to get started",
   "Saves hours of weekly preparation time",
   "Connects schemes directly to lesson plans",
   "Supports class size and teacher profile details",
   "Keeps all documents in one organised library",
   "Built around the Ghana basic school curriculum",
-  "Preview before you create an account",
+  "Try a demo before creating your free account",
 ];
 
 const BAND_ITEMS: string[] = [
-  "Schemes of Work", "Lesson Plans", "Teaching Notes", "PDF Exports",
-  "Ghanaian Languages", "B1–B9 Support", "View-only Demo", "Ghana Curriculum",
+  "Free Account", "Schemes of Work", "Lesson Plans", "Teaching Notes",
+  "PDF Exports", "Ghanaian Languages", "B1–B9 Support", "View-only Demo",
 ];
 
 // ─── Helpers ───────────────────────────────────────────────────────
@@ -249,6 +252,9 @@ interface NavBarProps {
 }
 
 function NavBar({ onTryDemo, onGetAccess }: NavBarProps): JSX.Element {
+  const { width } = useWindowDimensions();
+  const showFreePill = width >= 520;
+
   return (
     <View style={s.nav}>
       <View style={s.navInner}>
@@ -258,15 +264,20 @@ function NavBar({ onTryDemo, onGetAccess }: NavBarProps): JSX.Element {
           </View>
           <View>
             <Text style={s.brandName}>GES Lesson Planner</Text>
-            <Text style={s.brandSub}>For B1–B9 classrooms</Text>
+            <Text style={s.brandSub}>Free for B1–B9 teachers</Text>
           </View>
         </View>
         <View style={s.navActions}>
+          {showFreePill && (
+            <View style={s.freePill}>
+              <Text style={s.freePillText}>Free</Text>
+            </View>
+          )}
           <TouchableOpacity style={s.btnGhost} onPress={onTryDemo}>
             <Text style={s.btnGhostText}>Try Demo</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s.btnPrimary} onPress={onGetAccess}>
-            <Text style={s.btnPrimaryText}>Sign in →</Text>
+            <Text style={s.btnPrimaryText}>Start Free →</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -283,24 +294,27 @@ function HeroSection({ onTryDemo, onGetAccess }: HeroSectionProps): JSX.Element 
   return (
     <View style={s.heroWrap}>
       <View style={s.heroCopy}>
-        <KickerPill label="AI Planning for Ghanaian Teachers" />
+        <KickerPill label="Free AI Planning for Ghanaian Teachers" />
         <Text style={s.heroTitle}>
           Create Ghana-ready{"\n"}
           <Text style={s.heroTitleEm}>lesson plans</Text> in minutes.
         </Text>
         <Text style={s.heroBody}>
-          Generate schemes of work, lesson plans, and teaching notes for B1–B9 classes. Built around the Ghana curriculum — so you never start from a blank page.
+          Start with a free account and generate schemes of work, lesson plans, and teaching notes for B1–B9 classes. Built around the Ghana curriculum — so you never start from a blank page.
         </Text>
         <View style={s.heroCta}>
           <TouchableOpacity style={[s.btnPrimary, s.btnXl]} onPress={onTryDemo}>
-            <Text style={s.btnPrimaryText}>Try the Demo</Text>
+            <Text style={s.btnPrimaryText}>Try Free Demo</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[s.btnGhost, s.btnXl]} onPress={onGetAccess}>
-            <Text style={s.btnGhostText}>Get Access</Text>
+            <Text style={s.btnGhostText}>Create Free Account</Text>
           </TouchableOpacity>
         </View>
+        <View style={s.freeNote}>
+          <Text style={s.freeNoteText}>No payment needed to open your account.</Text>
+        </View>
         <View style={s.heroStats}>
-          {([ ["B1–B9", "Class levels"], ["12", "Subjects covered"], ["3", "Terms supported"] ] as [string, string][]).map(([n, l]) => (
+          {([ ["Free", "Account"], ["B1–B9", "Class levels"], ["3", "Terms supported"] ] as [string, string][]).map(([n, l]) => (
             <View key={l} style={s.stat}>
               <Text style={s.statNum}>{n}</Text>
               <Text style={s.statLabel}>{l}</Text>
@@ -506,7 +520,7 @@ function DemoSection(): JSX.Element {
       <View style={s.sectionInner}>
         <Text style={s.eyebrow}>Interactive Demo</Text>
         <Text style={s.sectionTitle}>Generate a test scheme,{"\n"}then a lesson plan.</Text>
-        <Text style={s.sectionBody}>Try GES Lesson Planner with a sample run. All demo previews are watermarked. Sign up to save, print, and export full documents.</Text>
+        <Text style={s.sectionBody}>Try GES Lesson Planner with a sample run. All demo previews are watermarked. Create a free account to save, print, and export full documents.</Text>
 
         <View style={s.demoGrid}>
           {/* Controls */}
@@ -552,7 +566,7 @@ function DemoSection(): JSX.Element {
             </TouchableOpacity>
 
             <View style={s.demoNotice}>
-              <Text style={s.demoNoticeText}>Demo previews are watermarked and view-only. Create a free account to save, export, and print classroom-ready documents.</Text>
+              <Text style={s.demoNoticeText}>Demo previews are watermarked and view-only. Your free account lets you save, export, and print classroom-ready documents inside the app.</Text>
             </View>
           </View>
 
@@ -890,13 +904,13 @@ function CtaSection({ onGetAccess }: CtaSectionProps): JSX.Element {
   return (
     <View style={s.ctaSection}>
       <View style={[s.sectionInner, { alignItems: "center" }]}>
-        <Text style={[s.eyebrow, { color: C.yellowLight }]}>Get started today</Text>
-        <Text style={[s.sectionTitle, { color: C.white, textAlign: "center" }]}>Ready to plan faster?</Text>
+        <Text style={[s.eyebrow, { color: C.yellowLight }]}>Free to start</Text>
+        <Text style={[s.sectionTitle, { color: C.white, textAlign: "center" }]}>Open your free teacher account.</Text>
         <Text style={[s.sectionBody, { color: "rgba(255,255,255,0.65)", textAlign: "center", marginBottom: 28 }]}>
           Create your GES Lesson Planner account and start building full lesson plans, schemes, teaching notes, and PDFs.
         </Text>
         <TouchableOpacity style={[s.btnYellow, s.btnXl]} onPress={onGetAccess}>
-          <Text style={s.btnYellowText}>Get Access — It's Free →</Text>
+          <Text style={s.btnYellowText}>Create Free Account →</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -961,6 +975,8 @@ const s = StyleSheet.create({
   brandName: { fontFamily: Platform.OS === "web" ? "Georgia, serif" : "serif", fontSize: 14, fontWeight: "700", color: C.forest },
   brandSub: { fontSize: 11, color: C.ink40 },
   navActions: { flexDirection: "row", alignItems: "center", gap: 10 },
+  freePill: { backgroundColor: C.yellowPale, borderWidth: 1, borderColor: "rgba(255,230,0,0.55)", borderRadius: 999, paddingVertical: 6, paddingHorizontal: 11 },
+  freePillText: { color: C.forest, fontSize: 11, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.4 },
 
   // BUTTONS
   btnPrimary: { backgroundColor: C.forest, paddingVertical: 10, paddingHorizontal: 18, borderRadius: 8, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7 },
@@ -983,6 +999,8 @@ const s = StyleSheet.create({
   heroTitleEm: { fontStyle: "italic", color: C.yellow },
   heroBody: { fontSize: 16, lineHeight: 27, color: C.ink70, marginBottom: 28 },
   heroCta: { flexDirection: "row", gap: 12, marginBottom: 36, flexWrap: "wrap" },
+  freeNote: { backgroundColor: C.yellowPale, borderWidth: 1, borderColor: "rgba(255,230,0,0.38)", borderRadius: 8, paddingVertical: 9, paddingHorizontal: 12, alignSelf: "flex-start", marginTop: -22, marginBottom: 28 },
+  freeNoteText: { color: C.forest, fontSize: 13, fontWeight: "700" },
   heroStats: { flexDirection: "row", gap: 28, flexWrap: "wrap" },
   stat: {},
   statNum: { fontFamily: Platform.OS === "web" ? "Georgia, serif" : "serif", fontSize: 26, fontWeight: "700", color: C.forest },
