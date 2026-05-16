@@ -28,6 +28,7 @@ export default function ProfileScreen() {
   const [referralLoading, setReferralLoading] = useState(false);
   const [referralError, setReferralError] = useState<string | null>(null);
   const [referralRewardCredits, setReferralRewardCredits] = useState(defaultRuntimeSettings.referralReward.credits);
+  const [referralMonthlyLimit, setReferralMonthlyLimit] = useState(defaultRuntimeSettings.referralReward.monthlyLimit);
   const [referralRewardActive, setReferralRewardActive] = useState(defaultRuntimeSettings.referralReward.active);
 
   const referralLink = useMemo(
@@ -72,6 +73,7 @@ export default function ProfileScreen() {
       ]);
       setReferral(dashboard);
       setReferralRewardCredits(dashboard.stats.rewardCredits ?? settings.referralReward.credits);
+      setReferralMonthlyLimit(dashboard.stats.monthlyLimit ?? settings.referralReward.monthlyLimit);
       setReferralRewardActive(dashboard.stats.active ?? settings.referralReward.active);
     } catch (err: unknown) {
       setReferralError(getMessage(err));
@@ -304,7 +306,7 @@ export default function ProfileScreen() {
             </View>
 
             <View style={styles.statsRow}>
-              <Stat label="This month" value={`${referral?.stats.rewardsThisMonth ?? 0}/${referral?.stats.monthlyLimit ?? 5}`} />
+              <Stat label="This month" value={`${referral?.stats.rewardsThisMonth ?? 0}/${referral?.stats.monthlyLimit ?? referralMonthlyLimit}`} />
               <Stat label="Pending" value={String(referral?.stats.pending ?? 0)} />
               <Stat label="Rewarded" value={String(referral?.stats.rewarded ?? 0)} />
               <Stat label="Not rewarded" value={String(referral?.stats.rejected ?? 0)} />

@@ -20,6 +20,7 @@ import { PreviewActionButton, PreviewActions, PreviewHeader } from '@/components
 import { SelectField } from '@/components/SelectField';
 import { useToast } from '@/components/ToastProvider';
 import { formatAiActionError, generateLessonPlan, isInsufficientCreditsError } from '@/lib/ai';
+import { defaultRuntimeSettings, loadRuntimeAppSettings } from '@/lib/appSettings';
 import { loadCreditBalance } from '@/lib/credits';
 import { exportLessonPlanPdf, exportLessonPlansPdf, shareLessonPlan, shareLessonPlans } from '@/lib/export';
 import { saveLessonPlan, saveLessonPlanBundle } from '@/lib/lessonStore';
@@ -57,6 +58,7 @@ export default function GenerateScreen() {
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [creditBalance, setCreditBalance] = useState(0);
+  const [lessonCreditCost, setLessonCreditCost] = useState(defaultRuntimeSettings.featureCreditCosts.lesson_generation);
   const [generatedPlans, setGeneratedPlans] = useState<LessonPlan[]>([]);
   const [matchedScheme, setMatchedScheme] = useState<SchemeOfWork | null>(null);
   const [matchingSchemes, setMatchingSchemes] = useState<SchemeOfWork[]>([]);
@@ -110,7 +112,15 @@ export default function GenerateScreen() {
   useFocusEffect(
     useCallback(() => {
       refreshSchemes();
-      loadCreditBalance().then(setCreditBalance).catch(() => undefined);
+      Promise.all([
+        loadCreditBalance().catch(() => 0),
+        loadRuntimeAppSettings(),
+      ])
+        .then(([balance, settings]) => {
+          setCreditBalance(balance);
+          setLessonCreditCost(settings.featureCreditCosts.lesson_generation);
+        })
+        .catch(() => undefined);
     }, [refreshSchemes]),
   );
 
@@ -135,7 +145,7 @@ export default function GenerateScreen() {
     () => (sessionIndex === 'all' ? lessonNumbers : [sessionIndex]),
     [lessonNumbers, sessionIndex],
   );
-  const generationCost = selectedLessonNumbers.length;
+  const generationCost = selectedLessonNumbers.length * lessonCreditCost;
 
   useEffect(() => {
     if (sessionIndex !== 'all' && sessionIndex > sessionsPerWeek) {
@@ -214,8 +224,8 @@ export default function GenerateScreen() {
     try {
       if (sessionIndex === 'all') {
         const balance = await loadCreditBalance();
-        if (balance < sessionsPerWeek) {
-          const message = `You need ${sessionsPerWeek} credits to generate all ${sessionsPerWeek} lessons for this week.`;
+        if (balance < generationCost) {
+          const message = `You need ${formatCredits(generationCost)} to generate all ${sessionsPerWeek} lessons for this week.`;
           showToast({ message, type: 'error' });
           Alert.alert('Not enough credits', message, [
             { text: 'Cancel', style: 'cancel' },
@@ -493,7 +503,7 @@ export default function GenerateScreen() {
           <Text style={styles.schemeHintText}>
             {selectedScheme
               ? sessionIndex === 'all'
-                ? `${selectedScheme.subject} - ${selectedScheme.classLevel} - ${selectedScheme.term}. Week ${week || '?'} will generate all ${sessionsPerWeek} lessons and use ${sessionsPerWeek} credits.`
+                ? `${selectedScheme.subject} - ${selectedScheme.classLevel} - ${selectedScheme.term}. Week ${week || '?'} will generate all ${sessionsPerWeek} lessons and use ${formatCredits(generationCost)}.`
                 : `${selectedScheme.subject} - ${selectedScheme.classLevel} - ${selectedScheme.term}. Week ${week || '?'} will be grounded on that scheme for Lesson ${sessionIndex} of ${sessionsPerWeek}.`
               : 'Lesson plans now depend on a saved scheme of work. Generate or select a scheme for this subject, class and term first.'}
           </Text>
@@ -533,8 +543,8 @@ export default function GenerateScreen() {
           balance={creditBalance}
           label={
             sessionIndex === 'all'
-              ? `This will use ${generationCost} credits for ${generationCost} lessons.`
-              : 'This will use 1 credit.'
+              ? `This will use ${formatCredits(generationCost)} for ${selectedLessonNumbers.length} lessons.`
+              : `This will use ${formatCredits(generationCost)}.`
           }
           onBuyCredits={() => router.push('/(tabs)/credits')}
         />
@@ -699,3 +709,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[3],
   },
 });
+
+function formatCredits(value: number) {
+  return `${value} ${value === 1 ? 'credit' : 'credits'}`;
+}

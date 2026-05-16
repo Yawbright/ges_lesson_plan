@@ -138,7 +138,7 @@ const FAQ_GROUPS: FaqGroup[] = [
   {
     title: "Credits & Payments",
     items: [
-      { q: "How do credits work?", a: "Credits are used for AI actions like generating lesson plans, schemes, and teaching notes. Each action typically costs 1 credit." },
+      { q: "How do credits work?", a: "Credits are used for AI actions like generating lesson plans, schemes, custom scheme analysis, and teaching notes. The current cost is controlled from the admin dashboard." },
       { q: "How can I get more credits?", a: "You can earn more credits by referring other teachers. Credit purchases can be enabled later when available." },
       { q: "Do new users get free credits?", a: "Yes. New users may receive starter credits when the setting is active." },
     ],

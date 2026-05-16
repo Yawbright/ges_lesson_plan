@@ -16,7 +16,7 @@ import {
   type CreditTransaction,
   verifyCreditPurchase,
 } from '@/lib/credits';
-import { defaultRuntimeSettings, loadRuntimeAppSettings } from '@/lib/appSettings';
+import { defaultRuntimeSettings, loadRuntimeAppSettings, type RuntimeAppSettings } from '@/lib/appSettings';
 import { logAppError } from '@/lib/logger';
 import { colors, radii, shadows, spacing, typography } from '@/theme/colors';
 import { Ionicons } from '@expo/vector-icons';
@@ -39,6 +39,7 @@ export default function CreditsScreen() {
   const [purchasingEnabled, setPurchasingEnabled] = useState(defaultRuntimeSettings.creditPurchasing.enabled);
   const [referralRewardCredits, setReferralRewardCredits] = useState(defaultRuntimeSettings.referralReward.credits);
   const [referralRewardActive, setReferralRewardActive] = useState(defaultRuntimeSettings.referralReward.active);
+  const [featureCreditCosts, setFeatureCreditCosts] = useState(defaultRuntimeSettings.featureCreditCosts);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -57,6 +58,7 @@ export default function CreditsScreen() {
       setPurchasingEnabled(settings.creditPurchasing.enabled);
       setReferralRewardCredits(settings.referralReward.credits);
       setReferralRewardActive(settings.referralReward.active);
+      setFeatureCreditCosts(settings.featureCreditCosts);
       setSelectedPackageId((current) => current ?? nextPackages[0]?.id ?? null);
     } catch (err: unknown) {
       Alert.alert('Credits unavailable', getMessage(err));
@@ -156,7 +158,7 @@ export default function CreditsScreen() {
             <Ionicons name="sparkles" size={22} color={colors.primaryOn} />
           </View>
         </View>
-        <Text style={styles.balanceNote}>All generation and parsing actions cost 1 credit.</Text>
+        <Text style={styles.balanceNote}>{formatFeatureCostSummary(featureCreditCosts)}</Text>
       </View>
 
       {purchasingEnabled ? (
@@ -278,6 +280,19 @@ export default function CreditsScreen() {
 
 function getMessage(err: unknown) {
   return err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+}
+
+function formatFeatureCostSummary(costs: RuntimeAppSettings['featureCreditCosts']) {
+  return [
+    `Lesson: ${formatCredits(costs.lesson_generation)}`,
+    `Scheme: ${formatCredits(costs.scheme_generation)}`,
+    `Upload analysis: ${formatCredits(costs.scheme_parsing)}`,
+    `Teaching notes: ${formatCredits(costs.teaching_notes_generation)}`,
+  ].join(' | ');
+}
+
+function formatCredits(value: number) {
+  return `${value} ${value === 1 ? 'credit' : 'credits'}`;
 }
 
 const styles = StyleSheet.create({

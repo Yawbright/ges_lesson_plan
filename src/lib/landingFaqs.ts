@@ -70,7 +70,7 @@ export const fallbackLandingFaqGroups: LandingFaqGroup[] = [
     sortOrder: 4,
     active: true,
     items: [
-      { question: 'How do credits work?', answer: 'Credits are used for AI actions like generating lesson plans, schemes, and teaching notes. Each action typically costs 1 credit.', sortOrder: 1, active: true },
+      { question: 'How do credits work?', answer: 'Credits are used for AI actions like generating lesson plans, schemes, custom scheme analysis, and teaching notes. The current cost is controlled from the admin dashboard.', sortOrder: 1, active: true },
       { question: 'How can I get more credits?', answer: 'You can earn more credits by referring other teachers. Credit purchases can be enabled later when available.', sortOrder: 2, active: true },
       { question: 'Do new users get free credits?', answer: 'Yes. New users may receive starter credits when the setting is active.', sortOrder: 3, active: true },
     ],

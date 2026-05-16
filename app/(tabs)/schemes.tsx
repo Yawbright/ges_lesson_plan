@@ -14,6 +14,7 @@ import {
   isInsufficientCreditsError,
   parseUploadedScheme,
 } from '@/lib/ai';
+import { defaultRuntimeSettings, loadRuntimeAppSettings } from '@/lib/appSettings';
 import { loadCreditBalance } from '@/lib/credits';
 import { exportSchemePdf, shareScheme } from '@/lib/export';
 import { logAppError } from '@/lib/logger';
@@ -41,6 +42,8 @@ export default function SchemesScreen() {
   const [latestScheme, setLatestScheme] = useState<SchemeOfWork | null>(null);
   const [webSelectedAsset, setWebSelectedAsset] = useState<UploadAsset | null>(null);
   const [creditBalance, setCreditBalance] = useState(0);
+  const [schemeCreditCost, setSchemeCreditCost] = useState(defaultRuntimeSettings.featureCreditCosts.scheme_generation);
+  const [parsingCreditCost, setParsingCreditCost] = useState(defaultRuntimeSettings.featureCreditCosts.scheme_parsing);
 
   const subjectOptions = useMemo(
     () => getSubjectOptionsForClassLevel(classLevel),
@@ -65,7 +68,16 @@ export default function SchemesScreen() {
   useFocusEffect(
     useCallback(() => {
       refreshSchemes();
-      loadCreditBalance().then(setCreditBalance).catch(() => undefined);
+      Promise.all([
+        loadCreditBalance().catch(() => 0),
+        loadRuntimeAppSettings(),
+      ])
+        .then(([balance, settings]) => {
+          setCreditBalance(balance);
+          setSchemeCreditCost(settings.featureCreditCosts.scheme_generation);
+          setParsingCreditCost(settings.featureCreditCosts.scheme_parsing);
+        })
+        .catch(() => undefined);
     }, [refreshSchemes]),
   );
 
@@ -278,9 +290,9 @@ export default function SchemesScreen() {
           </View>
         ) : null}
         <CreditUsagePreview
-          cost={1}
+          cost={parsingCreditCost}
           balance={creditBalance}
-          label="Analyzing a custom scheme uses 1 credit."
+          label={`Analyzing a custom scheme uses ${formatCredits(parsingCreditCost)}.`}
           onBuyCredits={() => router.push('/(tabs)/credits')}
         />
         {/* For mobile, show "Choose" button; for web, the upload button handles it */}
@@ -302,9 +314,9 @@ export default function SchemesScreen() {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>No custom scheme?</Text>
         <CreditUsagePreview
-          cost={1}
+          cost={schemeCreditCost}
           balance={creditBalance}
-          label="Generating a scheme from AI uses 1 credit."
+          label={`Generating a scheme from AI uses ${formatCredits(schemeCreditCost)}.`}
           onBuyCredits={() => router.push('/(tabs)/credits')}
         />
         <Button title="Generate Scheme From AI" onPress={handleGenerate} disabled={generating} />
@@ -690,4 +702,8 @@ function buildParserNotice(scheme: SchemeOfWork): string {
   }
 
   return parts.join('\n\n');
+}
+
+function formatCredits(value: number) {
+  return `${value} ${value === 1 ? 'credit' : 'credits'}`;
 }
