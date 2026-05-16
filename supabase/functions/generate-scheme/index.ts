@@ -75,15 +75,31 @@ Deno.serve(async (req) => {
     });
 
     if (creditDebit) {
-      await refundCredits(
-        creditDebit.user.id,
-        creditCost,
-        'Refund for failed scheme generation',
-        {
-          originalTransactionId: creditDebit.transactionId,
-          reason: (err as Error).message,
-        },
-      );
+      // ✅ Add error handling for credit refund
+      try {
+        await refundCredits(
+          creditDebit.user.id,
+          creditCost,
+          'Refund for failed scheme generation',
+          {
+            originalTransactionId: creditDebit.transactionId,
+            reason: (err as Error).message,
+          },
+        );
+      } catch (refundErr) {
+        console.error('[CRITICAL] Credit refund failed after scheme generation error', {
+          userId: creditDebit.user.id,
+          transactionId: creditDebit.transactionId,
+          credits: creditCost,
+          refundError: (refundErr as Error).message,
+          originalError: (err as Error).message
+        });
+        return json({ 
+          error: (err as Error).message,
+          refundStatus: 'failed_to_refund',
+          supportNote: 'Credits may not have been refunded. Support has been notified.'
+        }, 500);
+      }
     }
 
     return json({ error: (err as Error).message }, 500);

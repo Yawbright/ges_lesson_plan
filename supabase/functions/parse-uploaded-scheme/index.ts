@@ -57,11 +57,21 @@ Deno.serve(async (req) => {
       },
     );
 
-    const response = await fetch(`${parserBaseUrl}/parse-scheme`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+    // ✅ Add 60-second timeout for parser service
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    
+    let response;
+    try {
+      response = await fetch(`${parserBaseUrl}/parse-scheme`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     const payload = await response.json().catch(() => null);
     if (!response.ok) {

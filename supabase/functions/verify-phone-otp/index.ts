@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { formatPhoneForArkesel } from '../_shared/phone.ts'; // ✅ Use shared utility
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -21,28 +22,6 @@ interface VerifyPhoneOtpResponse {
     phone_number: string;
   };
   error?: string;
-}
-
-// Format phone number for Arkesel (must be 233XXXXXXXXX format)
-function formatPhoneForArkesel(phone: string): string | null {
-  const cleaned = phone.replace(/\D/g, '');
-  
-  // If starts with 0 (local format), replace with 233 (country code)
-  if (cleaned.startsWith('0')) {
-    return '233' + cleaned.substring(1);
-  }
-  
-  // If already has country code (233), return as is
-  if (cleaned.startsWith('233')) {
-    return cleaned;
-  }
-  
-  // If no country code, assume Ghana (233) and prepend
-  if (cleaned.length === 9) {
-    return '233' + cleaned;
-  }
-  
-  return null;
 }
 
 serve(async (req: Request) => {

@@ -61,7 +61,13 @@ Deno.serve(async (req) => {
     );
 
     if (finalizeError) {
-      throw new Error(finalizeError.message);
+      // ✅ Return 200 even on error to prevent Paystack retries
+      return json({
+        received: true,
+        credited: false,
+        error: finalizeError.message,
+        status: 'finalization_failed'
+      }, 200);
     }
 
     const result = Array.isArray(finalized) ? finalized[0] : finalized;
@@ -71,7 +77,13 @@ Deno.serve(async (req) => {
       balance: Number(result?.balance ?? 0),
     }, 200);
   } catch (err) {
-    return json({ error: (err as Error).message }, 500);
+    // ✅ Return 200 even on error to prevent Paystack retries
+    return json({
+      received: true,
+      credited: false,
+      error: (err as Error).message,
+      status: 'webhook_processing_failed'
+    }, 200);
   }
 });
 

@@ -12,10 +12,10 @@ export function useAuthSession() {
 
     const timeout = setTimeout(() => {
       if (!active || settled) return;
-      console.warn('[auth] Session restore timed out. Continuing without a restored session.');
+      console.warn('[auth] Session restore timed out after 8 seconds. Continuing without a restored session.');
       setSession(null);
       setLoading(false);
-    }, 4000);
+    }, 8000); // ✅ Increased from 4s to 8s for slow networks
 
     async function loadSession() {
       try {

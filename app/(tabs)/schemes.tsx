@@ -244,9 +244,33 @@ export default function SchemesScreen() {
                 color: colors.text,
               }}
             />
-            <Text style={styles.webUploadMeta}>
-              {webSelectedAsset ? `Selected: ${webSelectedAsset.name}` : 'No file selected yet.'}
-            </Text>
+            {webSelectedAsset ? (
+              <View style={styles.selectedFileRow}>
+                <Text style={styles.webUploadMeta} numberOfLines={1}>
+                  Selected: {webSelectedAsset.name}
+                </Text>
+                {/* ✅ Small upload button to wake up Render before analyzing */}
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.wakeUpButton,
+                    pressed && { opacity: 0.6 }
+                  ]}
+                  onPress={async () => {
+                    // ✅ Trigger upload which will wake up Render backend
+                    await handleUpload();
+                  }}
+                  disabled={uploading}
+                >
+                  <Text style={styles.wakeUpButtonText}>
+                    {uploading ? 'Parsing...' : '⚡ Upload'}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : (
+              <Text style={styles.webUploadMeta}>
+                No file selected yet.
+              </Text>
+            )}
           </View>
         ) : null}
         <CreditUsagePreview
@@ -255,12 +279,15 @@ export default function SchemesScreen() {
           label="Analyzing a custom scheme uses 1 credit."
           onBuyCredits={() => router.push('/(tabs)/credits')}
         />
-        <Button
-          title={Platform.OS === 'web' ? 'Analyze Custom Scheme' : 'Choose PDF or DOCX'}
-          variant="secondary"
-          onPress={handleUpload}
-          disabled={uploading || (Platform.OS === 'web' && !webSelectedAsset)}
-        />
+        {/* For mobile, show "Choose" button; for web, the upload button handles it */}
+        {Platform.OS !== 'web' && (
+          <Button
+            title="Choose PDF or DOCX"
+            variant="secondary"
+            onPress={handleUpload}
+            disabled={uploading}
+          />
+        )}
         <GenerationProgress
           active={uploading}
           label="Analyzing scheme document"
@@ -377,6 +404,28 @@ const styles = StyleSheet.create({
   webUploadMeta: {
     color: colors.textMuted,
     lineHeight: 18,
+  },
+  // ✅ Styles for file selection row with wake-up button
+  selectedFileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  wakeUpButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    minWidth: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  wakeUpButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   cardActions: { gap: 10, marginBottom: 8 },
   weekRow: {
