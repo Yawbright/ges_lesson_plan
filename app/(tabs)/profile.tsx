@@ -11,7 +11,8 @@ import { signOut, useAuthSession } from '@/lib/auth';
 import { CLASS_LEVEL_OPTIONS } from '@/lib/options';
 import { buildReferralLink, loadReferralDashboard, type ReferralDashboard } from '@/lib/referrals';
 import { loadTeacherProfile, saveTeacherProfile } from '@/lib/teacherProfile';
-import { colors } from '@/theme/colors';
+import { colors, radii, shadows, spacing, typography } from '@/theme/colors';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function ProfileScreen() {
   const { showToast } = useToast();
@@ -169,8 +170,22 @@ export default function ProfileScreen() {
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
       <View style={styles.headerPanel}>
-        <Text style={styles.headerEyebrow}>Account</Text>
-        <Text style={styles.headerTitle}>{session.user.email ?? 'Signed in'}</Text>
+        <View style={styles.headerRow}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{getInitials(teacherName, session.user.email)}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerEyebrow}>Signed in</Text>
+            <Text style={styles.headerTitle} numberOfLines={1}>
+              {teacherName.trim() || session.user.email || 'Welcome back'}
+            </Text>
+            {teacherName.trim() ? (
+              <Text style={styles.headerSubtitle} numberOfLines={1}>
+                {session.user.email}
+              </Text>
+            ) : null}
+          </View>
+        </View>
       </View>
 
       <View style={styles.section}>
@@ -380,6 +395,14 @@ function getMessage(err: unknown) {
   return err instanceof Error ? err.message : 'Unknown error';
 }
 
+function getInitials(name: string, email?: string | null) {
+  const source = name.trim() || (email ?? '').split('@')[0] || '';
+  const parts = source.replace(/[._-]+/g, ' ').split(/\s+/).filter(Boolean);
+  if (!parts.length) return 'GP';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 function formatStatus(status: string) {
   if (status === 'rejected') return 'Not rewarded';
   return status.slice(0, 1).toUpperCase() + status.slice(1);
@@ -396,136 +419,156 @@ function cleanClassSizes(classSizes: Record<string, string>) {
 const styles = StyleSheet.create({
   centered: { flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' },
   scroll: { flex: 1, backgroundColor: colors.bg },
-  scrollContent: { padding: 20, paddingBottom: 40 },
+  scrollContent: { padding: spacing[7], paddingBottom: spacing[12], gap: spacing[5] },
   screenTitle: {
-    fontSize: 22,
-    fontWeight: '700',
+    ...typography.h1,
     color: colors.text,
-    marginBottom: 8,
+    marginBottom: spacing[3],
   },
   lead: {
-    fontSize: 15,
+    ...typography.body,
     color: colors.textMuted,
-    lineHeight: 22,
-    marginBottom: 20,
+    marginBottom: spacing[6],
   },
   headerPanel: {
     backgroundColor: colors.primaryDark,
-    borderRadius: 14,
-    padding: 20,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: colors.primaryDark,
+    borderRadius: radii.lg,
+    padding: spacing[7],
+    ...shadows.md,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[5],
+  },
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: radii.pill,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    color: colors.accentOn,
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: 0.4,
   },
   headerEyebrow: {
-    color: 'rgba(255,255,255,0.72)',
-    fontSize: 11,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 6,
+    ...typography.eyebrow,
+    color: 'rgba(255,255,255,0.78)',
+    marginBottom: spacing[2],
   },
-  headerTitle: { color: '#fff', fontSize: 18, fontWeight: '800', letterSpacing: 0.1 },
+  headerTitle: { color: colors.primaryOn, fontSize: 20, fontWeight: '800', letterSpacing: -0.2 },
+  headerSubtitle: { color: 'rgba(255,255,255,0.78)', ...typography.bodySm, marginTop: spacing[1] },
   section: {
     backgroundColor: colors.surface,
-    borderRadius: 14,
-    padding: 18,
+    borderRadius: radii.lg,
+    padding: spacing[7],
     borderWidth: 1,
     borderColor: colors.border,
-    marginBottom: 16,
+    gap: spacing[5],
+    ...shadows.sm,
   },
-  sectionHeader: { marginBottom: 14 },
-  sectionTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
-  sectionMeta: { color: colors.textMuted, marginTop: 3, lineHeight: 18 },
+  sectionHeader: { gap: spacing[1] },
+  sectionTitle: { ...typography.h3, color: colors.text },
+  sectionMeta: { ...typography.bodySm, color: colors.textMuted },
   classEntryPanel: {
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    padding: 12,
-    backgroundColor: colors.surfaceMuted,
-    marginBottom: 14,
+    borderColor: colors.borderSubtle,
+    borderRadius: radii.md,
+    padding: spacing[5],
+    backgroundColor: colors.surfaceAlt,
+    gap: spacing[3],
   },
-  subsectionTitle: { color: colors.text, fontWeight: '700', fontSize: 15, marginBottom: 2 },
+  subsectionTitle: { ...typography.label, color: colors.text },
   classEntryRow: {
     flexDirection: Platform.OS === 'web' ? 'row' : 'column',
-    gap: 10,
-    marginTop: 12,
+    gap: spacing[4],
   },
   classSelectWrap: { flex: 1 },
   classSizeWrap: { flex: 1 },
-  classList: { marginBottom: 14, borderTopWidth: 1, borderTopColor: colors.border },
+  classList: { gap: spacing[3] },
   classRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    gap: spacing[4],
+    paddingVertical: spacing[4],
+    paddingHorizontal: spacing[5],
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    borderRadius: radii.md,
+    backgroundColor: colors.surfaceAlt,
   },
-  className: { color: colors.text, fontWeight: '700', fontSize: 15 },
-  classSizeText: { color: colors.textMuted, marginTop: 2 },
-  removeButton: { paddingHorizontal: 10, paddingVertical: 8 },
-  removeButtonText: { color: colors.danger, fontWeight: '700' },
+  className: { ...typography.label, color: colors.text },
+  classSizeText: { ...typography.bodySm, color: colors.textMuted, marginTop: spacing[1] },
+  removeButton: { paddingHorizontal: spacing[4], paddingVertical: spacing[3], borderRadius: radii.md },
+  removeButtonText: { ...typography.label, color: colors.danger },
   referralCodePanel: {
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    padding: 12,
-    backgroundColor: colors.surfaceMuted,
-    marginBottom: 12,
+    borderColor: colors.borderSubtle,
+    borderRadius: radii.md,
+    padding: spacing[6],
+    backgroundColor: colors.surfaceAlt,
+    gap: spacing[2],
   },
-  referralLabel: { color: colors.textMuted, fontSize: 12, textTransform: 'uppercase', fontWeight: '700' },
-  referralCode: { color: colors.primaryDark, fontSize: 28, fontWeight: '700', marginTop: 3 },
-  referralLink: { color: colors.textMuted, marginTop: 4, lineHeight: 18 },
-  referralError: { color: colors.danger, marginTop: 8, lineHeight: 18 },
-  actionRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
+  referralLabel: { ...typography.eyebrow, color: colors.textMuted },
+  referralCode: { color: colors.primaryDark, fontSize: 28, fontWeight: '800', letterSpacing: 1.5 },
+  referralLink: { ...typography.bodySm, color: colors.textMuted },
+  referralError: { color: colors.danger, ...typography.bodySm },
+  actionRow: { flexDirection: 'row', gap: spacing[4] },
   actionButton: { flex: 1 },
-  statsRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  statsRow: { flexDirection: 'row', gap: spacing[3], flexWrap: 'wrap' },
   statBox: {
     flex: 1,
+    minWidth: 76,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 8,
-    padding: 10,
+    borderRadius: radii.md,
+    paddingVertical: spacing[5],
+    paddingHorizontal: spacing[4],
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+  },
+  statValue: { color: colors.primary, fontSize: 20, fontWeight: '800' },
+  statLabel: { ...typography.caption, color: colors.textMuted, marginTop: spacing[1], textAlign: 'center' },
+  referralList: { gap: spacing[2] },
+  referralRow: {
+    paddingVertical: spacing[4],
+    paddingHorizontal: spacing[5],
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+    flexDirection: 'row',
+    gap: spacing[3],
     alignItems: 'center',
   },
-  statValue: { color: colors.primary, fontSize: 18, fontWeight: '700' },
-  statLabel: { color: colors.textMuted, fontSize: 11, marginTop: 3, textAlign: 'center' },
-  referralList: { borderTopWidth: 1, borderTopColor: colors.border },
-  referralRow: {
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    flexDirection: 'row',
-    gap: 8,
-  },
-  referralStatus: { color: colors.text, fontWeight: '700' },
-  referralDate: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
-  rejectionReason: { color: colors.danger, fontSize: 12, flexShrink: 1, textAlign: 'right' },
-  emptyText: { color: colors.textMuted, lineHeight: 20 },
-  refreshLink: { alignItems: 'center', paddingTop: 8 },
-  refreshText: { color: colors.primary, fontWeight: '700' },
+  referralStatus: { ...typography.label, color: colors.text },
+  referralDate: { ...typography.caption, color: colors.textMuted, marginTop: spacing[1] },
+  rejectionReason: { ...typography.caption, color: colors.danger, flexShrink: 1, textAlign: 'right' },
+  emptyText: { ...typography.body, color: colors.textMuted },
+  refreshLink: { alignItems: 'center', paddingTop: spacing[3] },
+  refreshText: { ...typography.label, color: colors.primary },
   developerBlock: {
-    marginTop: 18,
-    paddingTop: 16,
+    marginTop: spacing[6],
+    paddingTop: spacing[6],
     borderTopWidth: 1,
     borderTopColor: colors.border,
     alignItems: 'center',
+    gap: spacing[1],
   },
   developerLabel: {
+    ...typography.eyebrow,
     color: colors.textMuted,
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
   },
   developerName: {
+    ...typography.h4,
     color: colors.primaryDark,
-    fontSize: 15,
-    fontWeight: '700',
-    marginTop: 4,
   },
   developerContact: {
+    ...typography.bodySm,
     color: colors.textMuted,
-    marginTop: 2,
   },
 });

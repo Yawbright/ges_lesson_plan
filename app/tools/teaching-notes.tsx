@@ -17,7 +17,7 @@ import {
   loadTeachingNotesForLesson,
   saveTeachingNotes,
 } from '@/lib/teachingNotesStore';
-import { colors } from '@/theme/colors';
+import { colors, radii, shadows, spacing, typography } from '@/theme/colors';
 import type { LessonPlan, LessonPlanBundle, SavedLessonWork } from '@/types/lessonPlan';
 import type { TeachingNotes } from '@/types/teachingNotes';
 
@@ -173,8 +173,13 @@ export default function TeachingNotesToolScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.heading}>Teaching Notes</Text>
-      <Text style={styles.sub}>Search a saved lesson plan, then generate detailed classroom notes from it.</Text>
+      <View style={styles.hero}>
+        <Text style={styles.heroEyebrow}>Teaching Notes</Text>
+        <Text style={styles.heading}>Turn lesson plans into classroom notes</Text>
+        <Text style={styles.sub}>
+          Search a saved lesson plan, then generate detailed classroom-ready teaching notes from it.
+        </Text>
+      </View>
 
       <Field
         label="Search saved lesson plans"
@@ -246,66 +251,87 @@ function isLessonBundle(work: SavedLessonWork): work is LessonPlanBundle {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 20, paddingBottom: 60 },
-  heading: { fontSize: 22, fontWeight: '800', color: colors.primaryDark, marginBottom: 6 },
-  sub: { color: colors.textMuted, marginBottom: 20, lineHeight: 20 },
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: colors.text, marginBottom: 10 },
+  content: { padding: spacing[7], paddingBottom: spacing[12], gap: spacing[5] },
+  hero: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    paddingHorizontal: spacing[7],
+    paddingVertical: spacing[7],
+    marginBottom: spacing[2],
+    ...shadows.sm,
+  },
+  heroEyebrow: {
+    ...typography.eyebrow,
+    color: colors.primary,
+    marginBottom: spacing[3],
+  },
+  heading: { ...typography.h1, color: colors.text, marginBottom: spacing[3] },
+  sub: { ...typography.body, color: colors.textMuted },
+  sectionTitle: { ...typography.h3, color: colors.text, marginTop: spacing[3] },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 8,
-    padding: 14,
+    borderRadius: radii.lg,
+    padding: spacing[6],
     borderWidth: 1,
     borderColor: colors.border,
-    marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: spacing[5],
+    ...shadows.sm,
   },
   selectedCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 8,
-    padding: 14,
+    backgroundColor: colors.primarySoft,
+    borderRadius: radii.lg,
+    padding: spacing[7],
     borderWidth: 1,
     borderColor: colors.primary,
-    marginBottom: 18,
+    gap: spacing[4],
+    ...shadows.sm,
   },
-  selectedTitle: { color: colors.primary, fontWeight: '800', marginBottom: 6 },
-  cardTitle: { fontSize: 15, fontWeight: '800', color: colors.text, marginBottom: 3 },
-  cardSub: { color: colors.textMuted, lineHeight: 18 },
-  selectButton: { minHeight: 40, paddingHorizontal: 12 },
-  buttonRow: { gap: 10 },
-  actionButton: { flex: 1 },
+  selectedTitle: {
+    ...typography.eyebrow,
+    color: colors.primaryDark,
+  },
+  cardTitle: { ...typography.h4, color: colors.text, marginBottom: spacing[1] },
+  cardSub: { ...typography.bodySm, color: colors.textMuted },
+  selectButton: { minHeight: 40, paddingHorizontal: spacing[5] },
+  buttonRow: { flexDirection: 'row', gap: spacing[4], flexWrap: 'wrap' },
+  actionButton: { flex: 1, minWidth: 140 },
   empty: {
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 8,
-    padding: 16,
+    borderRadius: radii.lg,
+    padding: spacing[7],
+    alignItems: 'center',
   },
-  emptyText: { color: colors.textMuted },
+  emptyText: { ...typography.body, color: colors.textMuted },
   preview: { flex: 1, backgroundColor: colors.bg },
   previewActions: {
-    padding: 12,
-    gap: 10,
+    padding: spacing[5],
+    gap: spacing[4],
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     backgroundColor: colors.surface,
   },
   versionStrip: {
-    maxHeight: 54,
+    maxHeight: 60,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     backgroundColor: colors.surface,
   },
-  versionStripContent: { padding: 10, gap: 8 },
+  versionStripContent: { padding: spacing[4], gap: spacing[3] },
   versionPill: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing[5],
+    paddingVertical: spacing[3],
+    backgroundColor: colors.surface,
   },
   versionPillActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  versionText: { color: colors.primary, fontWeight: '800' },
-  versionTextActive: { color: '#fff' },
+  versionText: { ...typography.label, color: colors.primary },
+  versionTextActive: { color: colors.primaryOn },
 });

@@ -25,7 +25,7 @@ import {
 } from '@/lib/options';
 import { getWeekStrandSummary, getWeekSubStrandSummary, getWeekTopic } from '@/lib/schemeWeek';
 import { loadSchemes, saveScheme } from '@/lib/schemeStore';
-import { colors } from '@/theme/colors';
+import { colors, radii, shadows, spacing, typography } from '@/theme/colors';
 import type { ClassLevel } from '@/types/lessonPlan';
 import type { SchemeOfWork } from '@/types/scheme';
 
@@ -191,10 +191,14 @@ export default function SchemesScreen() {
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={styles.content}>
-      <Text style={styles.heading}>Schemes of Learning</Text>
-      <Text style={styles.sub}>
-        Choose the class first. The subject selector only shows subjects mapped for that level.
-      </Text>
+      <View style={styles.hero}>
+        <Text style={styles.heroEyebrow}>Scheme Generator</Text>
+        <Text style={styles.heading}>Schemes of Learning</Text>
+        <Text style={styles.sub}>
+          Upload an existing scheme as PDF/DOCX or generate one from AI. The subject selector shows
+          only subjects mapped for the chosen class level.
+        </Text>
+      </View>
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Upload Scheme of Learning (PDF or DOCX)</Text>
@@ -379,76 +383,89 @@ export default function SchemesScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 20, paddingBottom: 40 },
-  heading: { fontSize: 22, fontWeight: '800', color: colors.primaryDark, marginBottom: 6 },
-  sub: { color: colors.textMuted, marginBottom: 20, lineHeight: 20 },
+  content: { padding: spacing[7], paddingBottom: spacing[12], gap: spacing[5] },
+  hero: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    paddingHorizontal: spacing[7],
+    paddingVertical: spacing[7],
+    marginBottom: spacing[2],
+    ...shadows.sm,
+  },
+  heroEyebrow: {
+    ...typography.eyebrow,
+    color: colors.primary,
+    marginBottom: spacing[3],
+  },
+  heading: { ...typography.h1, color: colors.text, marginBottom: spacing[3] },
+  sub: { ...typography.body, color: colors.textMuted },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: radii.lg,
+    padding: spacing[7],
     borderWidth: 1,
     borderColor: colors.border,
-    marginBottom: 16,
+    gap: spacing[4],
+    ...shadows.sm,
   },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 4 },
-  cardSub: { color: colors.textMuted, marginBottom: 12 },
+  cardTitle: { ...typography.h3, color: colors.text },
+  cardSub: { ...typography.body, color: colors.textMuted },
   webUploadBlock: {
-    marginBottom: 12,
-    gap: 8,
+    gap: spacing[3],
   },
   webUploadLabel: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.text,
   },
   webUploadMeta: {
+    ...typography.bodySm,
     color: colors.textMuted,
-    lineHeight: 18,
   },
-  // ✅ Styles for file selection row with wake-up button
   selectedFileRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8,
+    gap: spacing[3],
   },
   wakeUpButton: {
     backgroundColor: colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    minWidth: 80,
+    paddingHorizontal: spacing[5],
+    paddingVertical: spacing[3],
+    borderRadius: radii.md,
+    minWidth: 88,
     justifyContent: 'center',
     alignItems: 'center',
   },
   wakeUpButtonText: {
-    color: '#fff',
-    fontSize: 12,
+    color: colors.primaryOn,
+    ...typography.caption,
     fontWeight: '700',
     textAlign: 'center',
   },
-  cardActions: { gap: 10, marginBottom: 8 },
+  cardActions: { gap: spacing[4] },
   weekRow: {
-    paddingVertical: 10,
+    paddingVertical: spacing[5],
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: colors.borderSubtle,
   },
-  weekTitle: { fontSize: 14, fontWeight: '700', color: colors.text, marginBottom: 4 },
-  weekMeta: { color: colors.textMuted, lineHeight: 18 },
+  weekTitle: { ...typography.h4, color: colors.text, marginBottom: spacing[2] },
+  weekMeta: { ...typography.bodySm, color: colors.textMuted },
   savedRow: {
-    paddingVertical: 10,
+    paddingVertical: spacing[5],
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: colors.borderSubtle,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: spacing[5],
   },
-  savedTitle: { fontSize: 14, fontWeight: '700', color: colors.text, marginBottom: 2 },
-  savedMeta: { color: colors.textMuted, lineHeight: 18 },
+  savedTitle: { ...typography.h4, color: colors.text, marginBottom: spacing[1] },
+  savedMeta: { ...typography.bodySm, color: colors.textMuted },
   savedButton: {
     minHeight: 40,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: spacing[5],
+    paddingVertical: spacing[3],
   },
 });
 

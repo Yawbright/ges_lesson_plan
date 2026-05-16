@@ -18,7 +18,8 @@ import {
 } from '@/lib/credits';
 import { defaultRuntimeSettings, loadRuntimeAppSettings } from '@/lib/appSettings';
 import { logAppError } from '@/lib/logger';
-import { colors } from '@/theme/colors';
+import { colors, radii, shadows, spacing, typography } from '@/theme/colors';
+import { Ionicons } from '@expo/vector-icons';
 
 const PURCHASING_UNAVAILABLE_MESSAGE =
   'Credit Purchasing is coming soon. You can only refer friends to get credit for now or contact admin for special credit grant';
@@ -146,8 +147,15 @@ export default function CreditsScreen() {
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
       <View style={styles.balancePanel}>
-        <Text style={styles.label}>Available credits</Text>
-        <Text style={styles.balance}>{balance}</Text>
+        <View style={styles.balanceHeader}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.label}>Available credits</Text>
+            <Text style={styles.balance}>{balance}</Text>
+          </View>
+          <View style={styles.balanceIcon}>
+            <Ionicons name="sparkles" size={22} color={colors.primaryOn} />
+          </View>
+        </View>
         <Text style={styles.balanceNote}>All generation and parsing actions cost 1 credit.</Text>
       </View>
 
@@ -274,103 +282,122 @@ function getMessage(err: unknown) {
 
 const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 20, paddingBottom: 60 },
+  content: { padding: spacing[7], paddingBottom: spacing[12], gap: spacing[6] },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg },
   balancePanel: {
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    padding: 18,
-    marginBottom: 22,
+    backgroundColor: colors.primaryDark,
+    borderRadius: radii.lg,
+    padding: spacing[7],
+    gap: spacing[3],
+    ...shadows.md,
   },
-  label: { color: '#DDEBE5', fontSize: 13, fontWeight: '700', textTransform: 'uppercase' },
-  balance: { color: '#fff', fontSize: 46, fontWeight: '700', marginTop: 4 },
-  balanceNote: { color: '#EAF2EE', marginTop: 6, lineHeight: 19 },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: colors.primaryDark, marginBottom: 12 },
+  balanceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[5],
+  },
+  balanceIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radii.md,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  label: {
+    ...typography.eyebrow,
+    color: 'rgba(255,255,255,0.78)',
+  },
+  balance: { color: colors.primaryOn, fontSize: 48, fontWeight: '800', marginTop: spacing[2], letterSpacing: -1 },
+  balanceNote: { color: 'rgba(255,255,255,0.82)', ...typography.bodySm },
+  sectionTitle: { ...typography.h2, color: colors.text, marginTop: spacing[2] },
   referralPanel: {
     backgroundColor: colors.accentSoft,
     borderWidth: 1,
     borderColor: colors.accent,
-    borderRadius: 8,
-    padding: 14,
-    gap: 10,
-    marginBottom: 22,
+    borderRadius: radii.lg,
+    padding: spacing[7],
+    gap: spacing[4],
+    ...shadows.sm,
   },
-  referralTitle: { color: colors.primaryDark, fontSize: 16, fontWeight: '800' },
-  referralText: { color: colors.text, lineHeight: 20 },
-  packages: { gap: 10, marginBottom: 14 },
+  referralTitle: { ...typography.h3, color: colors.text },
+  referralText: { ...typography.body, color: colors.text },
+  packages: { gap: spacing[4] },
   packageCard: {
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 8,
-    padding: 14,
+    borderRadius: radii.lg,
+    padding: spacing[6],
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: spacing[5],
+    ...shadows.sm,
   },
   packageCardActive: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-  packageTitle: { fontSize: 16, color: colors.text, fontWeight: '700' },
-  packageHeader: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
+  packageTitle: { ...typography.h4, color: colors.text },
+  packageHeader: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing[3] },
   packageBadge: {
     color: colors.primary,
     backgroundColor: colors.primarySoft,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    fontSize: 12,
-    fontWeight: '600',
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[1],
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
   },
-  priceLine: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 3 },
-  packageMeta: { color: colors.textMuted, marginTop: 3 },
-  originalPrice: { color: colors.textMuted, textDecorationLine: 'line-through', marginTop: 3 },
-  bonusText: { color: colors.primary, marginTop: 4, fontSize: 12, fontWeight: '700' },
-  packageCredits: { fontSize: 22, color: colors.primary, fontWeight: '700' },
+  priceLine: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], marginTop: spacing[1] },
+  packageMeta: { ...typography.bodySm, color: colors.textMuted },
+  originalPrice: { ...typography.bodySm, color: colors.textMuted, textDecorationLine: 'line-through' },
+  bonusText: { ...typography.caption, color: colors.primary, marginTop: spacing[2], fontWeight: '700' },
+  packageCredits: { fontSize: 26, color: colors.primary, fontWeight: '800' },
   pendingPanel: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.accentSoft,
     borderWidth: 1,
     borderColor: colors.accent,
-    borderRadius: 8,
-    padding: 14,
-    marginTop: 16,
-    marginBottom: 22,
-    gap: 10,
+    borderRadius: radii.lg,
+    padding: spacing[6],
+    gap: spacing[4],
+    ...shadows.sm,
   },
-  pendingTitle: { color: colors.text, fontWeight: '700' },
-  pendingText: { color: colors.textMuted, lineHeight: 19 },
+  pendingTitle: { ...typography.h4, color: colors.text },
+  pendingText: { ...typography.bodySm, color: colors.text },
   statusPanel: {
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 12,
-    marginBottom: 10,
+    borderRadius: radii.md,
+    padding: spacing[5],
   },
-  statusText: { color: colors.textMuted, lineHeight: 19 },
+  statusText: { ...typography.bodySm, color: colors.textMuted },
   transactionRow: {
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 10,
+    borderRadius: radii.md,
+    padding: spacing[5],
+    marginBottom: spacing[3],
     flexDirection: 'row',
-    gap: 12,
+    gap: spacing[5],
+    alignItems: 'center',
   },
-  transactionTitle: { color: colors.text, fontWeight: '700' },
-  transactionMeta: { color: colors.textMuted, fontSize: 12, marginTop: 3 },
-  transactionAmount: { color: colors.primary, fontSize: 18, fontWeight: '700' },
+  transactionTitle: { ...typography.label, color: colors.text },
+  transactionMeta: { ...typography.caption, color: colors.textMuted, marginTop: spacing[1] },
+  transactionAmount: { color: colors.primary, fontSize: 20, fontWeight: '800' },
   transactionDebit: { color: colors.danger },
   receiptRow: {
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 10,
+    borderRadius: radii.md,
+    padding: spacing[5],
+    marginBottom: spacing[3],
     flexDirection: 'row',
-    gap: 12,
+    gap: spacing[5],
   },
-  copyText: { color: colors.primary, fontWeight: '600' },
-  emptyText: { color: colors.textMuted, lineHeight: 20 },
+  copyText: { ...typography.label, color: colors.primary },
+  emptyText: { ...typography.body, color: colors.textMuted },
 });

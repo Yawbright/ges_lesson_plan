@@ -39,7 +39,7 @@ import {
 } from '@/lib/subjectPrefs';
 import { calculateWeekEnding, loadTermStartDate, saveTermStartDate } from '@/lib/termDates';
 import { loadTeacherProfile } from '@/lib/teacherProfile';
-import { colors } from '@/theme/colors';
+import { colors, radii, shadows, spacing, typography } from '@/theme/colors';
 import type { ClassLevel, LessonPlan } from '@/types/lessonPlan';
 import type { SchemeOfWork } from '@/types/scheme';
 
@@ -373,11 +373,14 @@ export default function GenerateScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.heading}>New Lesson Plan</Text>
-        <Text style={styles.sub}>
-          Choose the class first. The subject list updates automatically so it only shows subjects
-          mapped for that level.
-        </Text>
+        <View style={styles.hero}>
+          <Text style={styles.heroEyebrow}>Lesson Planner</Text>
+          <Text style={styles.heading}>New Lesson Plan</Text>
+          <Text style={styles.sub}>
+            Choose the class first — the subject list updates automatically to show only subjects
+            mapped for that level.
+          </Text>
+        </View>
 
         <View style={styles.headerPanel}>
           <View style={styles.headerControls}>
@@ -552,89 +555,104 @@ export default function GenerateScreen() {
 
 const styles = StyleSheet.create({
   previewContainer: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 20, paddingBottom: 60 },
-  heading: { fontSize: 22, fontWeight: '800', color: colors.primaryDark, marginBottom: 6 },
-  sub: { color: colors.textMuted, marginBottom: 20, lineHeight: 20 },
+  content: { padding: spacing[7], paddingBottom: spacing[12], gap: spacing[5] },
+  hero: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    paddingHorizontal: spacing[7],
+    paddingVertical: spacing[7],
+    marginBottom: spacing[2],
+    ...shadows.sm,
+  },
+  heroEyebrow: {
+    ...typography.eyebrow,
+    color: colors.primary,
+    marginBottom: spacing[3],
+  },
+  heading: { ...typography.h1, color: colors.text, marginBottom: spacing[3] },
+  sub: { ...typography.body, color: colors.textMuted },
   headerPanel: {
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
+    borderRadius: radii.lg,
+    padding: spacing[6],
+    gap: spacing[3],
+    ...shadows.sm,
   },
   headerControls: {
     flexDirection: Platform.OS === 'web' ? 'row' : 'column',
-    gap: 12,
+    gap: spacing[5],
   },
   headerControl: {
     flex: 1,
   },
   headerMeta: {
+    ...typography.label,
     color: colors.primary,
-    fontWeight: '700',
-    marginTop: 2,
+    marginTop: spacing[1],
   },
   actions: {
-    padding: 16,
+    padding: spacing[6],
     borderTopWidth: 1,
     borderTopColor: colors.border,
     backgroundColor: colors.surface,
-    gap: 10,
+    gap: spacing[4],
   },
   schemeHint: {
     backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 16,
+    borderColor: colors.borderSubtle,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
+    borderRadius: radii.md,
+    padding: spacing[6],
+    ...shadows.sm,
   },
   schemeHintTitle: {
-    fontSize: 14,
-    fontWeight: '700',
+    ...typography.h4,
     color: colors.text,
-    marginBottom: 4,
+    marginBottom: spacing[2],
   },
   schemeHintText: {
+    ...typography.bodySm,
     color: colors.textMuted,
-    lineHeight: 19,
   },
   lessonStripWrap: {
-    marginBottom: 16,
+    gap: spacing[3],
   },
   lessonStripLabel: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.text,
-    marginBottom: 8,
   },
   lessonStripRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: spacing[3],
     flexWrap: 'wrap',
   },
   lessonStrip: {
     minHeight: 44,
-    minWidth: 92,
+    minWidth: 96,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: radii.md,
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: spacing[5],
   },
   lessonStripActive: {
     borderColor: colors.primary,
-    backgroundColor: '#eef6f2',
+    backgroundColor: colors.primarySoft,
   },
   lessonStripPressed: {
-    opacity: 0.85,
+    opacity: 0.82,
   },
   lessonStripText: {
-    color: colors.text,
-    fontWeight: '700',
+    ...typography.label,
+    color: colors.textMuted,
   },
   lessonStripTextActive: {
     color: colors.primary,
@@ -643,43 +661,41 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 16,
+    borderRadius: radii.lg,
+    padding: spacing[6],
+    gap: spacing[4],
+    ...shadows.sm,
   },
   schemeListTitle: {
-    fontSize: 14,
-    fontWeight: '700',
+    ...typography.h4,
     color: colors.text,
-    marginBottom: 10,
   },
   schemeCard: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 10,
+    borderRadius: radii.md,
+    padding: spacing[5],
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: spacing[5],
+    backgroundColor: colors.surface,
   },
   schemeCardActive: {
     borderColor: colors.primary,
-    backgroundColor: '#f3f8f5',
+    backgroundColor: colors.primarySoft,
   },
   schemeCardTitle: {
-    fontSize: 14,
-    fontWeight: '700',
+    ...typography.h4,
     color: colors.text,
-    marginBottom: 2,
+    marginBottom: spacing[1],
   },
   schemeCardMeta: {
+    ...typography.bodySm,
     color: colors.textMuted,
-    lineHeight: 18,
   },
   inlineButton: {
     minHeight: 40,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: spacing[5],
+    paddingVertical: spacing[3],
   },
 });
