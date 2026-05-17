@@ -1,6 +1,12 @@
 {
   "version": "5",
+  "redirects": {
+    "https://esm.sh/@supabase/supabase-js@2": "https://esm.sh/@supabase/supabase-js@2.105.4"
+  },
   "remote": {
+    "https://deno.land/std@0.208.0/async/delay.ts": "a6142eb44cdd856b645086af2b811b1fcce08ec06bb7d50969e6a872ee9b8659",
+    "https://deno.land/std@0.208.0/http/server.ts": "f3cde6672e631d3e00785743cfa96bfed275618c0352c5ae84abbe5a2e0e4afc",
+    "https://esm.sh/@supabase/supabase-js@2.105.4": "92cda3ff3af2e241766bc1d53b87167b4d6376d43a0e2f31ddcd6d41a58d09f9",
     "https://esm.sh/@supabase/supabase-js@2.45.4": "1108d69216995335d057dbd15907caaf514a4d1ef082f097050573b9d589a57c"
   },
   "workspace": {
@@ -8,6 +14,7 @@
       "dependencies": [
         "npm:@babel/core@^7.24.0",
         "npm:@expo/vector-icons@^14.0.2",
+        "npm:@gradio/client@^2.2.0",
         "npm:@react-native-async-storage/async-storage@1.23.1",
         "npm:@supabase/supabase-js@^2.105.3",
         "npm:@types/react@~18.2.79",

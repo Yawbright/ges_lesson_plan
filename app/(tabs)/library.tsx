@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
+import { Button } from '@/components/Button';
 import { useToast } from '@/components/ToastProvider';
 import {
   exportLessonPlanPdf,
@@ -27,6 +28,7 @@ import {
 import { deleteLessonPlan, loadLessonWorks } from '@/lib/lessonStore';
 import { deleteScheme, loadSchemes } from '@/lib/schemeStore';
 import { deleteTeachingNotes, loadTeachingNotes } from '@/lib/teachingNotesStore';
+import { getErrorMessage } from '@/lib/appError';
 import { colors, radii, shadows, spacing, typography } from '@/theme/colors';
 import type { LessonPlanBundle, SavedLessonWork } from '@/types/lessonPlan';
 import type { SchemeOfWork } from '@/types/scheme';
@@ -54,6 +56,7 @@ export default function LibraryScreen() {
   const [lessonWorks, setLessonWorks] = useState<SavedLessonWork[]>([]);
   const [notes, setNotes] = useState<TeachingNotes[]>([]);
   const [schemes, setSchemes] = useState<SchemeOfWork[]>([]);
+  const [loadErrors, setLoadErrors] = useState<string[]>([]);
 
   const refresh = useCallback(async () => {
     const [lessonResult, notesResult, schemeResult] = await Promise.allSettled([
@@ -64,7 +67,16 @@ export default function LibraryScreen() {
     setLessonWorks(lessonResult.status === 'fulfilled' ? lessonResult.value : []);
     setNotes(notesResult.status === 'fulfilled' ? notesResult.value : []);
     setSchemes(schemeResult.status === 'fulfilled' ? schemeResult.value : []);
-  }, []);
+    const errors = [
+      lessonResult.status === 'rejected' ? `Lesson plans: ${getErrorMessage(lessonResult.reason)}` : '',
+      notesResult.status === 'rejected' ? `Teaching notes: ${getErrorMessage(notesResult.reason)}` : '',
+      schemeResult.status === 'rejected' ? `Schemes: ${getErrorMessage(schemeResult.reason)}` : '',
+    ].filter(Boolean);
+    setLoadErrors(errors);
+    if (errors.length) {
+      showToast({ message: errors[0], type: 'error' });
+    }
+  }, [showToast]);
 
   useEffect(() => {
     refresh();
@@ -142,17 +154,27 @@ export default function LibraryScreen() {
       data={filteredItems}
       keyExtractor={getItemKey}
       ListHeaderComponent={
-        <LibraryHeader
-          activeTab={activeTab}
-          activeTabLabel={activeTabLabel}
-          counts={counts}
-          query={query}
-          sortMode={sortMode}
-          totalVisible={filteredItems.length}
-          onChangeQuery={setQuery}
-          onChangeSort={setSortMode}
-          onSelectTab={setActiveTab}
-        />
+        <>
+          <LibraryHeader
+            activeTab={activeTab}
+            activeTabLabel={activeTabLabel}
+            counts={counts}
+            query={query}
+            sortMode={sortMode}
+            totalVisible={filteredItems.length}
+            onChangeQuery={setQuery}
+            onChangeSort={setSortMode}
+            onSelectTab={setActiveTab}
+          />
+          {loadErrors.length ? (
+            <View style={styles.errorBanner}>
+              {loadErrors.map((message) => (
+                <Text key={message} style={styles.errorText}>{message}</Text>
+              ))}
+              <Button title="Retry" variant="secondary" onPress={refresh} style={styles.retryButton} />
+            </View>
+          ) : null}
+        </>
       }
       ListEmptyComponent={<EmptyState activeTabLabel={activeTabLabel} hasQuery={Boolean(query.trim())} />}
       renderItem={({ item }) =>
@@ -598,6 +620,17 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, minHeight: 42, color: colors.text, fontSize: 15 },
   sortRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing[4] },
   resultsText: { ...typography.bodySm, color: colors.textMuted, fontWeight: '600' },
+  errorBanner: {
+    backgroundColor: colors.dangerSoft,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    borderRadius: radii.md,
+    padding: spacing[5],
+    marginBottom: spacing[5],
+    gap: spacing[3],
+  },
+  errorText: { ...typography.bodySm, color: colors.danger },
+  retryButton: { alignSelf: 'flex-start', minHeight: 40 },
   sortSegment: {
     flexDirection: 'row',
     borderWidth: 1,

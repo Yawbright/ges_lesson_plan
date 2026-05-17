@@ -44,6 +44,17 @@ export default function SchemesScreen() {
   const [creditBalance, setCreditBalance] = useState(0);
   const [schemeCreditCost, setSchemeCreditCost] = useState(defaultRuntimeSettings.featureCreditCosts.scheme_generation);
   const [parsingCreditCost, setParsingCreditCost] = useState(defaultRuntimeSettings.featureCreditCosts.scheme_parsing);
+  // ✅ Track abort controllers for async operations
+  const [uploadAbortController, setUploadAbortController] = useState<AbortController | null>(null);
+  const [generationAbortController, setGenerationAbortController] = useState<AbortController | null>(null);
+
+  // ✅ Cleanup on unmount: cancel operations if in progress
+  useEffect(() => {
+    return () => {
+      if (uploadAbortController) uploadAbortController.abort();
+      if (generationAbortController) generationAbortController.abort();
+    };
+  }, [uploadAbortController, generationAbortController]);
 
   const subjectOptions = useMemo(
     () => getSubjectOptionsForClassLevel(classLevel),
@@ -77,7 +88,10 @@ export default function SchemesScreen() {
           setSchemeCreditCost(settings.featureCreditCosts.scheme_generation);
           setParsingCreditCost(settings.featureCreditCosts.scheme_parsing);
         })
-        .catch(() => undefined);
+        .catch((err) => {
+          const message = err instanceof Error ? err.message : 'Unable to load credit settings.';
+          showToast({ message, type: 'error' });
+        });
     }, [refreshSchemes]),
   );
 
@@ -92,9 +106,14 @@ export default function SchemesScreen() {
         : await pickUploadAsset(webInputRef);
     if (!asset) return;
 
+    const controller = new AbortController();
+    setUploadAbortController(controller);
     setUploading(true);
+
     try {
       const fileBase64 = await readAssetAsBase64(asset);
+      if (controller.signal.aborted) return; // ✅ Check abort signal
+
       const parsed = await parseUploadedScheme({
         subject: subject.trim(),
         classLevel,
@@ -102,16 +121,23 @@ export default function SchemesScreen() {
         fileName: asset.name,
         fileBase64,
         numberOfWeeks: 12,
-      });
+      }, { signal: controller.signal });
+      if (controller.signal.aborted) return; // ✅ Check abort signal
+
       const schemeToSave = applyDetectedMetadata(parsed.scheme, parsed.detectedMetadata, {
         subject: subject.trim(),
         classLevel,
         term: term.trim(),
       });
       const saved = await saveScheme(schemeToSave);
+      if (controller.signal.aborted) return; // ✅ Check abort signal
+
       setLatestScheme(saved);
       await refreshSchemes();
-      loadCreditBalance().then(setCreditBalance).catch(() => undefined);
+      loadCreditBalance().then((balance) => {
+        if (!controller.signal.aborted) setCreditBalance(balance);
+      }).catch(() => undefined);
+      
       if (Platform.OS === 'web') {
         setWebSelectedAsset(null);
       }
@@ -127,15 +153,20 @@ export default function SchemesScreen() {
         Alert.alert('Scheme parsed', details);
       }
     } catch (err: unknown) {
-      logAppError({
-        source: 'client',
-        action: 'parse_uploaded_scheme',
-        message: formatAiActionError(err),
-        metadata: { subject, classLevel, term },
-      });
-      showSchemeActionError('Upload or parsing failed', err);
+      if (!controller.signal.aborted) {
+        logAppError({
+          source: 'client',
+          action: 'parse_uploaded_scheme',
+          message: formatAiActionError(err),
+          metadata: { subject, classLevel, term },
+        });
+        showSchemeActionError('Upload or parsing failed', err);
+      }
     } finally {
-      setUploading(false);
+      if (!controller.signal.aborted) {
+        setUploading(false);
+      }
+      setUploadAbortController(null);
     }
   }
 
@@ -160,29 +191,44 @@ export default function SchemesScreen() {
       Alert.alert('Subject required', 'Please select the subject.');
       return;
     }
+
+    const controller = new AbortController();
+    setGenerationAbortController(controller);
     setGenerating(true);
+
     try {
       const scheme = await generateSchemeOfWork({
         subject: subject.trim(),
         classLevel,
         term: term.trim(),
         numberOfWeeks: 12,
-      });
+      }, { signal: controller.signal });
+      if (controller.signal.aborted) return; // ✅ Check abort signal
+
       const saved = await saveScheme(scheme);
+      if (controller.signal.aborted) return; // ✅ Check abort signal
+
       setLatestScheme(saved);
       await refreshSchemes();
-      loadCreditBalance().then(setCreditBalance).catch(() => undefined);
+      loadCreditBalance().then((balance) => {
+        if (!controller.signal.aborted) setCreditBalance(balance);
+      }).catch(() => undefined);
       showToast({ message: `${saved.weeks.length} weeks drafted for ${saved.subject}.` });
     } catch (err: unknown) {
-      logAppError({
-        source: 'client',
-        action: 'generate_scheme',
-        message: formatAiActionError(err),
-        metadata: { subject, classLevel, term },
-      });
-      showSchemeActionError('Generation failed', err);
+      if (!controller.signal.aborted) {
+        logAppError({
+          source: 'client',
+          action: 'generate_scheme',
+          message: formatAiActionError(err),
+          metadata: { subject, classLevel, term },
+        });
+        showSchemeActionError('Generation failed', err);
+      }
     } finally {
-      setGenerating(false);
+      if (!controller.signal.aborted) {
+        setGenerating(false);
+      }
+      setGenerationAbortController(null);
     }
   }
 

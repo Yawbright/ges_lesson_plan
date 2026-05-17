@@ -1,4 +1,5 @@
 import { corsHeaders } from '../_shared/claude.ts';
+import { fetchWithTimeout } from '../_shared/http.ts';
 import { createServiceClient, getAuthenticatedUser, HttpError } from '../_shared/supabase.ts';
 
 type InitBody = {
@@ -71,30 +72,75 @@ Deno.serve(async (req) => {
 
     const reference = `glp-${Date.now()}-${crypto.randomUUID().replaceAll('-', '')}`;
     const callbackUrl = body.callbackUrl?.trim() || Deno.env.get('PAYSTACK_CALLBACK_URL') || undefined;
-    const response = await fetch('https://api.paystack.co/transaction/initialize', {
-      method: 'POST',
-      headers: {
-        authorization: `Bearer ${secretKey}`,
-        'content-type': 'application/json',
+    const credits = pack.credits + Number(pack.bonus_credits ?? 0);
+
+    const { error: insertError } = await service.from('credit_purchases').insert({
+      user_id: user.id,
+      package_id: pack.id,
+      credits,
+      amount_subunit: pack.price_subunit,
+      currency: pack.currency,
+      paystack_reference: reference,
+      status: 'pending',
+      raw_response: {
+        status: 'initializing',
+        packageId: pack.id,
+        callbackUrl: callbackUrl ?? null,
       },
-      body: JSON.stringify({
-        email: user.email,
-        amount: String(pack.price_subunit),
-        currency: pack.currency,
-        reference,
-        callback_url: callbackUrl,
-        metadata: JSON.stringify({
-          userId: user.id,
-          packageId: pack.id,
-          credits: pack.credits + Number(pack.bonus_credits ?? 0),
-          baseCredits: pack.credits,
-          bonusCredits: Number(pack.bonus_credits ?? 0),
-        }),
-      }),
     });
+
+    if (insertError) {
+      throw new Error(insertError.message);
+    }
+
+    let response: Response;
+    try {
+      response = await fetchWithTimeout('https://api.paystack.co/transaction/initialize', {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${secretKey}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: user.email,
+          amount: String(pack.price_subunit),
+          currency: pack.currency,
+          reference,
+          callback_url: callbackUrl,
+          metadata: JSON.stringify({
+            userId: user.id,
+            packageId: pack.id,
+            credits,
+            baseCredits: pack.credits,
+            bonusCredits: Number(pack.bonus_credits ?? 0),
+          }),
+        }),
+      }, 15000);
+    } catch (err) {
+      await service
+        .from('credit_purchases')
+        .update({
+          status: 'failed',
+          updated_at: new Date().toISOString(),
+          raw_response: { error: (err as Error).message },
+        })
+        .eq('paystack_reference', reference)
+        .eq('status', 'pending');
+      throw err;
+    }
 
     const payload = await response.json().catch(() => null);
     if (!response.ok || !payload?.status || !payload?.data?.authorization_url) {
+      await service
+        .from('credit_purchases')
+        .update({
+          status: 'failed',
+          updated_at: new Date().toISOString(),
+          raw_response: payload ?? { error: `Paystack initialization failed with status ${response.status}` },
+        })
+        .eq('paystack_reference', reference)
+        .eq('status', 'pending');
+
       return json(
         {
           error: payload?.message ?? `Paystack initialization failed with status ${response.status}`,
@@ -103,21 +149,18 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { error: insertError } = await service.from('credit_purchases').insert({
-      user_id: user.id,
-      package_id: pack.id,
-      credits: pack.credits + Number(pack.bonus_credits ?? 0),
-      amount_subunit: pack.price_subunit,
-      currency: pack.currency,
-      paystack_reference: reference,
+    const { error: updateError } = await service.from('credit_purchases').update({
       paystack_access_code: payload.data.access_code,
       authorization_url: payload.data.authorization_url,
-      status: 'pending',
       raw_response: payload,
-    });
+      updated_at: new Date().toISOString(),
+    }).eq('paystack_reference', reference);
 
-    if (insertError) {
-      throw new Error(insertError.message);
+    if (updateError) {
+      console.error('[initialize-credit-purchase] Purchase persisted before Paystack, but update failed', {
+        reference,
+        error: updateError.message,
+      });
     }
 
     return json({

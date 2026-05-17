@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { formatPhoneForArkesel } from '../_shared/phone.ts'; // ✅ Use shared utility
+import { validateGhanaPhoneNumber } from '../_shared/phone.ts';
+import { fetchWithTimeout } from '../_shared/http.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -10,25 +11,9 @@ interface SendPhoneOtpRequest {
   phoneNumber: string;
 }
 
-interface SendPhoneOtpResponse {
-  success: boolean;
-  message: string;
-  otpId?: string;
-  expiresIn?: number;
-}
-
 // Generate random 6-digit OTP
 function generateOtp(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
-}
-
-// Validate phone number (basic validation)
-function validatePhoneNumber(phone: string): boolean {
-  // Accept various formats: +233XXXXXXXXX, 0XXXXXXXXX, 233XXXXXXXXX, etc.
-  const formatted = formatPhoneForArkesel(phone);
-  const isValid = formatted !== null;
-  console.log('[validatePhoneNumber] Input:', phone, '-> Formatted:', formatted, '-> Valid:', isValid);
-  return isValid;
 }
 
 // Send SMS via Arkesel API
@@ -51,30 +36,22 @@ async function sendViaArkesel(phoneNumber: string, otp: string, message: string)
     console.log('[Arkesel] Sending to:', 'https://sms.arkesel.com/sms/api?...');
     console.log('[Arkesel] With phone:', phoneNumber);
     
-    // ✅ Add 15-second timeout for Arkesel API
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
-    
-    let response;
-    try {
-      response = await fetch(arkeselUrl, {
-        method: 'GET',
-        signal: controller.signal,
-      });
-    } finally {
-      clearTimeout(timeoutId);
-    }
+    const response = await fetchWithTimeout(arkeselUrl, { method: 'GET' }, 15000);
 
     console.log('[Arkesel] Response status:', response.status);
     
     const text = await response.text();
-    console.log('[Arkesel] Raw response:', text);
+    console.log('[Arkesel] Raw response length:', text.length);
     
     let data;
     try {
       data = JSON.parse(text);
-    } catch (e) {
-      console.error('[Arkesel] Failed to parse response as JSON:', text);
+    } catch {
+      console.error('[Arkesel] Failed to parse response as JSON', {
+        statusCode: response.status,
+        responseLength: text.length,
+        firstChars: text.slice(0, 100),
+      });
       return false;
     }
     
@@ -149,10 +126,11 @@ serve(async (req: Request) => {
       );
     }
 
-    if (!validatePhoneNumber(phoneNumber)) {
-      console.warn('[send-phone-otp] Invalid phone number format:', phoneNumber);
+    const phoneValidation = validateGhanaPhoneNumber(phoneNumber);
+    if (!phoneValidation.valid || !phoneValidation.normalized) {
+      console.warn('[send-phone-otp] Invalid phone number format');
       return new Response(
-        JSON.stringify({ error: 'Invalid phone number format', success: false }),
+        JSON.stringify({ error: phoneValidation.error ?? 'Invalid phone number format', success: false }),
         { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
       );
     }
@@ -161,23 +139,14 @@ serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     console.log('[send-phone-otp] Supabase client initialized');
 
-    // Format phone number properly for Arkesel
-    const formattedPhone = formatPhoneForArkesel(phoneNumber);
-    if (!formattedPhone) {
-      console.error('[send-phone-otp] Could not format phone number:', phoneNumber);
-      return new Response(
-        JSON.stringify({ error: 'Invalid phone number format', success: false }),
-        { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
-      );
-    }
-
-    console.log('[send-phone-otp] Formatted phone for Arkesel:', formattedPhone);
+    const formattedPhone = phoneValidation.normalized;
+    console.log('[send-phone-otp] Phone validated for Arkesel');
 
     // Generate OTP
     const otp = generateOtp();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
-    console.log('[send-phone-otp] Generated OTP:', otp, 'for phone:', formattedPhone);
+    console.log('[send-phone-otp] Generated OTP for validated phone');
 
     // Send SMS via Arkesel FIRST (before database operations)
     console.log('[send-phone-otp] Sending SMS via Arkesel...');
@@ -198,15 +167,19 @@ serve(async (req: Request) => {
     }
 
     console.log('[send-phone-otp] SMS sent successfully by Arkesel! Now storing OTP in database');
-    console.log('[send-phone-otp] OTP to store:', otp, 'Phone:', formattedPhone, 'Expires:', expiresAt.toISOString());
+    console.log('[send-phone-otp] Storing OTP request, expires:', expiresAt.toISOString());
 
     // Store OTP in database (use formatted phone number with country code)
-    const { data, error } = await supabase.from('phone_auth_requests').insert({
-      phone_number: formattedPhone,
-      otp_code: otp,
-      otp_expires_at: expiresAt.toISOString(),
-      attempt_count: 0,
-    });
+    const { data, error } = await supabase
+      .from('phone_auth_requests')
+      .insert({
+        phone_number: formattedPhone,
+        otp_code: otp,
+        otp_expires_at: expiresAt.toISOString(),
+        attempt_count: 0,
+      })
+      .select('id')
+      .single();
 
     if (error) {
       console.error('[send-phone-otp] DB Insert Error:', error);
@@ -227,7 +200,7 @@ serve(async (req: Request) => {
       JSON.stringify({
         success: true,
         message: 'OTP sent successfully to your phone',
-        otpId: data?.[0]?.id,
+        otpId: data?.id,
         expiresIn: 900,
       }),
       {

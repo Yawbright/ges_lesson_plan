@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Field } from '@/components/Field';
@@ -30,19 +30,40 @@ export default function TeachingNotesToolScreen() {
   const [versions, setVersions] = useState<TeachingNotes[]>([]);
   const [activeNotes, setActiveNotes] = useState<TeachingNotes | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
   const [creditBalance, setCreditBalance] = useState(0);
   const [creditCost, setCreditCost] = useState(1);
+  // ✅ Track abort controller for generation
+  const generationAbortController = useRef<AbortController | null>(null);
+  const mounted = useRef(true);
+
+  // ✅ Cleanup on unmount: cancel generation if in progress
+  useEffect(() => {
+    return () => {
+      mounted.current = false;
+      generationAbortController.current?.abort();
+    };
+  }, []);
 
   const refresh = useCallback(async () => {
-    const [lessonWorks, balance, settings] = await Promise.all([
-      loadLessonWorks(),
-      loadCreditBalance().catch(() => 0),
-      loadRuntimeAppSettings(),
-    ]);
-    setPlans(flattenLessonWorks(lessonWorks));
-    setCreditBalance(balance);
-    setCreditCost(settings.featureCreditCosts.teaching_notes_generation);
-  }, []);
+    try {
+      const [lessonWorks, balance, settings] = await Promise.all([
+        loadLessonWorks(),
+        loadCreditBalance().catch(() => 0),
+        loadRuntimeAppSettings(),
+      ]);
+      if (!mounted.current) return;
+      setPlans(flattenLessonWorks(lessonWorks));
+      setCreditBalance(balance);
+      setCreditCost(settings.featureCreditCosts.teaching_notes_generation);
+      setLoadError('');
+    } catch (err) {
+      if (!mounted.current) return;
+      const message = err instanceof Error ? err.message : 'Unable to load teaching notes data.';
+      setLoadError(message);
+      showToast({ message, type: 'error' });
+    }
+  }, [showToast]);
 
   useEffect(() => {
     refresh();
@@ -98,9 +119,15 @@ export default function TeachingNotesToolScreen() {
       return;
     }
 
+    const controller = new AbortController();
+    generationAbortController.current?.abort();
+    generationAbortController.current = controller;
     setLoading(true);
+
     try {
-      const generated = await generateTeachingNotes(selectedPlan);
+      const generated = await generateTeachingNotes(selectedPlan, { signal: controller.signal });
+      if (controller.signal.aborted || !mounted.current) return;
+
       const saved = await saveTeachingNotes({
         ...generated,
         lessonPlanId: selectedPlan.id,
@@ -115,30 +142,44 @@ export default function TeachingNotesToolScreen() {
           subStrand: selectedPlan.subStrand,
         },
       });
+      
+      if (controller.signal.aborted || !mounted.current) return;
+
       const planVersions = await loadTeachingNotesForLesson(selectedPlan.id);
-      setVersions(planVersions);
-      setActiveNotes(saved);
-      loadCreditBalance().then(setCreditBalance).catch(() => undefined);
-      showToast({ message: `Teaching notes version ${saved.versionNumber ?? 1} generated.` });
+      if (!controller.signal.aborted && mounted.current) {
+        setVersions(planVersions);
+        setActiveNotes(saved);
+        loadCreditBalance().then((balance) => {
+          if (!controller.signal.aborted && mounted.current) setCreditBalance(balance);
+        }).catch(() => undefined);
+        showToast({ message: `Teaching notes version ${saved.versionNumber ?? 1} generated.` });
+      }
     } catch (err: unknown) {
-      const message = formatAiActionError(err);
-      logAppError({
-        source: 'client',
-        action: 'generate_teaching_notes',
-        message,
-        metadata: { lessonPlanId: selectedPlan.id, subject: selectedPlan.subject },
-      });
-      showToast({ message, type: 'error' });
-      if (isInsufficientCreditsError(err)) {
-        Alert.alert('Not enough credits', message, [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Get credits', onPress: () => router.push('/(tabs)/credits') },
-        ]);
-      } else {
-        Alert.alert('Generation failed', message);
+      if (!controller.signal.aborted && mounted.current) {
+        const message = formatAiActionError(err);
+        logAppError({
+          source: 'client',
+          action: 'generate_teaching_notes',
+          message,
+          metadata: { lessonPlanId: selectedPlan.id, subject: selectedPlan.subject },
+        });
+        showToast({ message, type: 'error' });
+        if (isInsufficientCreditsError(err)) {
+          Alert.alert('Not enough credits', message, [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Get credits', onPress: () => router.push('/(tabs)/credits') },
+          ]);
+        } else {
+          Alert.alert('Generation failed', message);
+        }
       }
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted && mounted.current) {
+        setLoading(false);
+      }
+      if (generationAbortController.current === controller) {
+        generationAbortController.current = null;
+      }
     }
   }
 
@@ -188,6 +229,13 @@ export default function TeachingNotesToolScreen() {
         placeholder="Search subject, class, week, topic, strand..."
         autoCapitalize="none"
       />
+
+      {loadError ? (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorText}>{loadError}</Text>
+          <Button title="Retry" variant="secondary" onPress={refresh} style={styles.retryButton} />
+        </View>
+      ) : null}
 
       {selectedPlan ? (
         <View style={styles.selectedCard}>
@@ -308,6 +356,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: { ...typography.body, color: colors.textMuted },
+  errorBanner: {
+    backgroundColor: colors.dangerSoft,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    borderRadius: radii.md,
+    padding: spacing[5],
+    gap: spacing[3],
+  },
+  errorText: { ...typography.bodySm, color: colors.danger },
+  retryButton: { alignSelf: 'flex-start', minHeight: 40 },
   preview: { flex: 1, backgroundColor: colors.bg },
   previewActions: {
     padding: spacing[5],

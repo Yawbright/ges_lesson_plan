@@ -1,10 +1,18 @@
 import { supabase } from './supabase';
-import { defaultRuntimeSettings, loadRuntimeAppSettings } from './appSettings';
-import { appStorage } from './storage';
+import { cachedRequest, invalidateCache } from './cache';
+import { withTimeout } from './async';
+import {
+  addDays,
+  getCurrentUserId,
+  loadGeneratedRetentionDays,
+  loadLocalItems,
+  slugify,
+  writeLocalItems,
+} from './generatedStore';
 import type { LessonPlan, LessonPlanBundle, SavedLessonWork } from '@/types/lessonPlan';
 
 const STORAGE_KEY = 'local-lesson-plans';
-const FALLBACK_EXPIRY_DAYS = defaultRuntimeSettings.generatedFileRetention.days;
+const CACHE_PREFIX = 'generated:lesson-works';
 
 export async function saveLessonPlan(plan: LessonPlan): Promise<LessonPlan> {
   const normalized = normalizeLessonPlan(plan);
@@ -26,9 +34,9 @@ export async function saveLessonPlanWork(work: SavedLessonWork): Promise<SavedLe
 
 async function saveLessonWork(work: SavedLessonWork): Promise<void> {
   const normalized = normalizeLessonWork(work);
-  const userId = await getUserId();
+  const userId = await getCurrentUserId();
   if (userId) {
-    const retentionDays = await loadRetentionDays();
+    const retentionDays = await loadGeneratedRetentionDays();
     const expiresAt = addDays(new Date(), retentionDays).toISOString();
     const { error } = await supabase.from('saved_lesson_plans').upsert({
       id: normalized.id,
@@ -39,12 +47,14 @@ async function saveLessonWork(work: SavedLessonWork): Promise<void> {
       updated_at: new Date().toISOString(),
     });
     if (error) throw error;
+    invalidateCache(CACHE_PREFIX);
     return;
   }
 
   const works = await loadLocalLessonWorks();
   const next = [normalized, ...works.filter((item) => item.id !== normalized.id)];
   await writeLessonWorks(next);
+  invalidateCache(CACHE_PREFIX);
 }
 
 export async function loadLessonPlans(): Promise<LessonPlan[]> {
@@ -53,31 +63,41 @@ export async function loadLessonPlans(): Promise<LessonPlan[]> {
 }
 
 export async function loadLessonWorks(): Promise<SavedLessonWork[]> {
-  const userId = await getUserId();
+  const userId = await getCurrentUserId();
   if (userId) {
-    const { data, error } = await supabase
-      .from('saved_lesson_plans')
-      .select('payload')
-      .eq('user_id', userId)
-      .gt('expires_at', new Date().toISOString())
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return (data ?? [])
-      .map((item) => normalizeLessonWork(item.payload as SavedLessonWork));
+    return cachedRequest(`${CACHE_PREFIX}:${userId}`, async () => {
+      const { data, error } = await withTimeout(
+        supabase
+          .from('saved_lesson_plans')
+          .select('payload')
+          .eq('user_id', userId)
+          .gt('expires_at', new Date().toISOString())
+          .order('created_at', { ascending: false }),
+        10000,
+        'Saved lesson plans took too long to load.',
+      );
+      if (error) throw error;
+      return (data ?? [])
+        .map((item) => normalizeLessonWork(item.payload as SavedLessonWork));
+    });
   }
   return loadLocalLessonWorks();
 }
 
 export async function getLessonPlanById(id: string): Promise<LessonPlan | null> {
-  const userId = await getUserId();
+  const userId = await getCurrentUserId();
   if (userId) {
-    const { data, error } = await supabase
-      .from('saved_lesson_plans')
-      .select('payload')
-      .eq('user_id', userId)
-      .eq('id', id)
-      .gt('expires_at', new Date().toISOString())
-      .maybeSingle();
+    const { data, error } = await withTimeout(
+      supabase
+        .from('saved_lesson_plans')
+        .select('payload')
+        .eq('user_id', userId)
+        .eq('id', id)
+        .gt('expires_at', new Date().toISOString())
+        .maybeSingle(),
+      10000,
+      'Saved lesson plan took too long to load.',
+    );
     if (error) throw error;
     if (!data?.payload) return null;
     const work = normalizeLessonWork(data.payload as SavedLessonWork);
@@ -90,15 +110,19 @@ export async function getLessonPlanById(id: string): Promise<LessonPlan | null> 
 }
 
 export async function getLessonPlanBundleById(id: string): Promise<LessonPlanBundle | null> {
-  const userId = await getUserId();
+  const userId = await getCurrentUserId();
   if (userId) {
-    const { data, error } = await supabase
-      .from('saved_lesson_plans')
-      .select('payload')
-      .eq('user_id', userId)
-      .eq('id', id)
-      .gt('expires_at', new Date().toISOString())
-      .maybeSingle();
+    const { data, error } = await withTimeout(
+      supabase
+        .from('saved_lesson_plans')
+        .select('payload')
+        .eq('user_id', userId)
+        .eq('id', id)
+        .gt('expires_at', new Date().toISOString())
+        .maybeSingle(),
+      10000,
+      'Saved lesson bundle took too long to load.',
+    );
     if (error) throw error;
     if (!data?.payload) return null;
     const work = normalizeLessonWork(data.payload as SavedLessonWork);
@@ -111,31 +135,31 @@ export async function getLessonPlanBundleById(id: string): Promise<LessonPlanBun
 }
 
 export async function deleteLessonPlan(id: string): Promise<void> {
-  const userId = await getUserId();
+  const userId = await getCurrentUserId();
   if (userId) {
-    const { error } = await supabase.from('saved_lesson_plans').delete().eq('user_id', userId).eq('id', id);
+    const { error } = await withTimeout(
+      supabase.from('saved_lesson_plans').delete().eq('user_id', userId).eq('id', id),
+      10000,
+      'Saved lesson plan deletion took too long.',
+    );
     if (error) throw error;
+    invalidateCache(CACHE_PREFIX);
     return;
   }
 
   const works = await loadLocalLessonWorks();
   const next = works.filter((work) => work.id !== id);
   await writeLessonWorks(next);
+  invalidateCache(CACHE_PREFIX);
 }
 
 async function loadLocalLessonWorks(): Promise<SavedLessonWork[]> {
-  const raw = await appStorage.getItem(STORAGE_KEY);
-  if (!raw) return [];
-
-  try {
-    const parsed = JSON.parse(raw) as SavedLessonWork[];
-    return parsed
-      .map(normalizeLessonWork)
-      .filter((item) => !isExpired(item.createdAt, FALLBACK_EXPIRY_DAYS))
-      .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
-  } catch {
-    return [];
-  }
+  return loadLocalItems(
+    STORAGE_KEY,
+    normalizeLessonWork,
+    (a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''),
+    (item) => item.createdAt,
+  );
 }
 
 function normalizeLessonWork(work: SavedLessonWork): SavedLessonWork {
@@ -192,41 +216,12 @@ function normalizeLessonPlanBundle(plans: LessonPlan[], bundle?: Partial<LessonP
 }
 
 async function writeLessonWorks(works: SavedLessonWork[]) {
-  await appStorage.setItem(STORAGE_KEY, JSON.stringify(works));
-}
-
-async function getUserId() {
-  const { data } = await supabase.auth.getUser();
-  return data.user?.id ?? null;
+  await writeLocalItems(STORAGE_KEY, works);
 }
 
 function buildTitle(work: SavedLessonWork) {
   if (isLessonPlanBundle(work)) return work.title;
   return `${work.subject} ${work.classLevel} Week ${work.week}`;
-}
-
-async function loadRetentionDays() {
-  const settings = await loadRuntimeAppSettings();
-  return Math.max(1, Math.round(settings.generatedFileRetention.days || FALLBACK_EXPIRY_DAYS));
-}
-
-function isExpired(createdAt: string | undefined, days: number) {
-  if (!createdAt) return false;
-  return Date.now() - new Date(createdAt).getTime() > days * 24 * 60 * 60 * 1000;
-}
-
-function addDays(date: Date, days: number) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
-}
-
-function slugify(value?: string) {
-  return (value ?? '')
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
 }
 
 function isLessonPlanBundle(work: SavedLessonWork): work is LessonPlanBundle {

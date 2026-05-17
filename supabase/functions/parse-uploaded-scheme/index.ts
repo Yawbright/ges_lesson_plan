@@ -1,5 +1,6 @@
 import { corsHeaders } from '../_shared/claude.ts';
 import { consumeCreditsForRequest, getFeatureCreditCost, refundCredits } from '../_shared/credits.ts';
+import { fetchWithTimeout } from '../_shared/http.ts';
 import { HttpError, logEdgeError } from '../_shared/supabase.ts';
 
 const SCHEME_PARSE_CREDIT_COST = 1;
@@ -57,21 +58,11 @@ Deno.serve(async (req) => {
       },
     );
 
-    // ✅ Add 60-second timeout for parser service
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
-    
-    let response;
-    try {
-      response = await fetch(`${parserBaseUrl}/parse-scheme`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      });
-    } finally {
-      clearTimeout(timeoutId);
-    }
+    const response = await fetchWithTimeout(`${parserBaseUrl}/parse-scheme`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }, 60000);
 
     const payload = await response.json().catch(() => null);
     if (!response.ok) {
@@ -97,15 +88,30 @@ Deno.serve(async (req) => {
     });
 
     if (creditDebit) {
-      await refundCredits(
-        creditDebit.user.id,
-        creditCost,
-        'Refund for failed scheme upload parsing',
-        {
-          originalTransactionId: creditDebit.transactionId,
-          reason: (err as Error).message,
-        },
-      );
+      try {
+        await refundCredits(
+          creditDebit.user.id,
+          creditCost,
+          'Refund for failed scheme upload parsing',
+          {
+            originalTransactionId: creditDebit.transactionId,
+            reason: (err as Error).message,
+          },
+        );
+      } catch (refundErr) {
+        console.error('[CRITICAL] Credit refund failed after scheme upload parsing error', {
+          userId: creditDebit.user.id,
+          transactionId: creditDebit.transactionId,
+          credits: creditCost,
+          refundError: (refundErr as Error).message,
+          originalError: (err as Error).message,
+        });
+        return json({
+          error: (err as Error).message,
+          refundStatus: 'failed_to_refund',
+          supportNote: 'Credits may not have been refunded. Support has been notified.',
+        }, 500);
+      }
     }
 
     return json({ error: (err as Error).message }, 500);

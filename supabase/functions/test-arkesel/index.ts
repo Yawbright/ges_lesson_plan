@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
+import { fetchWithTimeout } from '../_shared/http.ts';
 
 const arkeselApiKey = Deno.env.get('ARKESEL_API_KEY') || '';
 
@@ -29,13 +30,13 @@ serve(async (req: Request) => {
     console.log('[test-arkesel] URL: https://sms.arkesel.com/api/send');
     console.log('[test-arkesel] Payload (masked):', { ...payload, api_key: '***' });
 
-    const response = await fetch('https://sms.arkesel.com/api/send', {
+    const response = await fetchWithTimeout('https://sms.arkesel.com/api/send', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
-    });
+    }, 15000);
 
     console.log('[test-arkesel] Response status:', response.status);
     console.log('[test-arkesel] Response OK:', response.ok);
@@ -46,7 +47,7 @@ serve(async (req: Request) => {
     let data;
     try {
       data = JSON.parse(text);
-    } catch (e) {
+    } catch {
       console.log('[test-arkesel] Could not parse as JSON');
       data = { raw: text };
     }

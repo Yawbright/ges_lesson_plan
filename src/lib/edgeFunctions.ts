@@ -1,19 +1,36 @@
 import { supabase, supabaseAnonKey, supabaseUrl } from './supabase';
+import { fetchWithTimeout } from './http';
 
 type InvokeEdgeFunctionOptions = {
   headers?: Record<string, string>;
   requireAuth?: boolean;
   authErrorMessage?: string;
+  signal?: AbortSignal;
+  timeoutMs?: number;
 };
 
 export class EdgeFunctionError extends Error {
+  readonly status: number;
+  readonly payload: unknown;
+  readonly code?: string;
+  readonly retryable?: boolean;
+
   constructor(
     message: string,
-    readonly status: number,
-    readonly payload: unknown,
+    status: number,
+    payload: unknown,
   ) {
     super(message);
     this.name = 'EdgeFunctionError';
+    this.status = status;
+    this.payload = payload;
+
+    // ✅ Extract error code and retryable flag from structured error response
+    if (payload && typeof payload === 'object') {
+      const err = (payload as any)?.error || payload;
+      if (err?.code) this.code = err.code;
+      if (typeof err?.retryable === 'boolean') this.retryable = err.retryable;
+    }
   }
 }
 
@@ -33,16 +50,21 @@ export async function invokeEdgeFunction<T>(
     throw new Error('Supabase URL or anon key is missing.');
   }
 
-  const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
-    method: 'POST',
-    headers: {
-      apikey: supabaseAnonKey,
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      'content-type': 'application/json',
-      ...(options.headers ?? {}),
+  const response = await fetchWithTimeout(
+    `${supabaseUrl}/functions/v1/${functionName}`,
+    {
+      method: 'POST',
+      headers: {
+        apikey: supabaseAnonKey,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        'content-type': 'application/json',
+        ...(options.headers ?? {}),
+      },
+      signal: options.signal,
+      body: JSON.stringify(body),
     },
-    body: JSON.stringify(body),
-  });
+    options.timeoutMs ?? 90000,
+  );
 
   const raw = await response.text();
   const payload = parseJsonPayload(raw);

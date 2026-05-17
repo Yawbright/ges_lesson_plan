@@ -1,5 +1,7 @@
 import { supabase } from './supabase';
 import { getDeviceId } from './device';
+import { invokeEdgeFunction } from './edgeFunctions';
+import { withTimeout } from './async';
 
 export interface SendOtpRequest {
   phoneNumber: string;
@@ -39,23 +41,18 @@ export async function sendPhoneOtp(phoneNumber: string): Promise<SendOtpResponse
   try {
     console.log('[phoneAuth] Sending OTP to:', phoneNumber);
 
-    const { data, error } = await supabase.functions.invoke('send-phone-otp', {
-      body: {
+    const data = await invokeEdgeFunction<SendOtpResponse & { error?: string }>(
+      'send-phone-otp',
+      {
         phoneNumber: phoneNumber.trim(),
       },
-    });
+      {
+        requireAuth: false,
+        timeoutMs: 20000,
+      },
+    );
 
-    console.log('[phoneAuth] Function response - error:', error, 'data:', data);
-
-    if (error) {
-      console.error('[phoneAuth] Send error:', error);
-      const errorMessage = error?.message || error?.msg || JSON.stringify(error);
-      return {
-        success: false,
-        message: errorMessage || 'Failed to send OTP',
-        error: errorMessage,
-      };
-    }
+    console.log('[phoneAuth] Function response - data:', data);
 
     // Check if response has success property or if it's an error response
     if (data && typeof data === 'object') {
@@ -114,8 +111,9 @@ export async function verifyPhoneOtp(
     console.log('[phoneAuth] Verifying OTP for:', phoneNumber);
     const deviceId = await getDeviceId();
 
-    const { data, error } = await supabase.functions.invoke('verify-phone-otp', {
-      body: {
+    const data = await invokeEdgeFunction<VerifyOtpResponse>(
+      'verify-phone-otp',
+      {
         phoneNumber: phoneNumber.trim(),
         otp: otp.trim(),
         email,
@@ -123,16 +121,11 @@ export async function verifyPhoneOtp(
         referralCode,
         deviceId,
       },
-    });
-
-    if (error) {
-      console.error('[phoneAuth] Verify error:', error);
-      return {
-        success: false,
-        message: error.message || 'Failed to verify OTP',
-        error: error.message,
-      };
-    }
+      {
+        requireAuth: false,
+        timeoutMs: 20000,
+      },
+    );
 
     console.log('[phoneAuth] OTP verified successfully:', data);
     return {
@@ -156,10 +149,14 @@ export async function verifyPhoneOtp(
  */
 export async function getUserPhoneNumbers(userId: string) {
   try {
-    const { data, error } = await supabase
-      .from('user_phone_numbers')
-      .select('*')
-      .eq('user_id', userId);
+    const { data, error } = await withTimeout(
+      supabase
+        .from('user_phone_numbers')
+        .select('*')
+        .eq('user_id', userId),
+      10000,
+      'Phone numbers took too long to load.',
+    );
 
     if (error) throw error;
     return data;
@@ -174,11 +171,15 @@ export async function getUserPhoneNumbers(userId: string) {
  */
 export async function addPhoneToAccount(userId: string, phoneNumber: string) {
   try {
-    const { data, error } = await supabase.from('user_phone_numbers').insert({
-      user_id: userId,
-      phone_number: phoneNumber.replace(/\D/g, ''),
-      verified_at: new Date().toISOString(),
-    });
+    const { data, error } = await withTimeout(
+      supabase.from('user_phone_numbers').insert({
+        user_id: userId,
+        phone_number: phoneNumber.replace(/\D/g, ''),
+        verified_at: new Date().toISOString(),
+      }),
+      10000,
+      'Phone number took too long to add.',
+    );
 
     if (error) throw error;
     return { success: true, data };

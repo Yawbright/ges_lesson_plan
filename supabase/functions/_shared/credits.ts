@@ -63,11 +63,58 @@ export async function refundCredits(
   metadata: Record<string, unknown>,
 ) {
   const service = createServiceClient();
-  await service.rpc('add_user_credits', {
+  const originalTransactionId = metadata.originalTransactionId;
+  const rpcName =
+    typeof originalTransactionId === 'string' && originalTransactionId.trim()
+      ? 'refund_credit_transaction'
+      : 'add_user_credits';
+  const args =
+    rpcName === 'refund_credit_transaction'
+      ? {
+          p_original_transaction_id: originalTransactionId,
+          p_description: description,
+          p_metadata: metadata,
+        }
+      : {
+          p_user_id: userId,
+          p_amount: amount,
+          p_kind: 'refund',
+          p_description: description,
+          p_metadata: metadata,
+        };
+
+  const { data, error } = await service.rpc(rpcName, args);
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const result = Array.isArray(data) ? data[0] : data;
+  if (result?.ok === false) {
+    throw new Error(result.error ?? 'Unable to refund credits.');
+  }
+
+  return result;
+}
+
+export async function addCredits(
+  userId: string,
+  amount: number,
+  kind: string,
+  description: string,
+  metadata: Record<string, unknown>,
+) {
+  const service = createServiceClient();
+  const { data, error } = await service.rpc('add_user_credits', {
     p_user_id: userId,
     p_amount: amount,
-    p_kind: 'refund',
+    p_kind: kind,
     p_description: description,
     p_metadata: metadata,
   });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return Array.isArray(data) ? data[0] : data;
 }

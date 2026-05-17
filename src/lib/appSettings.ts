@@ -1,4 +1,7 @@
 import { supabase } from './supabase';
+import { AppError } from './appError';
+import { withTimeout } from './async';
+import { cachedRequest, invalidateCache } from './cache';
 
 export type RuntimeAppSettings = {
   starterCredits: { credits: number; active: boolean };
@@ -23,9 +26,39 @@ export const defaultRuntimeSettings: RuntimeAppSettings = {
   translationProvider: { provider: 'anthropic' },
 };
 
+const SETTINGS_CACHE_KEY = 'generated:runtime-settings';
+const SETTINGS_CACHE_TTL_MS = 30000;
+
 export async function loadRuntimeAppSettings(): Promise<RuntimeAppSettings> {
-  const { data, error } = await supabase.from('admin_app_settings').select('key,value');
-  if (error) return defaultRuntimeSettings;
+  return cachedRequest(SETTINGS_CACHE_KEY, loadRuntimeAppSettingsUncached, SETTINGS_CACHE_TTL_MS);
+}
+
+export async function loadRuntimeAppSettingsOrDefault(): Promise<RuntimeAppSettings> {
+  try {
+    return await loadRuntimeAppSettings();
+  } catch (err) {
+    console.warn('[appSettings] Falling back to default runtime settings', err);
+    return defaultRuntimeSettings;
+  }
+}
+
+export function invalidateRuntimeAppSettings() {
+  invalidateCache(SETTINGS_CACHE_KEY);
+}
+
+async function loadRuntimeAppSettingsUncached(): Promise<RuntimeAppSettings> {
+  const { data, error } = await withTimeout(
+    supabase.from('admin_app_settings').select('key,value'),
+    10000,
+    'Runtime settings took too long to load.',
+    'CONFIG_LOAD_FAILED',
+  );
+  if (error) {
+    throw new AppError('CONFIG_LOAD_FAILED', error.message, {
+      cause: error,
+      retryable: true,
+    });
+  }
 
   const byKey = new Map((data ?? []).map((item) => [item.key, item.value as Record<string, unknown>]));
   return {

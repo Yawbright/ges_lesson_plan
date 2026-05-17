@@ -1,5 +1,6 @@
 import {
   KeyboardAvoidingView,
+  ActivityIndicator,
   Platform,
   ScrollView,
   StyleSheet,
@@ -15,12 +16,20 @@ import { brandIdentity, colors, radii, shadows, spacing, typography } from '@/th
 
 export default function SignInScreen() {
   const params = useLocalSearchParams<{ ref?: string }>();
-  const { session } = useAuthSession();
+  const { session, loading } = useAuthSession();
   const insets = useSafeAreaInsets();
   const referralCode = typeof params.ref === 'string' ? params.ref : undefined;
 
   if (session) {
     return <Redirect href="/(tabs)/generate" />;
+  }
+
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator color={colors.primary} size="large" />
+      </View>
+    );
   }
 
   return (
@@ -77,6 +86,7 @@ function Benefit({
 }
 
 const styles = StyleSheet.create({
+  centered: { flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' },
   container: { flex: 1, backgroundColor: colors.bg },
   content: {
     paddingHorizontal: spacing[7],

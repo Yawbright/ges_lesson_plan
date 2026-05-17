@@ -1,13 +1,13 @@
 import { callClaudeJson, corsHeaders } from '../_shared/claude.ts';
+import { consumeCreditsForRequest, getFeatureCreditCost, refundCredits } from '../_shared/credits.ts';
+import { HttpError, logEdgeError } from '../_shared/supabase.ts';
+import { rewardReferralIfQualified } from '../_shared/referrals.ts';
 import {
   buildLessonPrompt,
   lessonPlanSystemPrompt,
   normalizeLessonPlanResponse,
   type LessonGenerationBody,
 } from '../_shared/generation.ts';
-import { consumeCreditsForRequest, getFeatureCreditCost, refundCredits } from '../_shared/credits.ts';
-import { HttpError, logEdgeError } from '../_shared/supabase.ts';
-import { rewardReferralIfQualified } from '../_shared/referrals.ts';
 
 const LESSON_PLAN_CREDIT_COST = 1;
 

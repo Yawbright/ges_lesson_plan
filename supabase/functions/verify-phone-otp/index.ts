@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { formatPhoneForArkesel } from '../_shared/phone.ts'; // ✅ Use shared utility
+import { validateGhanaPhoneNumber } from '../_shared/phone.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -12,16 +12,6 @@ interface VerifyPhoneOtpRequest {
   password?: string;
   referralCode?: string;
   deviceId?: string;
-}
-
-interface VerifyPhoneOtpResponse {
-  success: boolean;
-  message: string;
-  user?: {
-    id: string;
-    phone_number: string;
-  };
-  error?: string;
 }
 
 serve(async (req: Request) => {
@@ -57,15 +47,15 @@ serve(async (req: Request) => {
     // Initialize Supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Format phone number properly (same way as send-phone-otp does)
-    const formattedPhone = formatPhoneForArkesel(phoneNumber);
-    if (!formattedPhone) {
+    const phoneValidation = validateGhanaPhoneNumber(phoneNumber);
+    if (!phoneValidation.valid || !phoneValidation.normalized) {
       return new Response(
-        JSON.stringify({ error: 'Invalid phone number format', success: false }),
+        JSON.stringify({ error: phoneValidation.error ?? 'Invalid phone number format', success: false }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
+    const formattedPhone = phoneValidation.normalized;
     console.log('[verify-phone-otp] Looking up OTP for phone:', formattedPhone);
 
     // Find OTP request

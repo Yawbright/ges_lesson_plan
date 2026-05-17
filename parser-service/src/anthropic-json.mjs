@@ -1,6 +1,6 @@
 export function createAnthropicJsonCaller({ apiKey, model }) {
   return async function callAnthropicJson({ system, user }) {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -14,7 +14,7 @@ export function createAnthropicJsonCaller({ apiKey, model }) {
         system,
         messages: [{ role: 'user', content: user }],
       }),
-    });
+    }, 90000);
 
     if (!response.ok) {
       const detail = await response.text();
@@ -31,4 +31,23 @@ export function createAnthropicJsonCaller({ apiKey, model }) {
     const cleaned = text.trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
     return JSON.parse(cleaned);
   };
+}
+
+async function fetchWithTimeout(url, init, timeoutMs) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...init,
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      throw new Error(`Request timed out after ${timeoutMs}ms`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }

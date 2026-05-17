@@ -1,54 +1,57 @@
 import { supabase } from './supabase';
-import { defaultRuntimeSettings, loadRuntimeAppSettings } from './appSettings';
-import { appStorage } from './storage';
+import { cachedRequest, invalidateCache } from './cache';
+import { withTimeout } from './async';
+import {
+  addDays,
+  getCurrentUserId,
+  loadGeneratedRetentionDays,
+  loadLocalItems,
+  slugify,
+  writeLocalItems,
+} from './generatedStore';
 import type { TeachingNotes } from '@/types/teachingNotes';
 
 const STORAGE_KEY = 'local-teaching-notes';
-const FALLBACK_EXPIRY_DAYS = defaultRuntimeSettings.generatedFileRetention.days;
+const CACHE_PREFIX = 'generated:teaching-notes';
+const MAX_VERSION_SAVE_ATTEMPTS = 3;
 
 export async function saveTeachingNotes(notes: TeachingNotes): Promise<TeachingNotes> {
-  const userId = await getUserId();
+  const userId = await getCurrentUserId();
+
+  if (userId) {
+    return saveTeachingNotesRemote(notes, userId);
+  }
+
   const existing = await loadTeachingNotesForLesson(notes.lessonPlanId);
   const versionNumber = notes.versionNumber ?? (existing[0]?.versionNumber ?? 0) + 1;
   const normalized = normalizeTeachingNotes({ ...notes, versionNumber });
-
-  if (userId) {
-    const retentionDays = await loadRetentionDays();
-    const expiresAt = addDays(new Date(), retentionDays).toISOString();
-    const { error } = await supabase.from('saved_teaching_notes').upsert({
-      id: normalized.id,
-      user_id: userId,
-      lesson_plan_id: normalized.lessonPlanId,
-      title: normalized.title,
-      version_number: normalized.versionNumber,
-      payload: normalized,
-      expires_at: expiresAt,
-      updated_at: new Date().toISOString(),
-    });
-    if (error) throw error;
-    return normalized;
-  }
-
   const notesList = await loadLocalTeachingNotes();
   const next = [normalized, ...notesList.filter((item) => item.id !== normalized.id)];
   await writeTeachingNotes(next);
+  invalidateCache(CACHE_PREFIX);
   return normalized;
 }
 
 export async function loadTeachingNotes(): Promise<TeachingNotes[]> {
-  const userId = await getUserId();
+  const userId = await getCurrentUserId();
   if (userId) {
-    const { data, error } = await supabase
-      .from('saved_teaching_notes')
-      .select('payload')
-      .eq('user_id', userId)
-      .gt('expires_at', new Date().toISOString())
-      .order('created_at', { ascending: false });
-    if (error) {
-      if (isMissingTableError(error)) return [];
-      throw error;
-    }
-    return (data ?? []).map((item) => normalizeTeachingNotes(item.payload as TeachingNotes));
+    return cachedRequest(`${CACHE_PREFIX}:${userId}`, async () => {
+      const { data, error } = await withTimeout(
+        supabase
+          .from('saved_teaching_notes')
+          .select('payload')
+          .eq('user_id', userId)
+          .gt('expires_at', new Date().toISOString())
+          .order('created_at', { ascending: false }),
+        10000,
+        'Saved teaching notes took too long to load.',
+      );
+      if (error) {
+        if (isMissingTableError(error)) return [];
+        throw error;
+      }
+      return (data ?? []).map((item) => normalizeTeachingNotes(item.payload as TeachingNotes));
+    });
   }
 
   return loadLocalTeachingNotes();
@@ -60,6 +63,31 @@ function isMissingTableError(error: { code?: string; message?: string }) {
 }
 
 export async function loadTeachingNotesForLesson(lessonPlanId: string): Promise<TeachingNotes[]> {
+  const userId = await getCurrentUserId();
+  if (userId) {
+    return cachedRequest(`${CACHE_PREFIX}:${userId}:lesson:${lessonPlanId}`, async () => {
+      const { data, error } = await withTimeout(
+        supabase
+          .from('saved_teaching_notes')
+          .select('payload')
+          .eq('user_id', userId)
+          .eq('lesson_plan_id', lessonPlanId)
+          .gt('expires_at', new Date().toISOString())
+          .order('version_number', { ascending: false })
+          .order('created_at', { ascending: false }),
+        10000,
+        'Saved teaching note versions took too long to load.',
+      );
+      if (error) {
+        if (isMissingTableError(error)) return [];
+        throw error;
+      }
+      return (data ?? [])
+        .map((item) => normalizeTeachingNotes(item.payload as TeachingNotes))
+        .sort(compareNotesNewestFirst);
+    });
+  }
+
   const allNotes = await loadTeachingNotes();
   return allNotes
     .filter((item) => item.lessonPlanId === lessonPlanId)
@@ -72,35 +100,55 @@ export async function getLatestTeachingNotesForLesson(lessonPlanId: string): Pro
 }
 
 export async function getTeachingNotesById(id: string): Promise<TeachingNotes | null> {
+  const userId = await getCurrentUserId();
+  if (userId) {
+    const { data, error } = await withTimeout(
+      supabase
+        .from('saved_teaching_notes')
+        .select('payload')
+        .eq('user_id', userId)
+        .eq('id', id)
+        .gt('expires_at', new Date().toISOString())
+        .maybeSingle(),
+      10000,
+      'Saved teaching notes took too long to load.',
+    );
+    if (error) {
+      if (isMissingTableError(error)) return null;
+      throw error;
+    }
+    return data?.payload ? normalizeTeachingNotes(data.payload as TeachingNotes) : null;
+  }
+
   const allNotes = await loadTeachingNotes();
   return allNotes.find((item) => item.id === id) ?? null;
 }
 
 export async function deleteTeachingNotes(id: string): Promise<void> {
-  const userId = await getUserId();
+  const userId = await getCurrentUserId();
   if (userId) {
-    const { error } = await supabase.from('saved_teaching_notes').delete().eq('user_id', userId).eq('id', id);
+    const { error } = await withTimeout(
+      supabase.from('saved_teaching_notes').delete().eq('user_id', userId).eq('id', id),
+      10000,
+      'Teaching notes deletion took too long.',
+    );
     if (error) throw error;
+    invalidateCache(CACHE_PREFIX);
     return;
   }
 
   const notesList = await loadLocalTeachingNotes();
   await writeTeachingNotes(notesList.filter((item) => item.id !== id));
+  invalidateCache(CACHE_PREFIX);
 }
 
 async function loadLocalTeachingNotes(): Promise<TeachingNotes[]> {
-  const raw = await appStorage.getItem(STORAGE_KEY);
-  if (!raw) return [];
-
-  try {
-    const parsed = JSON.parse(raw) as TeachingNotes[];
-    return parsed
-      .map(normalizeTeachingNotes)
-      .filter((item) => !isExpired(item.createdAt, FALLBACK_EXPIRY_DAYS))
-      .sort(compareNotesNewestFirst);
-  } catch {
-    return [];
-  }
+  return loadLocalItems(
+    STORAGE_KEY,
+    normalizeTeachingNotes,
+    compareNotesNewestFirst,
+    (item) => item.createdAt,
+  );
 }
 
 function normalizeTeachingNotes(notes: TeachingNotes): TeachingNotes {
@@ -126,34 +174,41 @@ function compareNotesNewestFirst(a: TeachingNotes, b: TeachingNotes) {
 }
 
 async function writeTeachingNotes(notes: TeachingNotes[]) {
-  await appStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+  await writeLocalItems(STORAGE_KEY, notes);
 }
 
-async function getUserId() {
-  const { data } = await supabase.auth.getUser();
-  return data.user?.id ?? null;
+async function saveTeachingNotesRemote(notes: TeachingNotes, userId: string): Promise<TeachingNotes> {
+  for (let attempt = 0; attempt < MAX_VERSION_SAVE_ATTEMPTS; attempt += 1) {
+    const existing = await loadTeachingNotesForLesson(notes.lessonPlanId);
+    const versionNumber = notes.versionNumber ?? (existing[0]?.versionNumber ?? 0) + 1 + attempt;
+    const normalized = normalizeTeachingNotes({ ...notes, versionNumber });
+    const retentionDays = await loadGeneratedRetentionDays();
+    const expiresAt = addDays(new Date(), retentionDays).toISOString();
+    const { error } = await withTimeout(
+      supabase.from('saved_teaching_notes').upsert({
+        id: normalized.id,
+        user_id: userId,
+        lesson_plan_id: normalized.lessonPlanId,
+        title: normalized.title,
+        version_number: normalized.versionNumber,
+        payload: normalized,
+        expires_at: expiresAt,
+        updated_at: new Date().toISOString(),
+      }),
+      10000,
+      'Teaching notes took too long to save.',
+    );
+    if (!error) {
+      invalidateCache(CACHE_PREFIX);
+      return normalized;
+    }
+    if (!isUniqueViolation(error) || notes.versionNumber) throw error;
+    invalidateCache(CACHE_PREFIX);
+  }
+
+  throw new Error('Unable to assign a unique teaching notes version. Please try again.');
 }
 
-async function loadRetentionDays() {
-  const settings = await loadRuntimeAppSettings();
-  return Math.max(1, Math.round(settings.generatedFileRetention.days || FALLBACK_EXPIRY_DAYS));
-}
-
-function isExpired(createdAt: string | undefined, days: number) {
-  if (!createdAt) return false;
-  return Date.now() - new Date(createdAt).getTime() > days * 24 * 60 * 60 * 1000;
-}
-
-function addDays(date: Date, days: number) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
-}
-
-function slugify(value?: string) {
-  return (value ?? '')
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
+function isUniqueViolation(error: { code?: string }) {
+  return error.code === '23505';
 }

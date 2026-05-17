@@ -1,4 +1,5 @@
 import { corsHeaders } from '../_shared/claude.ts';
+import { fetchWithTimeout } from '../_shared/http.ts';
 import { createServiceClient, getAuthenticatedUser, HttpError } from '../_shared/supabase.ts';
 
 type VerifyBody = {
@@ -41,12 +42,13 @@ Deno.serve(async (req) => {
       throw new Error('PAYSTACK_SECRET_KEY is not configured');
     }
 
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`,
       {
         method: 'GET',
         headers: { authorization: `Bearer ${secretKey}` },
       },
+      15000,
     );
 
     const payload = await response.json().catch(() => null);
@@ -119,4 +121,3 @@ function json(payload: unknown, status: number) {
     headers: { ...corsHeaders, 'content-type': 'application/json' },
   });
 }
-

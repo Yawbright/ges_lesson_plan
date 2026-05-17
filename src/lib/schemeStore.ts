@@ -1,12 +1,19 @@
 import { normalizeSchemeWeek } from '@/lib/schemeWeek';
 import { supabase } from './supabase';
-import { defaultRuntimeSettings, loadRuntimeAppSettings } from './appSettings';
-import { appStorage } from './storage';
+import { cachedRequest, invalidateCache } from './cache';
+import { withTimeout } from './async';
+import {
+  addDays,
+  getCurrentUserId,
+  loadGeneratedRetentionDays,
+  loadLocalItems,
+  writeLocalItems,
+} from './generatedStore';
 import type { ClassLevel } from '@/types/lessonPlan';
 import type { SchemeOfWork, SchemeWeek } from '@/types/scheme';
 
 const STORAGE_KEY = 'local-schemes';
-const FALLBACK_EXPIRY_DAYS = defaultRuntimeSettings.generatedFileRetention.days;
+const CACHE_PREFIX = 'generated:schemes';
 
 type SchemeMatchInput = {
   subject: string;
@@ -31,9 +38,9 @@ type SchemeContext = {
 
 export async function saveScheme(scheme: SchemeOfWork): Promise<SchemeOfWork> {
   const normalized = normalizeScheme(scheme);
-  const userId = await getUserId();
+  const userId = await getCurrentUserId();
   if (userId) {
-    const retentionDays = await loadRetentionDays();
+    const retentionDays = await loadGeneratedRetentionDays();
     const expiresAt = addDays(new Date(), retentionDays).toISOString();
     const { error } = await supabase.from('saved_schemes').upsert({
       id: normalized.id,
@@ -44,26 +51,34 @@ export async function saveScheme(scheme: SchemeOfWork): Promise<SchemeOfWork> {
       updated_at: new Date().toISOString(),
     });
     if (error) throw error;
+    invalidateCache(CACHE_PREFIX);
     return normalized;
   }
 
   const schemes = await loadLocalSchemes();
   const next = [normalized, ...schemes.filter((item) => item.id !== normalized.id)];
   await writeSchemes(next);
+  invalidateCache(CACHE_PREFIX);
   return normalized;
 }
 
 export async function loadSchemes(): Promise<SchemeOfWork[]> {
-  const userId = await getUserId();
+  const userId = await getCurrentUserId();
   if (userId) {
-    const { data, error } = await supabase
-      .from('saved_schemes')
-      .select('payload')
-      .eq('user_id', userId)
-      .gt('expires_at', new Date().toISOString())
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return (data ?? []).map((item) => normalizeScheme(item.payload as SchemeOfWork));
+    return cachedRequest(`${CACHE_PREFIX}:${userId}`, async () => {
+      const { data, error } = await withTimeout(
+        supabase
+          .from('saved_schemes')
+          .select('payload')
+          .eq('user_id', userId)
+          .gt('expires_at', new Date().toISOString())
+          .order('created_at', { ascending: false }),
+        10000,
+        'Saved schemes took too long to load.',
+      );
+      if (error) throw error;
+      return (data ?? []).map((item) => normalizeScheme(item.payload as SchemeOfWork));
+    });
   }
   return loadLocalSchemes();
 }
@@ -87,15 +102,19 @@ export async function loadMatchingSchemes(input: SchemeMatchInput): Promise<Sche
 }
 
 export async function getSchemeById(id: string): Promise<SchemeOfWork | null> {
-  const userId = await getUserId();
+  const userId = await getCurrentUserId();
   if (userId) {
-    const { data, error } = await supabase
-      .from('saved_schemes')
-      .select('payload')
-      .eq('user_id', userId)
-      .eq('id', id)
-      .gt('expires_at', new Date().toISOString())
-      .maybeSingle();
+    const { data, error } = await withTimeout(
+      supabase
+        .from('saved_schemes')
+        .select('payload')
+        .eq('user_id', userId)
+        .eq('id', id)
+        .gt('expires_at', new Date().toISOString())
+        .maybeSingle(),
+      10000,
+      'Saved scheme took too long to load.',
+    );
     if (error) throw error;
     return data?.payload ? normalizeScheme(data.payload as SchemeOfWork) : null;
   }
@@ -105,16 +124,22 @@ export async function getSchemeById(id: string): Promise<SchemeOfWork | null> {
 }
 
 export async function deleteScheme(id: string): Promise<void> {
-  const userId = await getUserId();
+  const userId = await getCurrentUserId();
   if (userId) {
-    const { error } = await supabase.from('saved_schemes').delete().eq('user_id', userId).eq('id', id);
+    const { error } = await withTimeout(
+      supabase.from('saved_schemes').delete().eq('user_id', userId).eq('id', id),
+      10000,
+      'Saved scheme deletion took too long.',
+    );
     if (error) throw error;
+    invalidateCache(CACHE_PREFIX);
     return;
   }
 
   const schemes = await loadLocalSchemes();
   const next = schemes.filter((scheme) => scheme.id !== id);
   await writeSchemes(next);
+  invalidateCache(CACHE_PREFIX);
 }
 
 export function buildSchemeContext(scheme: SchemeOfWork, week: number): SchemeContext {
@@ -154,18 +179,12 @@ export function normalizeTerm(term?: string): string {
 }
 
 async function loadLocalSchemes(): Promise<SchemeOfWork[]> {
-  const raw = await appStorage.getItem(STORAGE_KEY);
-  if (!raw) return [];
-
-  try {
-    const parsed = JSON.parse(raw) as SchemeOfWork[];
-    return parsed
-      .map(normalizeScheme)
-      .filter((item) => !isExpired(item.createdAt, FALLBACK_EXPIRY_DAYS))
-      .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
-  } catch {
-    return [];
-  }
+  return loadLocalItems(
+    STORAGE_KEY,
+    normalizeScheme,
+    (a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''),
+    (item) => item.createdAt,
+  );
 }
 
 function normalizeScheme(scheme: SchemeOfWork): SchemeOfWork {
@@ -186,28 +205,7 @@ function normalizeScheme(scheme: SchemeOfWork): SchemeOfWork {
 }
 
 async function writeSchemes(schemes: SchemeOfWork[]) {
-  await appStorage.setItem(STORAGE_KEY, JSON.stringify(schemes));
-}
-
-async function getUserId() {
-  const { data } = await supabase.auth.getUser();
-  return data.user?.id ?? null;
-}
-
-async function loadRetentionDays() {
-  const settings = await loadRuntimeAppSettings();
-  return Math.max(1, Math.round(settings.generatedFileRetention.days || FALLBACK_EXPIRY_DAYS));
-}
-
-function isExpired(createdAt: string | undefined, days: number) {
-  if (!createdAt) return false;
-  return Date.now() - new Date(createdAt).getTime() > days * 24 * 60 * 60 * 1000;
-}
-
-function addDays(date: Date, days: number) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
+  await writeLocalItems(STORAGE_KEY, schemes);
 }
 
 function normalizeText(value?: string): string {

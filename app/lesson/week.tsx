@@ -81,7 +81,7 @@ export default function LessonWeekDetailScreen() {
               value={localLanguage}
               options={LOCAL_LANGUAGE_OPTIONS}
               onChange={setLocalLanguage}
-              helperText="Creates a new AI-draft week bundle in the selected Ghanaian language."
+              helperText="Creates NLLB machine-translation drafts of the indicators and lesson phases."
             />
             <Button
               title="Create translated copy"

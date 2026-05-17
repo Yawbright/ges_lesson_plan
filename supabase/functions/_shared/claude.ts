@@ -1,5 +1,6 @@
 // Shared Claude (Anthropic) caller for Supabase Edge Functions (Deno runtime).
 // The API key is read from the ANTHROPIC_API_KEY secret — never bundled with the app.
+import { fetchWithTimeout } from './http.ts';
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-sonnet-4-5';
@@ -21,7 +22,7 @@ export async function callClaudeJson<T = unknown>(opts: ClaudeJsonOptions): Prom
     throw new Error('ANTHROPIC_API_KEY is not configured for this edge function');
   }
 
-  const res = await fetch(API_URL, {
+  const res = await fetchWithTimeout(API_URL, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -35,7 +36,7 @@ export async function callClaudeJson<T = unknown>(opts: ClaudeJsonOptions): Prom
       system: opts.system,
       messages: [{ role: 'user', content: opts.user }],
     }),
-  });
+  }, 90000);
 
   if (!res.ok) {
     const detail = await res.text();

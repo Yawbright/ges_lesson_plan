@@ -5,6 +5,7 @@ import { supabase } from './supabase';
 export function useAuthSession() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [restoreTimedOut, setRestoreTimedOut] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -12,10 +13,9 @@ export function useAuthSession() {
 
     const timeout = setTimeout(() => {
       if (!active || settled) return;
-      console.warn('[auth] Session restore timed out after 8 seconds. Continuing without a restored session.');
-      setSession(null);
-      setLoading(false);
-    }, 8000); // ✅ Increased from 4s to 8s for slow networks
+      console.warn('[auth] Session restore is taking longer than expected. Keeping auth UI in restore state.');
+      setRestoreTimedOut(true);
+    }, 8000);
 
     async function loadSession() {
       try {
@@ -23,11 +23,13 @@ export function useAuthSession() {
         if (!active) return;
         settled = true;
         clearTimeout(timeout);
+        setRestoreTimedOut(false);
         setSession(data.session);
       } catch (error) {
         if (active) {
           settled = true;
           clearTimeout(timeout);
+          setRestoreTimedOut(false);
           console.warn('[auth] Failed to restore session', error);
           setSession(null);
         }
@@ -43,6 +45,7 @@ export function useAuthSession() {
     const { data: sub } = supabase.auth.onAuthStateChange((_evt, s) => {
       settled = true;
       clearTimeout(timeout);
+      setRestoreTimedOut(false);
       setSession(s);
       setLoading(false);
     });
@@ -54,7 +57,7 @@ export function useAuthSession() {
     };
   }, []);
 
-  return { session, loading };
+  return { session, loading, restoreTimedOut };
 }
 
 export async function signInWithEmail(

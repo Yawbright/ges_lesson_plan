@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -65,6 +65,15 @@ export default function GenerateScreen() {
   const [selectedSchemeId, setSelectedSchemeId] = useState<string | null>(null);
   const [savedPlanIds, setSavedPlanIds] = useState<string[]>([]);
   const [savedBundleId, setSavedBundleId] = useState<string | null>(null);
+  const generationAbortController = useRef<AbortController | null>(null);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      mounted.current = false;
+      generationAbortController.current?.abort();
+    };
+  }, []);
 
   const subjectOptions = useMemo(
     () => getSubjectOptionsForClassLevel(classLevel),
@@ -120,7 +129,10 @@ export default function GenerateScreen() {
           setCreditBalance(balance);
           setLessonCreditCost(settings.featureCreditCosts.lesson_generation);
         })
-        .catch(() => undefined);
+        .catch((err) => {
+          const message = err instanceof Error ? err.message : 'Unable to load credit settings.';
+          showToast({ message, type: 'error' });
+        });
     }, [refreshSchemes]),
   );
 
@@ -220,10 +232,18 @@ export default function GenerateScreen() {
       return;
     }
 
+    const controller = new AbortController();
+    generationAbortController.current?.abort();
+    generationAbortController.current = controller;
     setLoading(true);
+
     try {
+      if (controller.signal.aborted || !mounted.current) return;
+
       if (sessionIndex === 'all') {
         const balance = await loadCreditBalance();
+        if (controller.signal.aborted || !mounted.current) return;
+        
         if (balance < generationCost) {
           const message = `You need ${formatCredits(generationCost)} to generate all ${sessionsPerWeek} lessons for this week.`;
           showToast({ message, type: 'error' });
@@ -236,6 +256,8 @@ export default function GenerateScreen() {
       }
 
       const teacherProfile = await loadTeacherProfile();
+      if (controller.signal.aborted || !mounted.current) return;
+
       const weekEnding = calculateWeekEnding(termStartDate, weekNum);
       const classSize = teacherProfile.classSizes?.[classLevel]?.trim() ?? '';
       const generated: LessonPlan[] = [];
@@ -243,6 +265,8 @@ export default function GenerateScreen() {
       let bundleId: string | null = null;
 
       for (const lessonNumber of selectedLessonNumbers) {
+        if (controller.signal.aborted || !mounted.current) break;
+
         const result = await generateLessonPlan(
           {
             subject: subject.trim(),
@@ -260,6 +284,7 @@ export default function GenerateScreen() {
             classSize,
           },
           selectedScheme,
+          { signal: controller.signal },
         );
         const enrichedResult = {
           ...result,
@@ -277,15 +302,22 @@ export default function GenerateScreen() {
         }
       }
 
+      if (controller.signal.aborted || !mounted.current) return;
+
       if (sessionIndex === 'all') {
         const savedBundle = await saveLessonPlanBundle(generated);
         bundleId = savedBundle.id ?? null;
       }
 
+      if (controller.signal.aborted || !mounted.current) return;
+      
       setSavedPlanIds(savedIds);
       setSavedBundleId(bundleId);
       setGeneratedPlans(generated);
-      loadCreditBalance().then(setCreditBalance).catch(() => undefined);
+      loadCreditBalance().then((balance) => {
+        if (!controller.signal.aborted && mounted.current) setCreditBalance(balance);
+      }).catch(() => undefined);
+      
       const usedFallback = generated.some(
         (result) =>
           typeof result.references === 'string' &&
@@ -300,24 +332,31 @@ export default function GenerateScreen() {
               : 'Lesson plan generated successfully.',
       });
     } catch (err: unknown) {
-      const message = formatAiActionError(err);
-      logAppError({
-        source: 'client',
-        action: 'generate_lesson_plan',
-        message,
-        metadata: { subject, classLevel, week, sessionIndex, sessionsPerWeek },
-      });
-      showToast({ message, type: 'error' });
-      if (isInsufficientCreditsError(err)) {
-        Alert.alert('Not enough credits', message, [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Get credits', onPress: () => router.push('/(tabs)/credits') },
-        ]);
-      } else {
-        Alert.alert('Generation failed', message);
+      if (!controller.signal.aborted && mounted.current) {
+        const message = formatAiActionError(err);
+        logAppError({
+          source: 'client',
+          action: 'generate_lesson_plan',
+          message,
+          metadata: { subject, classLevel, week, sessionIndex, sessionsPerWeek },
+        });
+        showToast({ message, type: 'error' });
+        if (isInsufficientCreditsError(err)) {
+          Alert.alert('Not enough credits', message, [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Get credits', onPress: () => router.push('/(tabs)/credits') },
+          ]);
+        } else {
+          Alert.alert('Generation failed', message);
+        }
       }
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted && mounted.current) {
+        setLoading(false);
+      }
+      if (generationAbortController.current === controller) {
+        generationAbortController.current = null;
+      }
     }
   }
 

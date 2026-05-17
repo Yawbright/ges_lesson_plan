@@ -54,7 +54,7 @@ export default function LessonDetailScreen() {
               value={localLanguage}
               options={LOCAL_LANGUAGE_OPTIONS}
               onChange={setLocalLanguage}
-              helperText="Creates a new AI-draft copy of this lesson plan in the selected Ghanaian language."
+              helperText="Creates an NLLB machine-translation draft of the indicator and lesson phases."
             />
             <Button
               title="Create translated copy"

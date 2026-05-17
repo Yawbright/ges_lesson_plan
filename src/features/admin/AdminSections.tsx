@@ -233,10 +233,9 @@ export function CreditsSection(props: {
   loadMore: () => void;
 }) {
   const filtered = filterTransactions(props.transactions, props.filter, []);
-  const adjustments = filtered.filter((item) => item.kind === 'adjustment');
   return (
     <Panel 
-      title="Credit Adjustments"
+      title="Credit Activity"
       filters={
         <ReportFilters
           filter={props.filter}
@@ -247,10 +246,10 @@ export function CreditsSection(props: {
         />
       }
     >
-      {(adjustments.length ? adjustments : filtered).length ? (
-        (adjustments.length ? adjustments : filtered).map((item) => <TransactionRow key={item.id} item={item} />)
+      {filtered.length ? (
+        filtered.map((item) => <TransactionRow key={item.id} item={item} />)
       ) : (
-        <Text style={styles.emptyText}>No credit adjustments yet.</Text>
+        <Text style={styles.emptyText}>No credit activity found.</Text>
       )}
       <LoadMoreButton hasMore={props.hasMore} loading={props.loadingMore} onPress={props.loadMore} />
     </Panel>

@@ -52,6 +52,14 @@ function LessonPlanContent({ plan }: Props) {
         <Text style={styles.titleMain}>{(plan.termTitle || '').toUpperCase()}</Text>
         <Text style={styles.titleSub}>{title.toUpperCase()}</Text>
       </View>
+      {plan.translationLanguage ? (
+        <View style={styles.translationNotice}>
+          <Text style={styles.translationNoticeTitle}>{plan.translationLanguage} translation draft</Text>
+          <Text style={styles.translationNoticeText}>
+            NLLB machine translation. Teacher should review before classroom use.
+          </Text>
+        </View>
+      ) : null}
 
       {/* ── 2. Header info table ─────────────────────────── */}
       <View style={styles.table}>
@@ -152,6 +160,7 @@ function LessonPlanContent({ plan }: Props) {
 
 function LocalLanguageBlock({ support }: { support: LocalLanguageSupport }) {
   const hasContent = Boolean(
+    support.reviewNote ||
     support.vocabulary?.length ||
       support.classroomExpressions?.length ||
       support.activityPrompts?.length ||
@@ -480,6 +489,16 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   teacherText: { fontSize: 13, color: colors.text, lineHeight: 18 },
+  translationNotice: {
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: 6,
+    padding: 8,
+    backgroundColor: colors.accentSoft,
+    marginBottom: 8,
+  },
+  translationNoticeTitle: { fontSize: 12, color: colors.primaryDark, fontWeight: '800' },
+  translationNoticeText: { fontSize: 11, color: colors.textMuted, lineHeight: 16, marginTop: 2 },
 });
 
 function buildLessonTitle(plan: LessonPlan) {

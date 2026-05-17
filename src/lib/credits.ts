@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { invokeEdgeFunction } from './edgeFunctions';
+import { withTimeout } from './async';
 
 export type CreditPackage = {
   id: string;
@@ -45,21 +46,29 @@ export type InitializedCreditPurchase = {
 };
 
 export async function loadCreditBalance(): Promise<number> {
-  const { data, error } = await supabase
-    .from('user_credit_balances')
-    .select('balance')
-    .maybeSingle();
+  const { data, error } = await withTimeout(
+    supabase
+      .from('user_credit_balances')
+      .select('balance')
+      .maybeSingle(),
+    10000,
+    'Credit balance took too long to load.',
+  );
 
   if (error) throw error;
   return Number(data?.balance ?? 0);
 }
 
 export async function loadCreditPackages(): Promise<CreditPackage[]> {
-  const { data, error } = await supabase
-    .from('credit_packages')
-    .select('id,name,credits,price_subunit,original_price_subunit,currency,badge_text,bonus_credits,promotion_type,promotion_value,promo_starts_at,promo_ends_at')
-    .eq('active', true)
-    .order('sort_order', { ascending: true });
+  const { data, error } = await withTimeout(
+    supabase
+      .from('credit_packages')
+      .select('id,name,credits,price_subunit,original_price_subunit,currency,badge_text,bonus_credits,promotion_type,promotion_value,promo_starts_at,promo_ends_at')
+      .eq('active', true)
+      .order('sort_order', { ascending: true }),
+    10000,
+    'Credit packages took too long to load.',
+  );
 
   if (error) throw error;
 
@@ -80,11 +89,15 @@ export async function loadCreditPackages(): Promise<CreditPackage[]> {
 }
 
 export async function loadCreditTransactions(): Promise<CreditTransaction[]> {
-  const { data, error } = await supabase
-    .from('credit_transactions')
-    .select('id,amount,balance_after,kind,description,created_at')
-    .order('created_at', { ascending: false })
-    .limit(20);
+  const { data, error } = await withTimeout(
+    supabase
+      .from('credit_transactions')
+      .select('id,amount,balance_after,kind,description,created_at')
+      .order('created_at', { ascending: false })
+      .limit(20),
+    10000,
+    'Credit transactions took too long to load.',
+  );
 
   if (error) throw error;
 
@@ -99,11 +112,15 @@ export async function loadCreditTransactions(): Promise<CreditTransaction[]> {
 }
 
 export async function loadCreditPurchases(): Promise<CreditPurchase[]> {
-  const { data, error } = await supabase
-    .from('credit_purchases')
-    .select('id,paystack_reference,package_id,credits,amount_subunit,currency,status,created_at,verified_at')
-    .order('created_at', { ascending: false })
-    .limit(20);
+  const { data, error } = await withTimeout(
+    supabase
+      .from('credit_purchases')
+      .select('id,paystack_reference,package_id,credits,amount_subunit,currency,status,created_at,verified_at')
+      .order('created_at', { ascending: false })
+      .limit(20),
+    10000,
+    'Credit purchases took too long to load.',
+  );
 
   if (error) throw error;
 
@@ -138,21 +155,6 @@ export async function initializeCreditPurchase(
   }
 
   return data;
-}
-
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(message)), timeoutMs);
-    promise
-      .then((value) => {
-        clearTimeout(timer);
-        resolve(value);
-      })
-      .catch((error) => {
-        clearTimeout(timer);
-        reject(error);
-      });
-  });
 }
 
 export async function verifyCreditPurchase(reference: string): Promise<{
@@ -223,7 +225,11 @@ export function formatCreditPrice(priceSubunit: number, currency: string) {
 }
 
 async function getCurrentUser() {
-  const { data, error } = await supabase.auth.getUser();
+  const { data, error } = await withTimeout(
+    supabase.auth.getUser(),
+    10000,
+    'Current user took too long to load.',
+  );
   if (error) throw error;
   return {
     id: data.user?.id ?? undefined,
