@@ -6,6 +6,7 @@ import {
   creditKindOptions,
   logSeverityOptions,
   paymentStatusOptions,
+  phoneSignupStatusOptions,
   promotionTypeOptions,
   referralStatusOptions,
   usageKindOptions,
@@ -16,6 +17,7 @@ import type {
   AdminDashboard,
   AdminFaqSection,
   AdminLog,
+  AdminPhoneSignupEvent,
   AdminPurchase,
   AdminReferral,
   AdminTransaction,
@@ -27,6 +29,7 @@ import {
   cleanWholeNumber,
   emptyFilter,
   filterLogs,
+  filterPhoneSignups,
   filterPurchases,
   filterReferrals,
   filterTransactions,
@@ -405,6 +408,42 @@ export function LogsSection(props: {
           </Pressable>
         );
       }) : <Text style={styles.emptyText}>No logs yet.</Text>}
+      <LoadMoreButton hasMore={props.hasMore} loading={props.loadingMore} onPress={props.loadMore} />
+    </Panel>
+  );
+}
+
+export function PhoneSignupsSection(props: {
+  events: AdminPhoneSignupEvent[];
+  filter: ReportFilter;
+  setFilter: (patch: Partial<ReportFilter>) => void;
+  hasMore: boolean;
+  loadingMore: boolean;
+  loadMore: () => void;
+}) {
+  const events = filterPhoneSignups(props.events, props.filter);
+  return (
+    <Panel
+      title="Phone Signup Funnel"
+      filters={
+        <ReportFilters
+          filter={props.filter}
+          setFilter={props.setFilter}
+          statusLabel="Event"
+          statusOptions={phoneSignupStatusOptions}
+          searchPlaceholder="Search phone, user, referral, provider, or legacy"
+        />
+      }
+    >
+      <Text style={styles.helpText}>
+        Legacy rows were backfilled from stored OTP and phone-user records. New rows track Send OTP, Arkesel send result,
+        verification attempts, and completed phone registrations.
+      </Text>
+      {events.length ? (
+        events.map((event) => <PhoneSignupRow key={event.id} event={event} />)
+      ) : (
+        <Text style={styles.emptyText}>No phone signup events found.</Text>
+      )}
       <LoadMoreButton hasMore={props.hasMore} loading={props.loadingMore} onPress={props.loadMore} />
     </Panel>
   );
@@ -912,9 +951,32 @@ function TransactionRow({ item }: { item: AdminTransaction }) {
   );
 }
 
+function PhoneSignupRow({ event }: { event: AdminPhoneSignupEvent }) {
+  const title = event.phone_number || event.email || event.user_id || 'Unknown phone';
+  return (
+    <View style={styles.dataRow}>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.rowTitle}>{title}</Text>
+        <Text style={styles.meta}>
+          {event.event_type.replace(/_/g, ' ')} | {new Date(event.created_at).toLocaleString()}
+        </Text>
+        <Text style={styles.meta}>
+          User: {event.email || event.user_id || 'Not registered'} | Referral: {event.referral_code || '-'}
+        </Text>
+        <Text style={styles.meta}>
+          Provider: {event.provider || '-'}{event.legacy ? ' | Legacy' : ''}{event.otp_request_id ? ` | OTP: ${event.otp_request_id}` : ''}
+        </Text>
+        {event.provider_message ? <Text style={styles.bodyText}>{event.provider_message}</Text> : null}
+      </View>
+      <StatusPill status={event.legacy ? `${event.status} legacy` : event.status} />
+    </View>
+  );
+}
+
 function StatusPill({ status }: { status: string }) {
-  const danger = ['failed', 'error', 'not rewarded', 'unconfirmed'].includes(status);
-  const good = ['success', 'active', 'rewarded'].includes(status);
+  const normalized = status.toLowerCase();
+  const danger = ['failed', 'error', 'not rewarded', 'unconfirmed'].some((item) => normalized.includes(item));
+  const good = ['success', 'active', 'rewarded'].some((item) => normalized.includes(item));
   return <Text style={[styles.pill, danger && styles.pillDanger, good && styles.pillGood]}>{status}</Text>;
 }
 

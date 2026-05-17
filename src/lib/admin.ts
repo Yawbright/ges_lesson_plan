@@ -71,6 +71,22 @@ export type AdminReferral = {
   created_at: string;
 };
 
+export type AdminPhoneSignupEvent = {
+  id: string;
+  phone_number: string;
+  event_type: string;
+  status: string;
+  otp_request_id: string | null;
+  user_id: string | null;
+  email?: string;
+  referral_code: string | null;
+  provider: string | null;
+  provider_message: string | null;
+  metadata: Record<string, unknown>;
+  legacy: boolean;
+  created_at: string;
+};
+
 export type AdminCreditPackage = {
   id: string;
   name: string;
@@ -139,7 +155,7 @@ export type AdminFaqSection = {
   items: AdminFaqItem[];
 };
 
-export type AdminReportKind = 'transactions' | 'purchases' | 'referrals' | 'logs';
+export type AdminReportKind = 'transactions' | 'purchases' | 'referrals' | 'logs' | 'phone-signups';
 
 export type AdminPage<T> = {
   items: T[];
@@ -155,11 +171,13 @@ export type AdminDashboard = {
   purchases: AdminPurchase[];
   referrals: AdminReferral[];
   logs: AdminLog[];
+  phoneSignups: AdminPhoneSignupEvent[];
   reportPages?: {
     transactions: AdminPage<AdminTransaction>;
     purchases: AdminPage<AdminPurchase>;
     referrals: AdminPage<AdminReferral>;
     logs: AdminPage<AdminLog>;
+    phoneSignups: AdminPage<AdminPhoneSignupEvent>;
   };
   packages: AdminCreditPackage[];
   settings: AdminSetting[];

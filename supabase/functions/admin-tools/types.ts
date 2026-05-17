@@ -33,7 +33,7 @@ export type FaqItemUpdate = {
   active?: boolean;
 };
 
-export type AdminReportKind = 'transactions' | 'purchases' | 'referrals' | 'logs';
+export type AdminReportKind = 'transactions' | 'purchases' | 'referrals' | 'logs' | 'phone-signups';
 
 export type AdminUser = {
   user_id: string;

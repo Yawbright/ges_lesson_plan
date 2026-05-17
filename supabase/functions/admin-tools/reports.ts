@@ -106,3 +106,22 @@ export async function loadLogs(service: ServiceClient, input: PageInput = {}): P
   const rows = (data ?? []).map((item) => ({ ...item, email: item.user_id ? emailById.get(item.user_id) ?? '' : '' }));
   return pageResult(rows, page, pageSize);
 }
+
+export async function loadPhoneSignups(service: ServiceClient, input: PageInput = {}): Promise<PageResult<any>> {
+  const { page, pageSize, from, to } = pageBounds(input);
+  const { data, error } = await service
+    .from('phone_signup_events')
+    .select('id,phone_number,event_type,status,otp_request_id,user_id,referral_code,provider,provider_message,metadata,legacy,created_at', { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(from, to);
+  if (error) {
+    console.error('[loadPhoneSignups] Query error:', error.message);
+    throw new Error(`Failed to load phone signup events: ${error.message}`);
+  }
+  const emailById = await loadEmails(service, Array.from(new Set((data ?? []).map((item) => item.user_id).filter(Boolean))));
+  const rows = (data ?? []).map((item) => ({
+    ...item,
+    email: item.user_id ? emailById.get(item.user_id) ?? '' : '',
+  }));
+  return pageResult(rows, page, pageSize);
+}

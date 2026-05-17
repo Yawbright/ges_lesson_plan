@@ -78,6 +78,34 @@ async function sendViaArkesel(phoneNumber: string, otp: string, message: string)
   }
 }
 
+async function logPhoneSignupEvent(
+  supabase: any,
+  input: {
+    phoneNumber: string;
+    eventType: string;
+    status: string;
+    otpRequestId?: string | null;
+    providerMessage?: string;
+    metadata?: Record<string, unknown>;
+  },
+) {
+  try {
+    const { error } = await supabase.from('phone_signup_events').insert({
+      phone_number: input.phoneNumber,
+      event_type: input.eventType,
+      status: input.status,
+      otp_request_id: input.otpRequestId ?? null,
+      provider: 'arkesel',
+      provider_message: input.providerMessage ?? null,
+      metadata: input.metadata ?? {},
+      legacy: false,
+    });
+    if (error) console.error('[phone-signup-event] Insert error:', error.message);
+  } catch (error) {
+    console.error('[phone-signup-event] Insert exception:', error);
+  }
+}
+
 serve(async (req: Request) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
@@ -101,9 +129,20 @@ serve(async (req: Request) => {
   try {
     console.log('[send-phone-otp] Request received');
     
+    // Initialize Supabase client
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    console.log('[send-phone-otp] Supabase client initialized');
+
     // Check if ARKESEL_API_KEY is set
     if (!arkeselApiKey?.trim()) {
       console.error('[send-phone-otp] ARKESEL_API_KEY is not configured');
+      await logPhoneSignupEvent(supabase, {
+        phoneNumber: 'unknown',
+        eventType: 'otp_send_failed',
+        status: 'failed',
+        providerMessage: 'Missing ARKESEL_API_KEY',
+        metadata: { reason: 'sms_service_not_configured' },
+      });
       return new Response(
         JSON.stringify({
           error: 'SMS service is not configured. Please contact support. (Missing ARKESEL_API_KEY)',
@@ -120,6 +159,13 @@ serve(async (req: Request) => {
 
     if (!phoneNumber?.trim()) {
       console.warn('[send-phone-otp] Missing phone number');
+      await logPhoneSignupEvent(supabase, {
+        phoneNumber: 'unknown',
+        eventType: 'otp_send_failed',
+        status: 'failed',
+        providerMessage: 'Phone number is required',
+        metadata: { reason: 'missing_phone_number' },
+      });
       return new Response(
         JSON.stringify({ error: 'Phone number is required', success: false }),
         { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
@@ -129,18 +175,27 @@ serve(async (req: Request) => {
     const phoneValidation = validateGhanaPhoneNumber(phoneNumber);
     if (!phoneValidation.valid || !phoneValidation.normalized) {
       console.warn('[send-phone-otp] Invalid phone number format');
+      await logPhoneSignupEvent(supabase, {
+        phoneNumber: phoneNumber.trim(),
+        eventType: 'otp_send_failed',
+        status: 'failed',
+        providerMessage: phoneValidation.error ?? 'Invalid phone number format',
+        metadata: { reason: 'invalid_phone_number' },
+      });
       return new Response(
         JSON.stringify({ error: phoneValidation.error ?? 'Invalid phone number format', success: false }),
         { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
       );
     }
 
-    // Initialize Supabase client
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    console.log('[send-phone-otp] Supabase client initialized');
-
     const formattedPhone = phoneValidation.normalized;
     console.log('[send-phone-otp] Phone validated for Arkesel');
+    await logPhoneSignupEvent(supabase, {
+      phoneNumber: formattedPhone,
+      eventType: 'otp_requested',
+      status: 'info',
+      providerMessage: 'User requested phone OTP',
+    });
 
     // Generate OTP
     const otp = generateOtp();
@@ -157,6 +212,13 @@ serve(async (req: Request) => {
 
     if (!sendSuccess) {
       console.error('[send-phone-otp] Arkesel SMS send failed');
+      await logPhoneSignupEvent(supabase, {
+        phoneNumber: formattedPhone,
+        eventType: 'otp_send_failed',
+        status: 'failed',
+        providerMessage: 'Arkesel SMS send failed',
+        metadata: { reason: 'provider_rejected_or_failed' },
+      });
       return new Response(
         JSON.stringify({
           error: 'Failed to send SMS. Please check your phone number and try again.',
@@ -184,6 +246,13 @@ serve(async (req: Request) => {
     if (error) {
       console.error('[send-phone-otp] DB Insert Error:', error);
       console.error('[send-phone-otp] Error details:', JSON.stringify(error));
+      await logPhoneSignupEvent(supabase, {
+        phoneNumber: formattedPhone,
+        eventType: 'otp_send_failed',
+        status: 'failed',
+        providerMessage: 'SMS sent, but OTP storage failed',
+        metadata: { reason: 'otp_storage_failed', database_error: error.message },
+      });
       return new Response(
         JSON.stringify({
           error: 'Failed to create OTP request in database: ' + (error?.message || 'Unknown error'),
@@ -195,6 +264,14 @@ serve(async (req: Request) => {
 
     console.log('[send-phone-otp] OTP stored successfully in database');
     console.log('[send-phone-otp] Inserted data:', JSON.stringify(data));
+    await logPhoneSignupEvent(supabase, {
+      phoneNumber: formattedPhone,
+      eventType: 'otp_send_succeeded',
+      status: 'success',
+      otpRequestId: data?.id,
+      providerMessage: 'Arkesel accepted SMS and OTP was stored',
+      metadata: { expires_in: 900 },
+    });
 
     return new Response(
       JSON.stringify({

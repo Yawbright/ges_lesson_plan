@@ -3,7 +3,7 @@ import { createServiceClient, getAuthenticatedUser, HttpError } from '../_shared
 import { emptyOverviewMetrics, loadOverviewMetrics } from './overview.ts';
 import { createPackage, deletePackage, loadPackages, updatePackage } from './packages.ts';
 import { deleteFaqItem, deleteFaqSection, loadFaqs, upsertFaqItem, upsertFaqSection } from './faqs.ts';
-import { loadLogs, loadPurchases, loadReferrals, loadTransactions } from './reports.ts';
+import { loadLogs, loadPhoneSignups, loadPurchases, loadReferrals, loadTransactions } from './reports.ts';
 import { json, safeLoad } from './shared.ts';
 import { loadSettings, updateSettings } from './settings.ts';
 import type { AdminReportKind, AdminUser, Body } from './types.ts';
@@ -117,13 +117,14 @@ Deno.serve(async (req) => {
 });
 
 async function loadDashboard(service: ReturnType<typeof createServiceClient>, adminUserId: string) {
-  const [overviewMetrics, users, transactions, purchases, referrals, logs, packages, settings, faqs] = await Promise.all([
+  const [overviewMetrics, users, transactions, purchases, referrals, logs, phoneSignups, packages, settings, faqs] = await Promise.all([
     safeLoad(() => loadOverviewMetrics(service, adminUserId), emptyOverviewMetrics()),
     safeLoad(() => loadUsers(service, '', 20), [] as AdminUser[]),
     safeLoad(() => loadTransactions(service), { items: [], page: 0, pageSize: 80, hasMore: false }),
     safeLoad(() => loadPurchases(service), { items: [], page: 0, pageSize: 80, hasMore: false }),
     safeLoad(() => loadReferrals(service), { items: [], page: 0, pageSize: 80, hasMore: false }),
     safeLoad(() => loadLogs(service), { items: [], page: 0, pageSize: 80, hasMore: false }),
+    safeLoad(() => loadPhoneSignups(service), { items: [], page: 0, pageSize: 80, hasMore: false }),
     safeLoad(() => loadPackages(service), []),
     safeLoad(() => loadSettings(service), []),
     safeLoad(() => loadFaqs(service), []),
@@ -136,11 +137,13 @@ async function loadDashboard(service: ReturnType<typeof createServiceClient>, ad
     purchases: purchases.items,
     referrals: referrals.items,
     logs: logs.items,
+    phoneSignups: phoneSignups.items,
     reportPages: {
       transactions,
       purchases,
       referrals,
       logs,
+      phoneSignups,
     },
     packages,
     settings,
@@ -157,5 +160,6 @@ async function loadReport(
   if (report === 'purchases') return { report, ...(await loadPurchases(service, body)) };
   if (report === 'referrals') return { report, ...(await loadReferrals(service, body)) };
   if (report === 'logs') return { report, ...(await loadLogs(service, body)) };
+  if (report === 'phone-signups') return { report, ...(await loadPhoneSignups(service, body)) };
   throw new Error('Unsupported report');
 }

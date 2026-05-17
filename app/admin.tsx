@@ -29,6 +29,7 @@ import {
   type AdminDashboard,
   type AdminLog,
   type AdminPage,
+  type AdminPhoneSignupEvent,
   type AdminPurchase,
   type AdminReferral,
   type AdminReportKind,
@@ -42,6 +43,7 @@ import {
   LogsSection,
   Overview,
   PaymentsSection,
+  PhoneSignupsSection,
   ReferralsSection,
   SettingsSection,
   FaqsSection,
@@ -98,12 +100,14 @@ export default function AdminScreen() {
     payments: emptyFilter(),
     usage: emptyFilter(),
     referrals: emptyFilter(),
+    phoneSignups: emptyFilter(),
     logs: emptyFilter(),
   });
   const [loadingMore, setLoadingMore] = useState<Record<AdminReportKind, boolean>>({
     transactions: false,
     purchases: false,
     referrals: false,
+    'phone-signups': false,
     logs: false,
   });
   const [adminEmail, setAdminEmail] = useState('');
@@ -366,7 +370,10 @@ export default function AdminScreen() {
   }
 
   async function loadMoreReport(report: AdminReportKind) {
-    const currentPage = dashboard?.reportPages?.[report];
+    const currentPage =
+      report === 'phone-signups'
+        ? dashboard?.reportPages?.phoneSignups
+        : dashboard?.reportPages?.[report];
     if (!dashboard || !currentPage?.hasMore || loadingMore[report]) return;
 
     setLoadingMore((current) => ({ ...current, [report]: true }));
@@ -380,6 +387,9 @@ export default function AdminScreen() {
       } else if (report === 'referrals') {
         const next = await adminListReport<AdminReferral>(report, currentPage.page + 1, currentPage.pageSize);
         appendReport(report, next, (items) => ({ referrals: [...dashboard.referrals, ...items] }));
+      } else if (report === 'phone-signups') {
+        const next = await adminListReport<AdminPhoneSignupEvent>(report, currentPage.page + 1, currentPage.pageSize);
+        appendReport(report, next, (items) => ({ phoneSignups: [...dashboard.phoneSignups, ...items] }));
       } else {
         const next = await adminListReport<AdminLog>(report, currentPage.page + 1, currentPage.pageSize);
         appendReport(report, next, (items) => ({ logs: [...dashboard.logs, ...items] }));
@@ -396,6 +406,7 @@ export default function AdminScreen() {
     page: AdminPage<T>,
     mergeItems: (items: T[]) => Partial<AdminDashboard>,
   ) {
+    const reportPageKey = report === 'phone-signups' ? 'phoneSignups' : report;
     setDashboard((current) => {
       if (!current) return current;
       return {
@@ -403,11 +414,8 @@ export default function AdminScreen() {
         ...mergeItems(page.items),
         reportPages: {
           ...current.reportPages,
-          [report]: {
-            items: [
-              ...((current.reportPages?.[report]?.items ?? []) as T[]),
-              ...page.items,
-            ],
+          [reportPageKey]: {
+            items: [...((current.reportPages?.[reportPageKey]?.items ?? []) as T[]), ...page.items],
             page: page.page,
             pageSize: page.pageSize,
             hasMore: page.hasMore,
@@ -552,6 +560,16 @@ export default function AdminScreen() {
                   hasMore={Boolean(dashboard.reportPages?.referrals.hasMore)}
                   loadingMore={loadingMore.referrals}
                   loadMore={() => loadMoreReport('referrals')}
+                />
+              ) : null}
+              {section === 'phone-signups' ? (
+                <PhoneSignupsSection
+                  events={dashboard.phoneSignups}
+                  filter={reportFilters.phoneSignups}
+                  setFilter={(patch) => updateReportFilter('phoneSignups', patch)}
+                  hasMore={Boolean(dashboard.reportPages?.phoneSignups.hasMore)}
+                  loadingMore={loadingMore['phone-signups']}
+                  loadMore={() => loadMoreReport('phone-signups')}
                 />
               ) : null}
               {section === 'logs' ? (

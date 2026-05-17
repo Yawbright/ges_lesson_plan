@@ -5,6 +5,7 @@ export type AdminSection =
   | 'payments'
   | 'usage'
   | 'referrals'
+  | 'phone-signups'
   | 'logs'
   | 'faqs'
   | 'settings';

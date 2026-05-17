@@ -8,6 +8,7 @@ import {
   detectWeekCountFromText,
   extractAnnualPlanText,
   extractLikelyWeekRows,
+  isolateRequestedSubjectText,
   selectPreferredSchemeSection,
   subjectsRoughlyMatch,
 } from './scheme-text-parser.mjs';
@@ -66,7 +67,15 @@ const server = createServer(async (req, res) => {
 
     try {
       const extractedText = await extractSchemeTextFromUpload(body.fileName, body.fileBase64);
-      const detectedMetadata = detectUploadedSchemeMetadata(extractedText);
+      const subjectScopedText = isolateRequestedSubjectText(extractedText, body.subject);
+      if (!subjectScopedText.trim()) {
+        writeJson(res, 400, {
+          error: `This file contains subject sections, but no ${body.subject} scheme section could be found.`,
+        });
+        return;
+      }
+
+      const detectedMetadata = detectUploadedSchemeMetadata(subjectScopedText);
       if (
         detectedMetadata.subject &&
         !subjectsRoughlyMatch(detectedMetadata.subject, body.subject)
@@ -77,7 +86,7 @@ const server = createServer(async (req, res) => {
         return;
       }
 
-      const availableClassLevels = detectAvailableClassLevels(extractedText);
+      const availableClassLevels = detectAvailableClassLevels(subjectScopedText);
       if (
         availableClassLevels.length &&
         !availableClassLevels.includes(String(body.classLevel).toUpperCase())
@@ -92,11 +101,12 @@ const server = createServer(async (req, res) => {
         return;
       }
 
-      const annualPlanText = extractAnnualPlanText(extractedText, body.classLevel);
+      const annualPlanText = extractAnnualPlanText(subjectScopedText, body.classLevel, body.subject);
       const selectedSection = selectPreferredSchemeSection(
-        extractedText,
+        subjectScopedText,
         body.classLevel,
-        body.term
+        body.term,
+        body.subject
       );
       const relevantText = selectedSection.text;
       const likelyWeekRows = extractLikelyWeekRows(relevantText);

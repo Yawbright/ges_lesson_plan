@@ -12,6 +12,7 @@ export const adminSections: {
   { id: 'payments', label: 'Payments', icon: 'script-text-outline' },
   { id: 'usage', label: 'Usage', icon: 'chart-timeline-variant' },
   { id: 'referrals', label: 'Referrals', icon: 'share-variant-outline' },
+  { id: 'phone-signups', label: 'Phone Signups', icon: 'cellphone-key' },
   { id: 'logs', label: 'Error Logs', icon: 'alert-circle-outline' },
   { id: 'faqs', label: 'FAQs', icon: 'frequently-asked-questions' },
   { id: 'settings', label: 'Settings', icon: 'cog-outline' },
@@ -58,6 +59,18 @@ export const logSeverityOptions = [
   { label: 'Info', value: 'info' },
   { label: 'Warning', value: 'warning' },
   { label: 'Error', value: 'error' },
+];
+
+export const phoneSignupStatusOptions = [
+  { label: 'All events', value: '' },
+  { label: 'OTP requested', value: 'otp_requested' },
+  { label: 'OTP sent', value: 'otp_send_succeeded' },
+  { label: 'Send failed', value: 'otp_send_failed' },
+  { label: 'Verify attempted', value: 'otp_verify_attempted' },
+  { label: 'Verified', value: 'otp_verified' },
+  { label: 'Verify failed', value: 'otp_verify_failed' },
+  { label: 'Registration completed', value: 'registration_completed' },
+  { label: 'Registration failed', value: 'registration_failed' },
 ];
 
 export const promotionTypeOptions = [

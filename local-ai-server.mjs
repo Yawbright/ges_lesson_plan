@@ -9,6 +9,7 @@ import {
   detectWeekCountFromText,
   extractAnnualPlanText,
   extractLikelyWeekRows,
+  isolateRequestedSubjectText,
   selectPreferredSchemeSection,
   subjectsRoughlyMatch,
 } from './parser-service/src/scheme-text-parser.mjs';
@@ -189,7 +190,15 @@ Do not switch to a different weekly topic just because it is a new session.\n`
 
     try {
       const extractedText = await extractSchemeTextFromUpload(body.fileName, body.fileBase64);
-      const detectedMetadata = detectUploadedSchemeMetadata(extractedText);
+      const subjectScopedText = isolateRequestedSubjectText(extractedText, body.subject);
+      if (!subjectScopedText.trim()) {
+        writeJson(res, 400, {
+          error: `This file contains subject sections, but no ${body.subject} scheme section could be found.`,
+        });
+        return;
+      }
+
+      const detectedMetadata = detectUploadedSchemeMetadata(subjectScopedText);
       if (
         detectedMetadata.subject &&
         !subjectsRoughlyMatch(detectedMetadata.subject, body.subject)
@@ -200,7 +209,7 @@ Do not switch to a different weekly topic just because it is a new session.\n`
         return;
       }
 
-      const availableClassLevels = detectAvailableClassLevels(extractedText);
+      const availableClassLevels = detectAvailableClassLevels(subjectScopedText);
       if (
         availableClassLevels.length &&
         !availableClassLevels.includes(String(body.classLevel).toUpperCase())
@@ -214,11 +223,12 @@ Do not switch to a different weekly topic just because it is a new session.\n`
         return;
       }
 
-      const annualPlanText = extractAnnualPlanText(extractedText, body.classLevel);
+      const annualPlanText = extractAnnualPlanText(subjectScopedText, body.classLevel, body.subject);
       const selectedSection = selectPreferredSchemeSection(
-        extractedText,
+        subjectScopedText,
         body.classLevel,
-        body.term
+        body.term,
+        body.subject
       );
       const relevantText = selectedSection.text;
       const likelyWeekRows = extractLikelyWeekRows(relevantText);

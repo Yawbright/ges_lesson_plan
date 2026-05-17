@@ -1,5 +1,6 @@
-export function extractAnnualPlanText(text, requestedClassLevel) {
-  const classScopedText = isolateRequestedClassText(text, requestedClassLevel);
+export function extractAnnualPlanText(text, requestedClassLevel, requestedSubject = '') {
+  const subjectScopedText = isolateRequestedSubjectText(text, requestedSubject);
+  const classScopedText = isolateRequestedClassText(subjectScopedText || text, requestedClassLevel);
   const lines = classScopedText.split(/\r?\n/);
   const annualStartIndex = lines.findIndex((line) => /\bannual\b/i.test(line));
   if (annualStartIndex === -1) return '';
@@ -16,14 +17,15 @@ export function extractAnnualPlanText(text, requestedClassLevel) {
   return lines.slice(annualStartIndex, endIndex).join('\n').trim();
 }
 
-export function selectPreferredSchemeSection(text, requestedClassLevel, requestedTerm) {
-  const classScopedText = isolateRequestedClassText(text, requestedClassLevel);
+export function selectPreferredSchemeSection(text, requestedClassLevel, requestedTerm, requestedSubject = '') {
+  const subjectScopedText = isolateRequestedSubjectText(text, requestedSubject);
+  const classScopedText = isolateRequestedClassText(subjectScopedText || text, requestedClassLevel);
   const detailedText = extractDetailedTermSection(classScopedText, requestedTerm);
   if (detailedText.trim()) {
     return { source: 'detailed', text: detailedText, weekCount: detectWeekCountFromText(detailedText) };
   }
 
-  const annualPlanText = extractAnnualPlanText(text, requestedClassLevel);
+  const annualPlanText = extractAnnualPlanText(subjectScopedText || text, requestedClassLevel);
   if (annualPlanText.trim()) {
     const annualTermSection = extractAnnualPlanTermSection(annualPlanText, requestedTerm);
     if (annualTermSection.text.trim()) {
@@ -81,22 +83,72 @@ export function detectAvailableClassLevels(text) {
   return ordered;
 }
 
+export function detectAvailableSubjects(text) {
+  const lines = String(text || '').split(/\r?\n/);
+  const seen = new Set();
+  const ordered = [];
+
+  for (const line of lines) {
+    const subject = detectSubjectFromLine(line);
+    if (!subject || seen.has(subject.normalized)) continue;
+    seen.add(subject.normalized);
+    ordered.push(subject.label);
+  }
+
+  return ordered;
+}
+
+export function isolateRequestedSubjectText(text, requestedSubject) {
+  const normalizedSubject = normalizeSubjectLabel(requestedSubject);
+  if (!normalizedSubject) return text;
+
+  const lines = String(text || '').split(/\r?\n/);
+  const markers = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index].trim();
+    const subject = detectSubjectFromLine(line);
+    if (!subject) continue;
+
+    const score = scoreSubjectMarker(line, subject.normalized);
+    if (score >= 3) {
+      markers.push({ index, subject, score });
+    }
+  }
+
+  if (!markers.length) return text;
+
+  const targetMarker = markers
+    .filter((marker) => marker.subject.normalized === normalizedSubject)
+    .sort((left, right) => {
+      if (right.score !== left.score) return right.score - left.score;
+      return left.index - right.index;
+    })[0];
+
+  if (!targetMarker) return '';
+
+  const nextMarker = markers
+    .filter(
+      (marker) =>
+        marker.index > targetMarker.index &&
+        marker.subject.normalized !== normalizedSubject &&
+        marker.score >= 3
+    )
+    .sort((left, right) => left.index - right.index)[0];
+
+  const endIndex = nextMarker ? nextMarker.index : lines.length;
+  const slice = lines.slice(targetMarker.index, endIndex).join('\n').trim();
+  return slice || text;
+}
+
 export function detectUploadedSchemeMetadata(text) {
   const compact = cleanText(text).replace(/\s+/g, ' ');
-  const lower = compact.toLowerCase();
-  const subjectPatterns = [
-    { pattern: /\bmathematics\b|\bmaths\b|\bcore mathematics\b/i, subject: 'Mathematics' },
-    { pattern: /\bscience\b|\bintegrated science\b|\bgeneral science\b/i, subject: 'Science' },
-    { pattern: /\bcomputing\b|\bict\b|\binformation and communication technology\b|\bcomputer studies\b/i, subject: 'Computing' },
-    { pattern: /\benglish language\b|\benglish\b/i, subject: 'English Language' },
-    { pattern: /\bsocial studies\b/i, subject: 'Social Studies' },
-  ];
-  const subjectMatch = subjectPatterns.find((entry) => entry.pattern.test(lower));
+  const subjectMatch = detectSubjectFromLine(compact);
   const classMatch = compact.match(/\b(?:basic|b|jhs)\s*([1-9])\b/i);
   const termMatch = detectTermFromLine(compact);
 
   return {
-    subject: subjectMatch?.subject || '',
+    subject: subjectMatch?.label || '',
     classLevel: classMatch ? `B${classMatch[1]}` : '',
     term: termMatch || '',
   };
@@ -394,6 +446,26 @@ function isSchemeTableHeader(line) {
   return headerHits.length >= 2;
 }
 
+function detectSubjectFromLine(line) {
+  const value = cleanText(line);
+  if (!value) return null;
+  return SUBJECT_PATTERNS.find((entry) => entry.pattern.test(value)) || null;
+}
+
+function scoreSubjectMarker(line, normalizedSubject) {
+  const value = cleanText(line).toLowerCase();
+  if (!value) return 0;
+
+  let score = 0;
+  if (normalizeSubjectLabel(value) === normalizedSubject) score += 4;
+  if (value.length <= 120) score += 1;
+  if (value.length <= 70) score += 1;
+  if (/\b(subject|scheme|scheme of work|scheme of learning|tsol|department)\b/.test(value)) score += 2;
+  if (/\b(term|basic|b[1-9]|jhs|weeks?|strand|indicator|content standard)\b/.test(value)) score += 1;
+  if (/^[A-Z0-9\s&/()._-]+$/.test(cleanText(line)) && value.length <= 90) score += 1;
+  return score;
+}
+
 function normalizeSubjectLabel(value) {
   const lower = cleanText(value).toLowerCase();
   if (!lower) return '';
@@ -408,5 +480,69 @@ function normalizeSubjectLabel(value) {
   if (/\bcreative arts and design\b|\bcreative arts\b|\bcad\b/.test(lower)) return 'creative arts and design';
   if (/\bfrench\b/.test(lower)) return 'french';
   if (/\bhistory\b/.test(lower)) return 'history';
+  if (/\bphysical education\b|\bphys ed\b|\bpe\b/.test(lower)) return 'physical education';
   return lower.replace(/\s+/g, ' ').trim();
 }
+
+const SUBJECT_PATTERNS = [
+  {
+    label: 'Mathematics',
+    normalized: 'mathematics',
+    pattern: /\bmathematics\b|\bmaths\b|\bcore mathematics\b|\bp\.?\s*maths?\b/i,
+  },
+  {
+    label: 'Science',
+    normalized: 'science',
+    pattern: /\bscience\b|\bintegrated science\b|\bgeneral science\b|\bp\.?\s*science\b/i,
+  },
+  {
+    label: 'Computing',
+    normalized: 'computing',
+    pattern: /\bcomputing\b|\bict\b|\binformation and communication technology\b|\bcomputer studies\b/i,
+  },
+  {
+    label: 'English Language',
+    normalized: 'english language',
+    pattern: /\benglish language\b|\benglish\b|\bp\.?\s*english\b/i,
+  },
+  {
+    label: 'Social Studies',
+    normalized: 'social studies',
+    pattern: /\bsocial studies\b/i,
+  },
+  {
+    label: 'Religious and Moral Education',
+    normalized: 'rme',
+    pattern: /\breligious and moral education\b|\breligious moral education\b|\brme\b/i,
+  },
+  {
+    label: 'Ghanaian Language',
+    normalized: 'ghanaian language',
+    pattern: /\bghanaian language\b|\bghanaian languages\b|\bgl\b/i,
+  },
+  {
+    label: 'Career Technology',
+    normalized: 'career technology',
+    pattern: /\bcareer technology\b|\bcareer tech\b|\bct\b/i,
+  },
+  {
+    label: 'Creative Arts and Design',
+    normalized: 'creative arts and design',
+    pattern: /\bcreative arts and design\b|\bcreative arts\b|\bcad\b/i,
+  },
+  {
+    label: 'French',
+    normalized: 'french',
+    pattern: /\bfrench language\b|\bfrench\b/i,
+  },
+  {
+    label: 'History',
+    normalized: 'history',
+    pattern: /\bhistory\b/i,
+  },
+  {
+    label: 'Physical Education',
+    normalized: 'physical education',
+    pattern: /\bphysical education\b|\bphys ed\b|\bpe\b/i,
+  },
+];

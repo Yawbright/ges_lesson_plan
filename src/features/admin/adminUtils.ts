@@ -1,6 +1,7 @@
 import type {
   AdminCreditPackage,
   AdminLog,
+  AdminPhoneSignupEvent,
   AdminPurchase,
   AdminReferral,
   AdminSetting,
@@ -234,6 +235,25 @@ export function filterLogs(items: AdminLog[], filter: ReportFilter) {
       item.action,
       item.message,
       JSON.stringify(item.metadata ?? {}),
+    ]);
+  });
+}
+
+export function filterPhoneSignups(items: AdminPhoneSignupEvent[], filter: ReportFilter) {
+  return items.filter((item) => {
+    if (filter.status && item.event_type !== filter.status) return false;
+    if (!matchesDate(item.created_at, filter)) return false;
+    return matchesSearch(filter.search, [
+      item.phone_number,
+      item.email,
+      item.user_id,
+      item.event_type,
+      item.status,
+      item.referral_code,
+      item.provider,
+      item.provider_message,
+      JSON.stringify(item.metadata ?? {}),
+      item.legacy ? 'legacy' : 'live',
     ]);
   });
 }

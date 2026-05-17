@@ -14,6 +14,38 @@ interface VerifyPhoneOtpRequest {
   deviceId?: string;
 }
 
+async function logPhoneSignupEvent(
+  supabase: any,
+  input: {
+    phoneNumber: string;
+    eventType: string;
+    status: string;
+    otpRequestId?: string | null;
+    userId?: string | null;
+    referralCode?: string | null;
+    providerMessage?: string;
+    metadata?: Record<string, unknown>;
+  },
+) {
+  try {
+    const { error } = await supabase.from('phone_signup_events').insert({
+      phone_number: input.phoneNumber,
+      event_type: input.eventType,
+      status: input.status,
+      otp_request_id: input.otpRequestId ?? null,
+      user_id: input.userId ?? null,
+      referral_code: input.referralCode ?? null,
+      provider: 'app',
+      provider_message: input.providerMessage ?? null,
+      metadata: input.metadata ?? {},
+      legacy: false,
+    });
+    if (error) console.error('[phone-signup-event] Insert error:', error.message);
+  } catch (error) {
+    console.error('[phone-signup-event] Insert exception:', error);
+  }
+}
+
 serve(async (req: Request) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
@@ -36,19 +68,33 @@ serve(async (req: Request) => {
 
   try {
     const { phoneNumber, otp, email, password, referralCode, deviceId } = (await req.json()) as VerifyPhoneOtpRequest;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     if (!phoneNumber?.trim() || !otp?.trim()) {
+      await logPhoneSignupEvent(supabase, {
+        phoneNumber: phoneNumber?.trim() || 'unknown',
+        eventType: 'otp_verify_failed',
+        status: 'failed',
+        referralCode: referralCode?.trim().toUpperCase() || null,
+        providerMessage: 'Phone number and OTP are required',
+        metadata: { reason: 'missing_phone_or_otp' },
+      });
       return new Response(
         JSON.stringify({ error: 'Phone number and OTP are required', success: false }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    // Initialize Supabase client
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
     const phoneValidation = validateGhanaPhoneNumber(phoneNumber);
     if (!phoneValidation.valid || !phoneValidation.normalized) {
+      await logPhoneSignupEvent(supabase, {
+        phoneNumber: phoneNumber.trim(),
+        eventType: 'otp_verify_failed',
+        status: 'failed',
+        referralCode: referralCode?.trim().toUpperCase() || null,
+        providerMessage: phoneValidation.error ?? 'Invalid phone number format',
+        metadata: { reason: 'invalid_phone_number' },
+      });
       return new Response(
         JSON.stringify({ error: phoneValidation.error ?? 'Invalid phone number format', success: false }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
@@ -57,6 +103,13 @@ serve(async (req: Request) => {
 
     const formattedPhone = phoneValidation.normalized;
     console.log('[verify-phone-otp] Looking up OTP for phone:', formattedPhone);
+    await logPhoneSignupEvent(supabase, {
+      phoneNumber: formattedPhone,
+      eventType: 'otp_verify_attempted',
+      status: 'info',
+      referralCode: referralCode?.trim().toUpperCase() || null,
+      providerMessage: 'User submitted OTP for verification',
+    });
 
     // Find OTP request
     const { data: otpRequests, error: queryError } = await supabase
@@ -70,6 +123,14 @@ serve(async (req: Request) => {
 
     if (queryError) {
       console.error('[Query Error]', queryError);
+      await logPhoneSignupEvent(supabase, {
+        phoneNumber: formattedPhone,
+        eventType: 'otp_verify_failed',
+        status: 'failed',
+        referralCode: referralCode?.trim().toUpperCase() || null,
+        providerMessage: 'Failed to query OTP request',
+        metadata: { reason: 'otp_query_failed', database_error: queryError.message },
+      });
       return new Response(
         JSON.stringify({ error: 'Failed to verify OTP', success: false }),
         { status: 500, headers: { 'Content-Type': 'application/json' } }
@@ -77,6 +138,14 @@ serve(async (req: Request) => {
     }
 
     if (!otpRequests || otpRequests.length === 0) {
+      await logPhoneSignupEvent(supabase, {
+        phoneNumber: formattedPhone,
+        eventType: 'otp_verify_failed',
+        status: 'failed',
+        referralCode: referralCode?.trim().toUpperCase() || null,
+        providerMessage: 'No valid OTP request found',
+        metadata: { reason: 'missing_or_expired_otp' },
+      });
       return new Response(
         JSON.stringify({
           error: 'No valid OTP request found. Please request a new OTP.',
@@ -99,6 +168,16 @@ serve(async (req: Request) => {
         })
         .eq('id', otpRecord.id);
 
+      await logPhoneSignupEvent(supabase, {
+        phoneNumber: formattedPhone,
+        eventType: 'otp_verify_failed',
+        status: 'failed',
+        otpRequestId: otpRecord.id,
+        referralCode: referralCode?.trim().toUpperCase() || null,
+        providerMessage: 'Invalid OTP entered',
+        metadata: { reason: 'invalid_otp', attempt_count: (otpRecord.attempt_count || 0) + 1 },
+      });
+
       return new Response(
         JSON.stringify({
           error: 'Invalid OTP. Please try again.',
@@ -117,12 +196,23 @@ serve(async (req: Request) => {
 
     let userId: string;
 
-    if (existingPhoneUser && existingPhoneUser.length > 0) {
+    const isExistingPhoneUser = Boolean(existingPhoneUser && existingPhoneUser.length > 0);
+
+    if (isExistingPhoneUser && existingPhoneUser?.[0]) {
       // User already exists, just verify the OTP
       userId = existingPhoneUser[0].user_id;
     } else {
       // Create new user with phone number
       if (!password || password.length < 6) {
+        await logPhoneSignupEvent(supabase, {
+          phoneNumber: formattedPhone,
+          eventType: 'otp_verify_failed',
+          status: 'failed',
+          otpRequestId: otpRecord.id,
+          referralCode: referralCode?.trim().toUpperCase() || null,
+          providerMessage: 'Password must be at least 6 characters',
+          metadata: { reason: 'password_required_after_otp' },
+        });
         return new Response(
           JSON.stringify({
             error: 'Password must be at least 6 characters',
@@ -149,6 +239,15 @@ serve(async (req: Request) => {
 
       if (authError) {
         console.error('[Auth Error]', authError);
+        await logPhoneSignupEvent(supabase, {
+          phoneNumber: formattedPhone,
+          eventType: 'registration_failed',
+          status: 'failed',
+          otpRequestId: otpRecord.id,
+          referralCode: referralCode?.trim().toUpperCase() || null,
+          providerMessage: authError.message || 'Failed to create user account',
+          metadata: { reason: 'auth_user_creation_failed', email: userEmail },
+        });
         return new Response(
           JSON.stringify({
             error: authError.message || 'Failed to create user account',
@@ -176,6 +275,16 @@ serve(async (req: Request) => {
 
         if (referralError) {
           console.error('[Referral Error]', referralError);
+          await logPhoneSignupEvent(supabase, {
+            phoneNumber: formattedPhone,
+            eventType: 'registration_failed',
+            status: 'failed',
+            otpRequestId: otpRecord.id,
+            userId,
+            referralCode: referralCode.trim().toUpperCase(),
+            providerMessage: referralError.message || 'Failed to apply referral code',
+            metadata: { reason: 'referral_apply_failed' },
+          });
           return new Response(
             JSON.stringify({
               error: referralError.message || 'Failed to apply referral code',
@@ -192,6 +301,16 @@ serve(async (req: Request) => {
           });
           if (rewardError) {
             console.error('[Referral Reward Error]', rewardError);
+            await logPhoneSignupEvent(supabase, {
+              phoneNumber: formattedPhone,
+              eventType: 'registration_failed',
+              status: 'failed',
+              otpRequestId: otpRecord.id,
+              userId,
+              referralCode: referralCode.trim().toUpperCase(),
+              providerMessage: rewardError.message || 'Failed to grant referral reward',
+              metadata: { reason: 'referral_reward_failed' },
+            });
             return new Response(
               JSON.stringify({
                 error: rewardError.message || 'Failed to grant referral reward',
@@ -230,6 +349,30 @@ serve(async (req: Request) => {
 
     if (updateError) {
       console.error('[Update Error]', updateError);
+    }
+
+    await logPhoneSignupEvent(supabase, {
+      phoneNumber: formattedPhone,
+      eventType: 'otp_verified',
+      status: 'success',
+      otpRequestId: otpRecord.id,
+      userId,
+      referralCode: referralCode?.trim().toUpperCase() || null,
+      providerMessage: 'Phone OTP verified successfully',
+      metadata: { existing_phone_user: isExistingPhoneUser },
+    });
+
+    if (!isExistingPhoneUser) {
+      await logPhoneSignupEvent(supabase, {
+        phoneNumber: formattedPhone,
+        eventType: 'registration_completed',
+        status: 'success',
+        otpRequestId: otpRecord.id,
+        userId,
+        referralCode: referralCode?.trim().toUpperCase() || null,
+        providerMessage: 'Phone signup flow completed',
+        metadata: { existing_phone_user: false },
+      });
     }
 
     return new Response(
