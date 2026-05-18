@@ -1,6 +1,5 @@
 import { invokeEdgeFunction, EdgeFunctionError } from './edgeFunctions';
 import { fetchWithTimeout } from './http';
-import { AppError, getErrorMessage } from './appError';
 import { buildFallbackLessonPlan } from './fallbackLessonPlan';
 import { getExplicitCurriculumYearWeeks, getExplicitSchemeOfWork } from './curriculum';
 import { buildSchemeContext, findMatchingScheme } from './schemeStore';
@@ -8,10 +7,6 @@ import { buildExemplarLessonGuidance } from './exemplarLessonGuidance';
 import type { LessonPlan, LessonPlanPromptInput } from '@/types/lessonPlan';
 import type { SchemeGenerationInput, SchemeOfWork } from '@/types/scheme';
 import type { TeachingNotes } from '@/types/teachingNotes';
-
-type AiRequestOptions = {
-  signal?: AbortSignal;
-};
 
 export interface ParsedUploadedSchemeResult {
   scheme: SchemeOfWork;
@@ -34,9 +29,6 @@ export function isInsufficientCreditsError(err: unknown): boolean {
 
 export function isNetworkError(err: unknown): boolean {
   if (err instanceof EdgeFunctionError) {
-    return err.code === 'NETWORK_TIMEOUT' || err.code === 'NETWORK_ERROR';
-  }
-  if (err instanceof AppError) {
     return err.code === 'NETWORK_TIMEOUT' || err.code === 'NETWORK_ERROR';
   }
   return false;
@@ -77,21 +69,15 @@ const useLocalAi = explicitUseLocalAi || (bypassAuth && !forceCloudAi);
 const localAiBaseUrl =
   (process.env.EXPO_PUBLIC_LOCAL_AI_URL ?? 'http://localhost:8787').replace(/\/$/, '');
 
-async function invokeEdgeFunctionJson<T>(
-  functionName: string,
-  body: object,
-  options: AiRequestOptions = {},
-): Promise<T> {
+async function invokeEdgeFunctionJson<T>(functionName: string, body: object): Promise<T> {
   return invokeEdgeFunction<T>(functionName, body, {
     authErrorMessage: 'Cloud AI unavailable: no signed-in Supabase session.',
-    signal: options.signal,
   });
 }
 
 export async function generateLessonPlan(
   input: LessonPlanPromptInput,
-  selectedScheme?: SchemeOfWork | null,
-  options: AiRequestOptions = {},
+  selectedScheme?: SchemeOfWork | null
 ): Promise<LessonPlan> {
   const matchedScheme = selectedScheme
     ? null
@@ -127,19 +113,18 @@ export async function generateLessonPlan(
 
   if (useLocalAi) {
     try {
-      return await postLocal<LessonPlan>('/generate-lesson-plan', requestBody, options);
+      return await postLocal<LessonPlan>('/generate-lesson-plan', requestBody);
     } catch {
       return buildFallbackLessonPlan(input, groundingScheme);
     }
   }
 
-  const data = await invokeEdgeFunctionJson<LessonPlan>('generate-lesson-plan', requestBody, options);
+  const data = await invokeEdgeFunctionJson<LessonPlan>('generate-lesson-plan', requestBody);
   return validateLessonPlan(data);
 }
 
 export async function generateSchemeOfWork(
-  input: SchemeGenerationInput,
-  options: AiRequestOptions = {},
+  input: SchemeGenerationInput
 ): Promise<SchemeOfWork> {
   const explicitScheme = getExplicitSchemeOfWork(input);
   if (explicitScheme) {
@@ -147,23 +132,20 @@ export async function generateSchemeOfWork(
   }
 
   if (useLocalAi) {
-    return postLocal<SchemeOfWork>('/generate-scheme', input, options);
+    return postLocal<SchemeOfWork>('/generate-scheme', input);
   }
 
-  return invokeEdgeFunctionJson<SchemeOfWork>('generate-scheme', input, options);
+  return invokeEdgeFunctionJson<SchemeOfWork>('generate-scheme', input);
 }
 
-export async function parseUploadedScheme(
-  input: {
-    subject: string;
-    classLevel: string;
-    term: string;
-    fileName: string;
-    fileBase64: string;
-    numberOfWeeks?: number;
-  },
-  options: AiRequestOptions = {},
-): Promise<ParsedUploadedSchemeResult> {
+export async function parseUploadedScheme(input: {
+  subject: string;
+  classLevel: string;
+  term: string;
+  fileName: string;
+  fileBase64: string;
+  numberOfWeeks?: number;
+}): Promise<ParsedUploadedSchemeResult> {
   const curriculumHint = getExplicitSchemeOfWork({
     subject: input.subject,
     classLevel: input.classLevel as SchemeGenerationInput['classLevel'],
@@ -186,62 +168,52 @@ export async function parseUploadedScheme(
       localAiBaseUrl,
       '/parse-scheme-upload',
       requestBody,
-      options,
     );
   }
 
-  return invokeEdgeFunctionJson<ParsedUploadedSchemeResult>('parse-uploaded-scheme', requestBody, options);
+  return invokeEdgeFunctionJson<ParsedUploadedSchemeResult>('parse-uploaded-scheme', requestBody);
 }
 
-export async function generateTeachingNotes(
-  plan: LessonPlan,
-  options: AiRequestOptions = {},
-): Promise<TeachingNotes> {
+export async function generateTeachingNotes(plan: LessonPlan): Promise<TeachingNotes> {
   const requestBody = { lessonPlan: plan };
 
   if (useLocalAi) {
     try {
-      return await postLocal<TeachingNotes>('/generate-teaching-notes', requestBody, options);
+      return await postLocal<TeachingNotes>('/generate-teaching-notes', requestBody);
     } catch {
       return buildFallbackTeachingNotes(plan);
     }
   }
 
-  const data = await invokeEdgeFunctionJson<TeachingNotes>('generate-teaching-notes', requestBody, options);
+  const data = await invokeEdgeFunctionJson<TeachingNotes>('generate-teaching-notes', requestBody);
   return validateTeachingNotes(data);
 }
 
 export async function translateLessonPlan(
   plan: LessonPlan,
   localLanguage: string,
-  options: AiRequestOptions = {},
 ): Promise<LessonPlan> {
   const requestBody = { lessonPlan: plan, localLanguage };
 
-  const data = await invokeEdgeFunctionJson<LessonPlan>('translate-lesson-support', requestBody, options);
+  if (useLocalAi) {
+    const data = await postLocal<LessonPlan>('/translate-lesson-support', requestBody);
+    return validateLessonPlan(data);
+  }
+
+  const data = await invokeEdgeFunctionJson<LessonPlan>('translate-lesson-support', requestBody);
   return validateLessonPlan(data);
 }
 
-async function postLocal<T>(
-  path: string,
-  body: unknown,
-  options: AiRequestOptions = {},
-): Promise<T> {
-  return postJson<T>(localAiBaseUrl, path, body, options);
+async function postLocal<T>(path: string, body: unknown): Promise<T> {
+  return postJson<T>(localAiBaseUrl, path, body);
 }
 
-async function postJson<T>(
-  baseUrl: string,
-  path: string,
-  body: unknown,
-  options: AiRequestOptions = {},
-): Promise<T> {
+async function postJson<T>(baseUrl: string, path: string, body: unknown): Promise<T> {
   const response = await fetchWithTimeout(`${baseUrl}${path}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    signal: options.signal,
     body: JSON.stringify(body),
-  }, 90000);
+  }, 180000); // 3-minute timeout for local/edge AI requests
 
   const payload = await response.json().catch(() => null);
 
@@ -364,4 +336,8 @@ function buildFallbackTeachingNotes(plan: LessonPlan): TeachingNotes {
     ],
     visuals: [],
   };
+}
+
+function getErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err || 'Something went wrong. Please try again.');
 }

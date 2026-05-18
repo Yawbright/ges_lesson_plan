@@ -5,8 +5,6 @@ type InvokeEdgeFunctionOptions = {
   headers?: Record<string, string>;
   requireAuth?: boolean;
   authErrorMessage?: string;
-  signal?: AbortSignal;
-  timeoutMs?: number;
 };
 
 export class EdgeFunctionError extends Error {
@@ -50,21 +48,16 @@ export async function invokeEdgeFunction<T>(
     throw new Error('Supabase URL or anon key is missing.');
   }
 
-  const response = await fetchWithTimeout(
-    `${supabaseUrl}/functions/v1/${functionName}`,
-    {
-      method: 'POST',
-      headers: {
-        apikey: supabaseAnonKey,
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        'content-type': 'application/json',
-        ...(options.headers ?? {}),
-      },
-      signal: options.signal,
-      body: JSON.stringify(body),
+  const response = await fetchWithTimeout(`${supabaseUrl}/functions/v1/${functionName}`, {
+    method: 'POST',
+    headers: {
+      apikey: supabaseAnonKey,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      'content-type': 'application/json',
+      ...(options.headers ?? {}),
     },
-    options.timeoutMs ?? 90000,
-  );
+    body: JSON.stringify(body),
+  }, 180000); // 3-minute timeout for edge functions (supports up to 150s Claude timeout + buffer)
 
   const raw = await response.text();
   const payload = parseJsonPayload(raw);
