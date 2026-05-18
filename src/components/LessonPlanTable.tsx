@@ -378,7 +378,7 @@ const styles = StyleSheet.create({
   },
   lastCell: { borderRightWidth: 0 },
   cellLabel: { fontSize: 10, fontWeight: '700', color: colors.primary },
-  cellBody: { fontSize: 13, color: colors.text, lineHeight: 18 },
+  cellBody: { fontSize: 12, color: colors.text, lineHeight: 18 },
 
   // Phase table header
   phaseHeaderCell: {
@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
   phaseDuration: { fontSize: 10, color: colors.textMuted, marginTop: 3 },
 
   // Activities
-  activityText: { fontSize: 13, color: colors.text, lineHeight: 18, marginBottom: 2 },
+  activityText: { fontSize: 12, color: colors.text, lineHeight: 18, marginBottom: 2 },
 
   // Assessment (embedded in Phase 2)
   assessmentBlock: {
@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   assessmentTitle: { fontSize: 11, fontWeight: '700', color: colors.primary, marginBottom: 4 },
-  assessmentQ: { fontSize: 13, color: colors.text, lineHeight: 18, marginBottom: 2 },
+  assessmentQ: { fontSize: 12, color: colors.text, lineHeight: 18, marginBottom: 2 },
 
   // Resources
   resourceText: { fontSize: 12, color: colors.text, lineHeight: 16, marginBottom: 2 },
