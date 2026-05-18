@@ -90,6 +90,21 @@ function getFocusGroupsForEntry(entry: SchemeWeekEntry, source: ExemplarSource):
     return directGroups;
   }
 
+  const matchedGroups = getBestMatchingGroupsForEntry(entry, source);
+  if (matchedGroups.length) {
+    if (entryExemplars.length) {
+      return [
+        ...matchedGroups,
+        {
+          indicator: cleanIndicatorText(entry.indicator) || entry.topic || 'Additional weekly guidance',
+          exemplars: entryExemplars,
+        },
+      ];
+    }
+
+    return matchedGroups;
+  }
+
   const matchedExemplars = getExemplarsForEntry(entry, source);
   if (!matchedExemplars.length) return [];
 
@@ -99,6 +114,32 @@ function getFocusGroupsForEntry(entry: SchemeWeekEntry, source: ExemplarSource):
       exemplars: matchedExemplars,
     },
   ];
+}
+
+function getBestMatchingGroupsForEntry(
+  entry: SchemeWeekEntry,
+  source: ExemplarSource
+): IndicatorFocusGroup[] {
+  const codePrefixes = extractCurriculumCodePrefixes([
+    entry.contentStandard,
+    entry.indicator,
+  ].join(' '));
+  const entryTokens = tokenize([
+    entry.topic,
+    entry.indicator,
+    entry.subStrand,
+    entry.contentStandard,
+  ].join(' '));
+
+  const sourceEntries = Object.entries(source);
+  const prefixCandidates = codePrefixes.length
+    ? sourceEntries.filter(([code]) => codePrefixes.some((prefix) => code.startsWith(`${prefix}.`)))
+    : [];
+
+  const prefixMatches = getBestMatchingGroupRecords(prefixCandidates, entryTokens);
+  if (prefixMatches.length) return prefixMatches;
+
+  return getBestMatchingGroupRecords(sourceEntries, entryTokens);
 }
 
 function getExemplarsForEntry(entry: SchemeWeekEntry, source: ExemplarSource): string[] {
@@ -156,6 +197,28 @@ function getBestMatchingRecords(
   return scored
     .filter((item) => item.score === bestScore)
     .flatMap((item) => item.exemplars);
+}
+
+function getBestMatchingGroupRecords(
+  records: Array<[string, { indicator: string; exemplars: string[] }]>,
+  entryTokens: string[]
+): IndicatorFocusGroup[] {
+  if (!records.length || !entryTokens.length) return [];
+
+  const scored = records
+    .map(([code, record]) => ({
+      code,
+      record,
+      score: countSharedTokens(entryTokens, tokenize([record.indicator, ...record.exemplars].join(' '))),
+    }))
+    .sort((left, right) => right.score - left.score);
+
+  const bestScore = scored[0]?.score ?? 0;
+  if (bestScore <= 0) return [];
+
+  return scored
+    .filter((item) => item.score === bestScore)
+    .map((item) => recordToGroup(item.code, item.record));
 }
 
 function buildLessonFocuses(
@@ -334,6 +397,12 @@ function extractIndicatorCodes(value?: string): string[] {
 
 function extractStandardCode(value?: string): string {
   return normalizeCurriculumCodeSpacing(value ?? '').match(/B[789](?:\/JHS[123])?(?:\.\d+){3}/)?.[0] ?? '';
+}
+
+function extractCurriculumCodePrefixes(value?: string): string[] {
+  const text = normalizeCurriculumCodeSpacing(value ?? '');
+  const matches = text.match(/B[789](?:\/JHS[123])?(?:\.\d+){2,3}/g) ?? [];
+  return uniqueStrings(matches);
 }
 
 function normalizeCurriculumCodeSpacing(value: string): string {

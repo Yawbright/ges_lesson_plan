@@ -50,6 +50,7 @@ Deno.serve(async (req) => {
     const scheme = await callClaudeJson<Record<string, unknown>>({
       system: schemeSystemPrompt,
       user: buildSchemePrompt(body),
+      timeoutMs: 120000, // Scheme generation needs more time for term content
     });
 
     await rewardReferralIfQualified(creditDebit.user.id);

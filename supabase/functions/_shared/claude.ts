@@ -10,11 +10,14 @@ export interface ClaudeJsonOptions {
   user: string;
   maxTokens?: number;
   temperature?: number;
+  timeoutMs?: number;
 }
 
 /**
  * Calls Claude and parses the response as JSON.
  * The system prompt MUST instruct the model to respond with a single JSON object.
+ * 
+ * Default timeout: 120 seconds (complex operations may need custom timeout)
  */
 export async function callClaudeJson<T = unknown>(opts: ClaudeJsonOptions): Promise<T> {
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
@@ -36,7 +39,7 @@ export async function callClaudeJson<T = unknown>(opts: ClaudeJsonOptions): Prom
       system: opts.system,
       messages: [{ role: 'user', content: opts.user }],
     }),
-  }, 90000);
+  }, opts.timeoutMs ?? 120000);
 
   if (!res.ok) {
     const detail = await res.text();

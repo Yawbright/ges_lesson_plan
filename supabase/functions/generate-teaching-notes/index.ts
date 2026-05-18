@@ -52,6 +52,7 @@ Deno.serve(async (req) => {
       system: teachingNotesSystemPrompt,
       user: buildTeachingNotesPrompt(body),
       maxTokens: 12000,
+      timeoutMs: 150000, // Teaching notes generation is more complex, needs 150s timeout
     });
     const normalized = normalizeTeachingNotesResponse(rawNotes, body);
 
