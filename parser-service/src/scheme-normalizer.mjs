@@ -82,6 +82,44 @@ export function reconcileParsedSchemeWithCurriculumBackend(input) {
   };
 }
 
+export function applyAnnualPlanTopicsToScheme(scheme, annualText) {
+  const annualTopics = parseAnnualWeekTopics(annualText);
+  if (!annualTopics.size) return scheme;
+
+  return {
+    ...scheme,
+    weeks: (scheme.weeks || []).map((week) => {
+      const annualTopic = annualTopics.get(Number(week.week));
+      if (!annualTopic) return week;
+
+      const next = {
+        ...week,
+        topic: annualTopic,
+        subStrand: annualTopic,
+        uploadedTopic: annualTopic,
+      };
+
+      const mappedText = [
+        week.strand,
+        week.subStrand,
+        week.contentStandard,
+        week.indicator,
+      ].join(' ');
+      if (!hasMeaningfulTopicOverlap(annualTopic, mappedText)) {
+        next.strand = '';
+        next.contentStandard = '';
+        next.indicator = '';
+        next.resources = Array.isArray(week.resources) ? week.resources : [];
+        next.entries = undefined;
+        next.matchedCurriculumTerm = undefined;
+        next.matchConfidence = undefined;
+      }
+
+      return next;
+    }),
+  };
+}
+
 function mergeWeekWithCurriculumBackend(uploadedWeek, curriculumWeek, confidence) {
   const mergedEntries = mergeEntriesBackend(uploadedWeek, curriculumWeek);
   return {
@@ -251,4 +289,31 @@ function parseWeekNumber(value, index) {
 
 function slugify(value) {
   return cleanText(value).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function parseAnnualWeekTopics(text) {
+  const lines = String(text || '').split(/\r?\n/).map((line) => cleanText(line)).filter(Boolean);
+  const topics = new Map();
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const weekMatch = lines[index].match(/^week\s+(\d{1,2})$/i);
+    if (!weekMatch) continue;
+    const topic = cleanText(lines[index + 1]);
+    if (!topic || /^week\s+\d{1,2}$/i.test(topic)) continue;
+    topics.set(Number(weekMatch[1]), topic);
+  }
+
+  return topics;
+}
+
+function hasMeaningfulTopicOverlap(topic, text) {
+  const topicTokens = tokenizeForMatch(topic);
+  const textTokens = tokenizeForMatch(text);
+  if (!topicTokens.size || !textTokens.size) return false;
+
+  let shared = 0;
+  topicTokens.forEach((token) => {
+    if (textTokens.has(token)) shared += 1;
+  });
+  return shared > 0;
 }

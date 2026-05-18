@@ -421,7 +421,7 @@ export function PhoneSignupsSection(props: {
   loadingMore: boolean;
   loadMore: () => void;
 }) {
-  const events = filterPhoneSignups(props.events, props.filter);
+  const events = filterPhoneSignups(props.events ?? [], props.filter);
   return (
     <Panel
       title="Phone Signup Funnel"
@@ -953,12 +953,14 @@ function TransactionRow({ item }: { item: AdminTransaction }) {
 
 function PhoneSignupRow({ event }: { event: AdminPhoneSignupEvent }) {
   const title = event.phone_number || event.email || event.user_id || 'Unknown phone';
+  const eventType = event.event_type || 'phone signup event';
+  const createdAt = event.created_at ? new Date(event.created_at).toLocaleString() : 'Unknown time';
   return (
     <View style={styles.dataRow}>
       <View style={{ flex: 1 }}>
         <Text style={styles.rowTitle}>{title}</Text>
         <Text style={styles.meta}>
-          {event.event_type.replace(/_/g, ' ')} | {new Date(event.created_at).toLocaleString()}
+          {eventType.replace(/_/g, ' ')} | {createdAt}
         </Text>
         <Text style={styles.meta}>
           User: {event.email || event.user_id || 'Not registered'} | Referral: {event.referral_code || '-'}

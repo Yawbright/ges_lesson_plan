@@ -12,7 +12,7 @@ export const adminSections: {
   { id: 'payments', label: 'Payments', icon: 'script-text-outline' },
   { id: 'usage', label: 'Usage', icon: 'chart-timeline-variant' },
   { id: 'referrals', label: 'Referrals', icon: 'share-variant-outline' },
-  { id: 'phone-signups', label: 'Phone Signups', icon: 'cellphone-key' },
+  { id: 'phone-signups', label: 'Phone Signups', icon: 'cellphone' },
   { id: 'logs', label: 'Error Logs', icon: 'alert-circle-outline' },
   { id: 'faqs', label: 'FAQs', icon: 'frequently-asked-questions' },
   { id: 'settings', label: 'Settings', icon: 'cog-outline' },

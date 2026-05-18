@@ -14,6 +14,7 @@ import {
   subjectsRoughlyMatch,
 } from './parser-service/src/scheme-text-parser.mjs';
 import {
+  applyAnnualPlanTopicsToScheme,
   normalizeSchemeResponse,
   reconcileParsedSchemeWithCurriculumBackend,
 } from './parser-service/src/scheme-normalizer.mjs';
@@ -263,6 +264,9 @@ Do not switch to a different weekly topic just because it is a new session.\n`
           `- Parsing precedence: use a detailed weekly/termly scheme section first. Only use the annual scheme/annual scheme of learning if no detailed term section exists.\n` +
           `- Respect the actual number of weeks visible in the uploaded scheme. Do not invent extra weeks beyond ${detectedWeekCount}.\n` +
           `- Selected parser section type: ${selectedSection.source}\n` +
+          (selectedSection.source === 'annual'
+            ? `- This is an annual-plan column extraction. Keep each Week topic exactly as listed in the relevant uploaded scheme text. Do not replace annual-plan topics with detailed Term 1 topics or mapped curriculum topics.\n`
+            : '') +
           `\nAnnual plan summary text (if present):\n${annualPlanText || 'No separate annual summary detected.'}\n` +
           `\nRelevant uploaded scheme text:\n${relevantText}\n` +
           `\nLikely week rows and table cues:\n${likelyWeekRows || 'No obvious week rows detected.'}\n` +
@@ -276,9 +280,13 @@ Do not switch to a different weekly topic just because it is a new session.\n`
         numberOfWeeks: detectedWeekCount,
       });
 
+      const annualPreserved = selectedSection.source === 'annual'
+        ? applyAnnualPlanTopicsToScheme(normalized, relevantText)
+        : normalized;
+
       const reconciled = reconcileParsedSchemeWithCurriculumBackend({
         scheme: {
-          ...normalized,
+          ...annualPreserved,
           subject: body.subject,
           classLevel: body.classLevel,
           term: body.term,
@@ -293,7 +301,13 @@ Do not switch to a different weekly topic just because it is a new session.\n`
           : [],
       });
 
-      writeJson(res, 200, { scheme: reconciled, detectedMetadata });
+      writeJson(res, 200, {
+        scheme:
+          selectedSection.source === 'annual'
+            ? applyAnnualPlanTopicsToScheme(reconciled, relevantText)
+            : reconciled,
+        detectedMetadata,
+      });
     } catch (error) {
       writeJson(res, 500, { error: getErrorMessage(error) });
     }

@@ -240,7 +240,7 @@ export function filterLogs(items: AdminLog[], filter: ReportFilter) {
 }
 
 export function filterPhoneSignups(items: AdminPhoneSignupEvent[], filter: ReportFilter) {
-  return items.filter((item) => {
+  return (items ?? []).filter((item) => {
     if (filter.status && item.event_type !== filter.status) return false;
     if (!matchesDate(item.created_at, filter)) return false;
     return matchesSearch(filter.search, [

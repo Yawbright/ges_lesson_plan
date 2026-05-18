@@ -389,7 +389,7 @@ export default function AdminScreen() {
         appendReport(report, next, (items) => ({ referrals: [...dashboard.referrals, ...items] }));
       } else if (report === 'phone-signups') {
         const next = await adminListReport<AdminPhoneSignupEvent>(report, currentPage.page + 1, currentPage.pageSize);
-        appendReport(report, next, (items) => ({ phoneSignups: [...dashboard.phoneSignups, ...items] }));
+        appendReport(report, next, (items) => ({ phoneSignups: [...(dashboard.phoneSignups ?? []), ...items] }));
       } else {
         const next = await adminListReport<AdminLog>(report, currentPage.page + 1, currentPage.pageSize);
         appendReport(report, next, (items) => ({ logs: [...dashboard.logs, ...items] }));
@@ -564,10 +564,10 @@ export default function AdminScreen() {
               ) : null}
               {section === 'phone-signups' ? (
                 <PhoneSignupsSection
-                  events={dashboard.phoneSignups}
-                  filter={reportFilters.phoneSignups}
+                  events={dashboard.phoneSignups ?? []}
+                  filter={reportFilters.phoneSignups ?? emptyFilter()}
                   setFilter={(patch) => updateReportFilter('phoneSignups', patch)}
-                  hasMore={Boolean(dashboard.reportPages?.phoneSignups.hasMore)}
+                  hasMore={Boolean(dashboard.reportPages?.phoneSignups?.hasMore)}
                   loadingMore={loadingMore['phone-signups']}
                   loadMore={() => loadMoreReport('phone-signups')}
                 />

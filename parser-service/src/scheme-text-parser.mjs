@@ -8,7 +8,10 @@ export function extractAnnualPlanText(text, requestedClassLevel, requestedSubjec
   let endIndex = lines.length;
   for (let index = annualStartIndex + 1; index < lines.length; index += 1) {
     const line = lines[index];
-    if (scoreTermMarker(line, normalizeTermLabel('term 1')) >= 5) {
+    if (
+      detectTermFromLine(line) === normalizeTermLabel('term 1') &&
+      scoreTermMarker(line, normalizeTermLabel('term 1')) >= 5
+    ) {
       endIndex = index;
       break;
     }

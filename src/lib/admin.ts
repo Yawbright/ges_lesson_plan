@@ -171,13 +171,13 @@ export type AdminDashboard = {
   purchases: AdminPurchase[];
   referrals: AdminReferral[];
   logs: AdminLog[];
-  phoneSignups: AdminPhoneSignupEvent[];
+  phoneSignups?: AdminPhoneSignupEvent[];
   reportPages?: {
     transactions: AdminPage<AdminTransaction>;
     purchases: AdminPage<AdminPurchase>;
     referrals: AdminPage<AdminReferral>;
     logs: AdminPage<AdminLog>;
-    phoneSignups: AdminPage<AdminPhoneSignupEvent>;
+    phoneSignups?: AdminPage<AdminPhoneSignupEvent>;
   };
   packages: AdminCreditPackage[];
   settings: AdminSetting[];
