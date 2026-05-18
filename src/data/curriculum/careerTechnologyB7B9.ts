@@ -427,7 +427,7 @@ export const careerTechnologyB8Terms: ExplicitCurriculumTerm[] = [
     term: 'Term 3',
     title: 'B8 Career Technology Scheme of Work - Term 3',
     weeks: [
-      week(1, 'Designing and Making of Artefacts/Products', 'Communicating Design', 'B8/JHS2.5.1 Demonstrate knowledge and skills in communicating design.', 'Use more detailed sketches and notes to communicate design ideas.', 'Communicating design with detail', resources.design),
+      week(1, 'Designing and Making of Artefacts/Products', 'Communicating Design', 'B8/JHS2.5.1.1 Demonstrate understanding of drawing plane figures and solid objects using drawing instruments.', 'B8/JHS2.5.1.1.1 Draw plane figures using instruments; B8/JHS2.5.1.1.2 Draw objects in pictorial using instruments.', 'Drawing plane figures and pictorial objects using instruments', resources.design),
       week(2, 'Designing and Making of Artefacts/Products', 'Designing', 'B8/JHS2.5.2 Demonstrate knowledge and skills in designing.', 'Write design briefs from observed problem situations.', 'Writing design briefs from problem situations', resources.design),
       week(3, 'Designing and Making of Artefacts/Products', 'Designing', 'B8/JHS2.5.2 Demonstrate knowledge and skills in designing.', 'Research design problems and analyse information gathered.', 'Researching and analysing design problems', resources.design),
       week(4, 'Designing and Making of Artefacts/Products', 'Designing', 'B8/JHS2.5.2 Demonstrate knowledge and skills in designing.', 'Write design specifications and justify them.', 'Writing and justifying design specifications', resources.design),

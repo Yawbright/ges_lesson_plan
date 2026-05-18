@@ -27,6 +27,11 @@ export interface LessonFocusGuidance {
 }
 
 type ExemplarSource = Record<string, { indicator: string; exemplars: string[] }>;
+type IndicatorFocusGroup = {
+  code?: string;
+  indicator: string;
+  exemplars: string[];
+};
 
 export function buildExemplarLessonGuidance(input: {
   subject: string;
@@ -45,13 +50,11 @@ export function buildExemplarLessonGuidance(input: {
   const entries = getWeekEntries(input.week);
   if (!entries.length) return undefined;
 
-  const exemplarItems = uniqueStrings(
-    entries.flatMap((entry) => getExemplarsForEntry(entry, source))
-  );
-  if (!exemplarItems.length) return undefined;
+  const focusGroups = entries.flatMap((entry) => getFocusGroupsForEntry(entry, source));
+  if (!focusGroups.length) return undefined;
 
   const lessonCount = Math.max(1, Math.min(input.sessionsPerWeek ?? 3, 3));
-  const allFocuses = buildLessonFocuses(exemplarItems, lessonCount, input.subject);
+  const allFocuses = buildLessonFocuses(focusGroups, lessonCount, input.subject);
   const focusIndex = Math.min(
     Math.max((input.sessionIndex ?? 1) - 1, 0),
     Math.max(allFocuses.length - 1, 0)
@@ -61,6 +64,41 @@ export function buildExemplarLessonGuidance(input: {
     allFocuses,
     currentFocus: allFocuses[focusIndex],
   };
+}
+
+function getFocusGroupsForEntry(entry: SchemeWeekEntry, source: ExemplarSource): IndicatorFocusGroup[] {
+  const entryExemplars = entry.exemplars ?? [];
+  const directCodes = uniqueStrings([
+    ...extractIndicatorCodes(entry.indicator),
+    ...extractIndicatorCodes(entry.contentStandard),
+  ]);
+  const directGroups = directCodes
+    .map((code) => source[code] ? recordToGroup(code, source[code]) : null)
+    .filter((group): group is IndicatorFocusGroup => Boolean(group));
+
+  if (directGroups.length) {
+    if (entryExemplars.length) {
+      return [
+        ...directGroups,
+        {
+          indicator: cleanIndicatorText(entry.indicator) || entry.topic || 'Additional weekly guidance',
+          exemplars: entryExemplars,
+        },
+      ];
+    }
+
+    return directGroups;
+  }
+
+  const matchedExemplars = getExemplarsForEntry(entry, source);
+  if (!matchedExemplars.length) return [];
+
+  return [
+    {
+      indicator: cleanIndicatorText(entry.indicator) || entry.topic || 'Weekly curriculum focus',
+      exemplars: matchedExemplars,
+    },
+  ];
 }
 
 function getExemplarsForEntry(entry: SchemeWeekEntry, source: ExemplarSource): string[] {
@@ -87,6 +125,17 @@ function getExemplarsForEntry(entry: SchemeWeekEntry, source: ExemplarSource): s
   return [...entryExemplars, ...broadMatches];
 }
 
+function recordToGroup(
+  code: string,
+  record: { indicator: string; exemplars: string[] }
+): IndicatorFocusGroup {
+  return {
+    code,
+    indicator: cleanIndicatorText(record.indicator),
+    exemplars: uniqueStrings(record.exemplars),
+  };
+}
+
 function getBestMatchingRecords(
   records: Array<[string, { indicator: string; exemplars: string[] }]>,
   entryTokens: string[]
@@ -109,16 +158,21 @@ function getBestMatchingRecords(
     .flatMap((item) => item.exemplars);
 }
 
-function buildLessonFocuses(exemplars: string[], lessonCount: number, subject: string): string[] {
+function buildLessonFocuses(
+  groups: IndicatorFocusGroup[],
+  lessonCount: number,
+  subject: string
+): string[] {
   const mode = getSubjectMode(subject);
+  const assignments = assignGroupsToLessons(groups, lessonCount);
 
-  if (lessonCount === 1) {
-    return [decorateFocus(exemplars.join(' '), mode, 0, 1)];
-  }
+  return assignments.map((items, index) => {
+    const focusItems = items.length ? items : [groups[Math.min(index, groups.length - 1)]];
+    const focus = focusItems
+      .filter(Boolean)
+      .map(formatFocusGroup)
+      .join(' ');
 
-  const chunks = splitEvenly(exemplars, lessonCount);
-  return chunks.map((chunk, index) => {
-    const focus = chunk.length ? chunk.join(' ') : exemplars.join(' ');
     return decorateFocus(focus, mode, index, lessonCount);
   });
 }
@@ -181,6 +235,78 @@ function splitEvenly(values: string[], groups: number): string[][] {
   return result.slice(0, groups);
 }
 
+function assignGroupsToLessons(
+  groups: IndicatorFocusGroup[],
+  lessonCount: number
+): IndicatorFocusGroup[][] {
+  if (lessonCount <= 1) return [groups];
+  if (groups.length === 1) return splitSingleGroupAcrossLessons(groups[0], lessonCount);
+  if (groups.length >= lessonCount) return splitGroupListEvenly(groups, lessonCount);
+
+  const allocations = allocateLessonCounts(groups, lessonCount);
+  return allocations.flatMap(({ group, count }) => splitSingleGroupAcrossLessons(group, count));
+}
+
+function splitGroupListEvenly(
+  groups: IndicatorFocusGroup[],
+  lessonCount: number
+): IndicatorFocusGroup[][] {
+  const result: IndicatorFocusGroup[][] = [];
+  const size = Math.ceil(groups.length / lessonCount);
+
+  for (let index = 0; index < groups.length; index += size) {
+    result.push(groups.slice(index, index + size));
+  }
+
+  while (result.length < lessonCount) result.push([]);
+  return result.slice(0, lessonCount);
+}
+
+function allocateLessonCounts(
+  groups: IndicatorFocusGroup[],
+  lessonCount: number
+): Array<{ group: IndicatorFocusGroup; count: number }> {
+  const allocations = groups.map((group, index) => ({ group, count: 1, index }));
+  let remaining = lessonCount - allocations.length;
+
+  while (remaining > 0) {
+    allocations
+      .sort((left, right) => exemplarWeight(right) / right.count - exemplarWeight(left) / left.count);
+    allocations[0].count += 1;
+    remaining -= 1;
+  }
+
+  return allocations.sort((left, right) => left.index - right.index);
+}
+
+function splitSingleGroupAcrossLessons(
+  group: IndicatorFocusGroup,
+  lessonCount: number
+): IndicatorFocusGroup[][] {
+  const exemplarChunks = splitEvenly(group.exemplars, lessonCount);
+
+  return exemplarChunks.map((exemplars) => [
+    {
+      ...group,
+      exemplars: exemplars.length ? exemplars : group.exemplars,
+    },
+  ]);
+}
+
+function exemplarWeight(item: { group?: IndicatorFocusGroup; exemplars?: string[] }): number {
+  const group = item.group ?? (item as IndicatorFocusGroup);
+  return Math.max(1, group.exemplars.length);
+}
+
+function formatFocusGroup(group: IndicatorFocusGroup): string {
+  const codePrefix = group.code ? `${group.code} ` : '';
+  const exemplarText = group.exemplars.length
+    ? `Exemplars for this lesson only: ${group.exemplars.join(' ')}`
+    : 'Use only the activities implied by this assigned indicator.';
+
+  return `Assigned indicator: ${codePrefix}${group.indicator}. ${exemplarText}`;
+}
+
 function extractIndicatorCodes(value?: string): string[] {
   const text = normalizeCurriculumCodeSpacing(value ?? '');
   const directCodes = text.match(/B[789](?:\/JHS[123])?(?:\.\d+){4}/g) ?? [];
@@ -216,6 +342,13 @@ function normalizeCurriculumCodeSpacing(value: string): string {
     .replace(/(B\d\/JHS\d)\s*\.\s*/g, '$1.')
     .replace(/\s+\./g, '.')
     .replace(/\.\s+/g, '.');
+}
+
+function cleanIndicatorText(value?: string): string {
+  return normalizeCurriculumCodeSpacing(value ?? '')
+    .replace(/^B[1-9](?:\/JHS[1-3])?(?:\.\d+){4}(?:-\d+(?:\.\d+)*)?\s*/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function getExemplarSource(subject: string): ExemplarSource | null {

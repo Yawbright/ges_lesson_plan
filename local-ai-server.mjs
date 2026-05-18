@@ -584,10 +584,12 @@ function formatLessonFocusGuidance(guidance) {
     : [];
   if (!guidance?.currentFocus && !allFocuses.length) return '';
 
-  return `Internal exemplar lesson focus guidance:
+  return `Binding lesson focus guidance:
   Current lesson focus: ${guidance?.currentFocus || ''}
   Weekly lesson focus sequence:
 ${allFocuses.map((focus, index) => `  ${index + 1}. ${focus}`).join('\n')}
+Use the current lesson focus as the boundary for this lesson's main activities, examples, performance indicator and assessment.
+Do not blend every weekly indicator or exemplar into every lesson. Later focus-sequence items may be mentioned only as a brief preview, not taught as main content.
 `;
 }
 
