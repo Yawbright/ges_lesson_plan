@@ -206,19 +206,44 @@ function buildLessonPlanContent(plan: LessonPlan) {
 
 function buildSchemeHtml(scheme: SchemeOfWork) {
   const rows = scheme.weeks
-    .map(
-      (week) => `
-        <tr>
-          <td>${week.week}</td>
-          <td>${escapeHtml(getWeekTopic(week))}</td>
-          <td>${escapeHtml(getWeekStrandSummary(week))}</td>
-          <td>${escapeHtml(getWeekSubStrandSummary(week))}</td>
-          <td>${escapeHtml(buildWeekContentStandards(week))}</td>
-          <td>${escapeHtml(buildWeekIndicators(week))}</td>
-          <td>${escapeHtml(getWeekResourceList(week).join(', '))}</td>
-        </tr>
-      `
-    )
+    .map((week) => {
+      // Get entries for this week (or create from main week data if no entries)
+      const entries = week.entries && week.entries.length > 0 
+        ? week.entries 
+        : [{ 
+            strand: week.strand, 
+            subStrand: week.subStrand, 
+            contentStandard: week.contentStandard, 
+            indicator: week.indicator, 
+            topic: week.topic, 
+            resources: week.resources 
+          }];
+
+      // For each entry, create a row
+      return entries
+        .map((entry, entryIndex) => {
+          // Only add Week and Topic cells for the first entry
+          const weekCell = entryIndex === 0 
+            ? `<td rowspan="${entries.length}" style="vertical-align: middle;">${week.week}</td>` 
+            : '';
+          const topicCell = entryIndex === 0 
+            ? `<td rowspan="${entries.length}" style="vertical-align: middle;">${escapeHtml(entry.topic || week.theme || '')}</td>` 
+            : '';
+
+          return `
+            <tr>
+              ${weekCell}
+              ${topicCell}
+              <td>${escapeHtml(entry.strand || '')}</td>
+              <td>${escapeHtml(entry.subStrand || '')}</td>
+              <td>${escapeHtml(entry.contentStandard || '')}</td>
+              <td>${escapeHtml(entry.indicator || '')}</td>
+              <td>${escapeHtml((entry.resources || []).join(', '))}</td>
+            </tr>
+          `;
+        })
+        .join('');
+    })
     .join('');
 
   return pageHtml(`
